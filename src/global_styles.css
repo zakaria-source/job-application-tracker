@@ -1,0 +1,100 @@
+/* Application styles */
+@import '@angular/material/prebuilt-themes/indigo-pink.css';
+
+html, body {
+    height: 100%;
+    margin: 0;
+    font-family: Roboto, "Helvetica Neue", sans-serif;
+}
+
+.container {
+    padding: 20px;
+}
+
+.full-width {
+    width: 100%;
+}
+
+.mat-card {
+    margin-bottom: 20px;
+}
+
+.flex-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.flex-item {
+    flex: 1;
+    min-width: 300px;
+}
+
+.chart-container {
+    height: 300px;
+    margin-bottom: 20px;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.spacer {
+    flex: 1 1 auto;
+}
+
+.success-chip {
+    background-color: #4caf50 !important;
+    color: white !important;
+}
+
+.warning-chip {
+    background-color: #ff9800 !important;
+    color: white !important;
+}
+
+.error-chip {
+    background-color: #f44336 !important;
+    color: white !important;
+}
+
+.info-chip {
+    background-color: #2196f3 !important;
+    color: white !important;
+}
+
+.mat-mdc-card-title {
+    margin-bottom: 16px !important;
+}
+
+.notification-card {
+    border-left: 4px solid #ff9800;
+    margin-bottom: 10px;
+}
+
+.calendar-container {
+    margin-top: 20px;
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-sent {
+    background-color: #e0e0e0;
+}
+
+.status-interview {
+    background-color: #bbdefb;
+}
+
+.status-accepted {
+    background-color: #c8e6c9;
+}
+
+.status-rejected {
+    background-color: #ffcdd2;
+}
