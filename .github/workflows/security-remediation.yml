@@ -32,8 +32,8 @@ jobs:
       - name: Upgrade Angular 20 to Angular 21
         run: npx ng update @angular/core@21 @angular/cli@21 @angular/material@21 --allow-dirty
 
-      - name: Refresh chart dependencies
-        run: npm install ng2-charts@latest chart.js@latest
+      - name: Align CDK and chart dependencies with Angular 21
+        run: npm install @angular/cdk@21.2.14 ng2-charts@10.0.0 chart.js@latest
 
       - name: Reinstall from migrated lockfile
         run: npm ci
@@ -79,6 +79,7 @@ jobs:
             package.json
             package-lock.json
             angular.json
+            tsconfig.json
             src
             audit-full.json
             audit-production.json
