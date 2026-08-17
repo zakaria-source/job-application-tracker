@@ -1,0 +1,297 @@
+<mat-card>
+  <mat-card-header>
+    <mat-card-title>Mes candidatures</mat-card-title>
+    <mat-card-subtitle>Votre pipeline : priorités, relances, étapes et contacts.</mat-card-subtitle>
+  </mat-card-header>
+  <mat-card-content>
+    @if (applications.length > 0) {
+      <div class="filters">
+        <mat-form-field appearance="outline" class="search-field">
+          <mat-label>Rechercher</mat-label>
+          <input matInput [(ngModel)]="searchTerm" (input)="applyFilters()" placeholder="Entreprise, poste, recruteur...">
+          @if (searchTerm) {
+            <button matSuffix mat-icon-button aria-label="Effacer la recherche" (click)="searchTerm=''; applyFilters()">
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Statut</mat-label>
+          <mat-select [(ngModel)]="statusFilter" (selectionChange)="applyFilters()">
+            <mat-option value="">Tous</mat-option>
+            <mat-option value="Envoyé">Envoyé</mat-option>
+            <mat-option value="Entretien">Entretien</mat-option>
+            <mat-option value="Accepté">Accepté</mat-option>
+            <mat-option value="Refusé">Refusé</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Contrat</mat-label>
+          <mat-select [(ngModel)]="contractFilter" (selectionChange)="applyFilters()">
+            <mat-option value="">Tous</mat-option>
+            <mat-option value="CDI">CDI</mat-option>
+            <mat-option value="CDD">CDD</mat-option>
+            <mat-option value="Freelance">Freelance</mat-option>
+            <mat-option value="Stage">Stage</mat-option>
+            <mat-option value="Alternance">Alternance</mat-option>
+            <mat-option value="Autre">Autre</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Priorité</mat-label>
+          <mat-select [(ngModel)]="priorityFilter" (selectionChange)="applyFilters()">
+            <mat-option value="">Toutes</mat-option>
+            <mat-option value="Haute">Haute</mat-option>
+            <mat-option value="Moyenne">Moyenne</mat-option>
+            <mat-option value="Basse">Basse</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+    }
+
+    @if (applications.length === 0) {
+      <div class="no-data">
+        <mat-icon>work_outline</mat-icon>
+        <h3>Commencez votre suivi</h3>
+        <p>Ajoutez votre première candidature pour alimenter votre cockpit.</p>
+        <button mat-raised-button color="primary" (click)="showAddForm()">
+          <mat-icon>add</mat-icon> Ajouter une candidature
+        </button>
+      </div>
+    }
+
+    @if (applications.length > 0 && filteredApplications.length === 0) {
+      <div class="no-data">
+        <mat-icon>search_off</mat-icon>
+        <h3>Aucun résultat</h3>
+        <p>Aucune candidature ne correspond à vos filtres.</p>
+        <button mat-stroked-button (click)="clearFilters()">Réinitialiser les filtres</button>
+      </div>
+    }
+
+    @if (filteredApplications.length > 0) {
+      <div class="table-container">
+        <table mat-table
+          [dataSource]="paginatedApplications"
+          matSort
+          [matSortActive]="sortField"
+          [matSortDirection]="sortDirection"
+          (matSortChange)="sortData($event)">
+          <ng-container matColumnDef="company">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Entreprise</th>
+            <td mat-cell *matCellDef="let application">
+              <div class="company-cell">
+                <strong>{{ application.company }}</strong>
+                <span>{{ application.stage }}</span>
+              </div>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="position">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Poste</th>
+            <td mat-cell *matCellDef="let application">{{ application.position }}</td>
+          </ng-container>
+          <ng-container matColumnDef="contractType">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Contrat</th>
+            <td mat-cell *matCellDef="let application">{{ application.contractType }}</td>
+          </ng-container>
+          <ng-container matColumnDef="priority">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Priorité</th>
+            <td mat-cell *matCellDef="let application">
+              <span class="priority-badge" [ngClass]="'priority-' + application.priority.toLowerCase()">
+                {{ application.priority }}
+              </span>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="followUpDate">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Relance</th>
+            <td mat-cell *matCellDef="let application">
+              @if (application.followUpDate) {
+                <span [class.follow-up-due]="isFollowUpDue(application)">
+                  {{ application.followUpDate | date:'dd/MM/yyyy' }}
+                </span>
+              } @else {
+                —
+              }
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header>Statut</th>
+            <td mat-cell *matCellDef="let application">
+              <span class="status-badge"
+                  [ngClass]="{
+                    'status-sent': application.status === 'Envoyé',
+                    'status-interview': application.status === 'Entretien',
+                    'status-accepted': application.status === 'Accepté',
+                    'status-rejected': application.status === 'Refusé'
+                  }">
+                {{ application.status }}
+              </span>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Actions</th>
+            <td mat-cell *matCellDef="let application">
+              @if (application.offerUrl) {
+                <a
+                  mat-icon-button
+                  [href]="application.offerUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  (click)="$event.stopPropagation()"
+                  matTooltip="Ouvrir l'offre"
+                  aria-label="Ouvrir l'offre">
+                  <mat-icon>open_in_new</mat-icon>
+                </a>
+              }
+              <button mat-icon-button color="primary"
+                (click)="$event.stopPropagation(); editApplication(application)"
+                matTooltip="Modifier"
+                aria-label="Modifier la candidature">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button color="warn"
+                (click)="$event.stopPropagation(); deleteApplication(application)"
+                matTooltip="Supprimer"
+                aria-label="Supprimer la candidature">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+            (click)="viewApplicationDetails(row)"
+          class="application-row"></tr>
+        </table>
+        <mat-paginator
+          [length]="filteredApplications.length"
+          [pageSize]="pageSize"
+          [pageSizeOptions]="[5, 10, 25, 50]"
+          (page)="onPageChange($event)">
+        </mat-paginator>
+      </div>
+    }
+  </mat-card-content>
+
+  @if (applications.length > 0 && !showForm) {
+    <mat-card-actions>
+      <button mat-raised-button color="primary" (click)="showAddForm()">
+        <mat-icon>add</mat-icon> Ajouter une candidature
+      </button>
+    </mat-card-actions>
+  }
+</mat-card>
+
+@if (showForm) {
+  <div class="secondary-panel">
+    <app-job-form
+      [editMode]="editMode"
+      [application]="selectedApplication"
+      (formSubmit)="onFormSubmit($event)"
+      (cancel)="cancelForm()">
+    </app-job-form>
+  </div>
+}
+
+@if (selectedApplication && showDetails) {
+  <div class="details-card">
+    <mat-card>
+      <mat-card-header>
+        <mat-card-title>{{ selectedApplication.position }} — {{ selectedApplication.company }}</mat-card-title>
+        <mat-card-subtitle>
+          {{ selectedApplication.contractType }} · {{ selectedApplication.stage }} · Priorité {{ selectedApplication.priority.toLowerCase() }}
+        </mat-card-subtitle>
+        <button mat-icon-button (click)="closeDetails()" class="close-button" aria-label="Fermer les détails">
+          <mat-icon>close</mat-icon>
+        </button>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="details-grid">
+          <div class="detail-item">
+            <strong>Statut</strong>
+            <span>{{ selectedApplication.status }}</span>
+          </div>
+          <div class="detail-item">
+            <strong>Date de candidature</strong>
+            <span>{{ selectedApplication.applicationDate | date:'dd/MM/yyyy' }}</span>
+          </div>
+          @if (selectedApplication.followUpDate) {
+            <div class="detail-item">
+              <strong>Prochaine relance</strong>
+              <span [class.follow-up-due]="isFollowUpDue(selectedApplication)">{{ selectedApplication.followUpDate | date:'dd/MM/yyyy' }}</span>
+            </div>
+          }
+          @if (selectedApplication.salaryTarget) {
+            <div class="detail-item">
+              <strong>{{ selectedApplication.salaryPeriod === 'Journalier' ? 'TJM cible' : 'Salaire cible' }}</strong>
+              <span>{{ formatTargetSalary(selectedApplication) }}</span>
+            </div>
+          }
+          @if (selectedApplication.recruiterName) {
+            <div class="detail-item">
+              <strong>Recruteur</strong>
+              <span>{{ selectedApplication.recruiterName }}</span>
+            </div>
+          }
+          @if (selectedApplication.recruiterEmail) {
+            <div class="detail-item">
+              <strong>Email</strong>
+              <a [href]="'mailto:' + selectedApplication.recruiterEmail">{{ selectedApplication.recruiterEmail }}</a>
+            </div>
+          }
+          @if (selectedApplication.recruiterPhone) {
+            <div class="detail-item">
+              <strong>Téléphone</strong>
+              <span>{{ selectedApplication.recruiterPhone }}</span>
+            </div>
+          }
+          @if (selectedApplication.responseDate) {
+            <div class="detail-item">
+              <strong>Première réponse</strong>
+              <span>{{ selectedApplication.responseDate | date:'dd/MM/yyyy' }}</span>
+            </div>
+          }
+        </div>
+        @if (selectedApplication.offerUrl) {
+          <a
+            mat-stroked-button
+            color="primary"
+            [href]="selectedApplication.offerUrl"
+            target="_blank"
+            rel="noopener noreferrer">
+            <mat-icon>open_in_new</mat-icon> Voir l'offre
+          </a>
+        }
+        @if (selectedApplication.notes) {
+          <div class="notes-section">
+            <h3>Notes</h3>
+            <p>{{ selectedApplication.notes }}</p>
+          </div>
+        }
+        @if (selectedApplication.interviews?.length) {
+          <div class="interviews-section">
+            <h3>Entretiens</h3>
+            @for (interview of selectedApplication.interviews; track interview) {
+              <div class="interview-item">
+                <div class="interview-header">
+                  <span>{{ interview.date | date:'dd/MM/yyyy HH:mm' }}</span>
+                  <span class="interview-type">{{ interview.type }}</span>
+                </div>
+                @if (interview.notes) {
+                  <p>{{ interview.notes }}</p>
+                }
+              </div>
+            }
+          </div>
+        }
+      </mat-card-content>
+      <mat-card-actions>
+        <button mat-button color="primary" (click)="editApplication(selectedApplication)">
+          <mat-icon>edit</mat-icon> Modifier
+        </button>
+        <button mat-button color="warn" (click)="deleteApplication(selectedApplication)">
+          <mat-icon>delete</mat-icon> Supprimer
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+}
