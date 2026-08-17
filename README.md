@@ -7,7 +7,7 @@ JobTrackr is an Angular application for managing a job-search pipeline: applicat
 ## Product scope
 
 - **Dashboard** — a job-search cockpit showing due follow-ups, high-priority opportunities, upcoming interviews and analytics.
-- **Applications** — the operational workspace to create, filter, inspect, edit, back up and restore applications.
+- **Applications** — the operational workspace to create, filter, inspect, edit, back up and restore applications in list or Kanban mode.
 
 Angular Router exposes the workspace as real routes:
 
@@ -37,9 +37,12 @@ The recruitment stage is the workflow source of truth. JobTrackr derives the bro
 
 - Search by company, position, recruiter, stage or notes
 - Filter by status, contract type and priority
-- Sort directly from table headers
-- Highlight follow-ups that are due
-- Keyboard-accessible application rows
+- Switch between table and Kanban representations without losing filters
+- Sort and paginate the table view
+- Drag applications between recruitment stages in the Kanban using Angular CDK
+- Persist Kanban transitions through the state facade, including derived status and first-response metadata
+- Highlight follow-ups that are due on both representations
+- Keyboard-accessible application rows and Kanban cards
 - Open the original offer directly from the pipeline
 - Detailed application view with compensation, recruiter and interview context
 - Versioned JSON export/import for backup and device migration
@@ -59,6 +62,7 @@ The recruitment stage is the workflow source of truth. JobTrackr derives the bro
 - Angular 21
 - TypeScript 5.9
 - Angular Material / CDK 21
+- Angular CDK Drag & Drop
 - Angular Router
 - RxJS
 - Chart.js / ng2-charts 10
@@ -72,12 +76,13 @@ The recruitment stage is the workflow source of truth. JobTrackr derives the bro
 ```text
 src/app
 ├── components
+│   ├── application-details
+│   ├── application-filters
+│   ├── application-kanban
+│   ├── application-list
 │   ├── dashboard
-│   │   ├── dashboard.component.ts
-│   │   ├── dashboard.component.html
-│   │   └── dashboard.component.css
 │   ├── job-form
-│   └── job-list
+│   └── job-list          # Applications page orchestrator
 ├── data
 │   └── local-storage-job-application.repository.ts
 ├── domain
@@ -95,10 +100,36 @@ src/app
 └── app.component.css
 ```
 
+### Applications workspace
+
+```text
+JobListComponent
+    │
+    ├── ApplicationFiltersComponent
+    │      └── emits typed filter criteria
+    │
+    ├── ApplicationListComponent
+    │      └── table / sort / pagination / row actions
+    │
+    ├── ApplicationKanbanComponent
+    │      └── CDK drag & drop / presentation / stage-change events
+    │
+    ├── ApplicationDetailsComponent
+    │      └── application detail presentation and actions
+    │
+    └── JobFormComponent
+           └── create / edit form
+```
+
+`JobListComponent` coordinates page state and CRUD operations. Presentation-specific logic remains inside focused standalone components.
+
 ### Responsibility boundaries
 
 ```text
-Components
+Presentation components
+    │
+    ▼
+JobListComponent (page orchestration)
     │
     ▼
 StorageService (state facade)
@@ -116,7 +147,7 @@ ApplicationWorkflowService
     └── recruitment-stage and status invariants
 ```
 
-`StorageService` now owns only application state and CRUD orchestration. Browser persistence, migrations, analytics and follow-up rules live behind dedicated services, which makes an eventual HTTP-backed repository substantially easier to introduce.
+Kanban drag events carry only the application id and target recruitment stage. `StorageService` applies the state transition and delegates the stage-to-status rule to `ApplicationWorkflowService`. The Kanban never writes persistence directly.
 
 ## Local-first persistence
 
@@ -135,7 +166,7 @@ Users can export the complete dataset as JSON and import it later. Import intent
 
 ## Follow-up and reminder logic
 
-Explicit follow-up dates drive the cockpit. Active applications whose follow-up date is today or overdue are surfaced as actions.
+Explicit follow-up dates drive the cockpit. Active applications whose follow-up date is today or overdue are surfaced as actions and visually highlighted in the Kanban.
 
 For older records without a follow-up date, a sent application older than seven days is flagged as needing a follow-up plan.
 
@@ -154,6 +185,9 @@ Business-critical behavior is covered with Vitest:
 - analytics and response timing
 - CRUD persistence
 - export/import round-trip
+- Applications component contracts
+- Kanban grouping and drag stage changes
+- state-facade workflow transitions
 
 Run locally:
 
@@ -218,11 +252,15 @@ Components and state services never manipulate browser storage directly. The Loc
 
 ### Why derive status from recruitment stage?
 
-`stage` contains the detailed recruiting workflow while `status` is a coarse reporting dimension. Deriving the latter removes contradictory state and prepares the data model for the Kanban view.
+`stage` contains the detailed recruiting workflow while `status` is a coarse reporting dimension. Deriving the latter removes contradictory state and makes drag-and-drop transitions deterministic.
+
+### Why keep Kanban ordering non-persistent?
+
+The current domain model defines recruitment stage but not a manual rank inside a stage. CDK therefore supports moving cards between columns while same-column sorting is intentionally disabled. Persisting arbitrary order later would require an explicit ordering field rather than hidden UI-only state.
 
 ### Why Router instead of tabs?
 
-Dashboard and Applications now have stable URLs, browser history and direct navigation. This also prepares the application for future routes such as an application detail page, Kanban board and settings.
+Dashboard and Applications have stable URLs, browser history and direct navigation. This also prepares the application for future application-detail and settings routes.
 
 ## Current limitations
 
@@ -231,7 +269,7 @@ Dashboard and Applications now have stable URLs, browser history and direct navi
 - No server-side persistence
 - Browser reminders cannot run reliably while the browser is completely closed
 - No end-to-end browser test suite yet
-- `JobListComponent` remains a relatively broad UI component and is a candidate for further decomposition before the Kanban feature
+- Manual ordering of cards inside a single Kanban stage is intentionally not persisted
 
 ## Full-stack roadmap
 
@@ -249,14 +287,13 @@ Spring Boot
 
 Next engineering milestones:
 
-1. Split the applications workspace into list/filter/detail/Kanban presentation components
-2. Add the Kanban recruiting pipeline
-3. Spring Boot REST API and PostgreSQL persistence
-4. Authentication with Spring Security and OAuth2/OIDC
-5. Docker Compose local environment
-6. Integration testing with Testcontainers
-7. OpenAPI documentation
-8. Cloud deployment and observability
-9. Optional Kafka event flow where asynchronous events add real value
+1. Spring Boot REST API and PostgreSQL persistence
+2. Authentication with Spring Security and OAuth2/OIDC
+3. Docker Compose local environment
+4. Integration testing with Testcontainers
+5. OpenAPI documentation
+6. End-to-end browser testing
+7. Cloud deployment and observability
+8. Optional Kafka event flow where asynchronous events add real value
 
 The frontend is structured so browser persistence can later be replaced by an API-backed repository without redesigning the domain workflow.

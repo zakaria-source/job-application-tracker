@@ -1,7 +1,13 @@
 import {Injectable} from '@angular/core';
 import {BehaviorSubject, Observable} from 'rxjs';
-import {JobApplication, JobStatistics, Suggestion} from '../models/job-application.model';
+import {
+    JobApplication,
+    JobStatistics,
+    RecruitmentStage,
+    Suggestion
+} from '../models/job-application.model';
 import {LocalStorageJobApplicationRepository} from '../data/local-storage-job-application.repository';
+import {ApplicationWorkflowService} from '../domain/application-workflow.service';
 import {ApplicationAnalyticsService} from './application-analytics.service';
 import {FollowUpService} from './follow-up.service';
 
@@ -13,7 +19,8 @@ export class StorageService {
     constructor(
         private readonly repository: LocalStorageJobApplicationRepository,
         private readonly analytics: ApplicationAnalyticsService,
-        private readonly followUps: FollowUpService
+        private readonly followUps: FollowUpService,
+        private readonly workflow: ApplicationWorkflowService
     ) {
         this.applications = this.repository.load();
         this.applicationsSubject = new BehaviorSubject<JobApplication[]>([...this.applications]);
@@ -36,6 +43,24 @@ export class StorageService {
         if (!this.applications.some(app => app.id === updatedApplication.id)) return;
         this.applications = this.applications.map(app => app.id === updatedApplication.id ? {...updatedApplication} : app);
         this.persistAndPublish();
+    }
+
+    updateApplicationStage(id: string, stage: RecruitmentStage, now = new Date()): void {
+        const application = this.getApplicationById(id);
+        if (!application || application.stage === stage) {
+            return;
+        }
+
+        const status = this.workflow.statusForStage(stage);
+        const responseDate = application.responseDate ?? (status === 'Envoyé' ? undefined : now);
+
+        this.updateApplication({
+            ...application,
+            stage,
+            status,
+            responseDate,
+            lastUpdated: now
+        });
     }
 
     deleteApplication(id: string): void {

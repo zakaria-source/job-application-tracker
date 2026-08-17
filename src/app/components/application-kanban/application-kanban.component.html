@@ -1,0 +1,85 @@
+<section class="kanban-shell" aria-label="Pipeline de recrutement en Kanban">
+  <div class="kanban-board" cdkDropListGroup>
+    @for (column of columns; track column.stage) {
+      <section class="kanban-column" [attr.aria-label]="column.stage">
+        <header class="column-header">
+          <div class="column-title">
+            <span class="stage-icon"><mat-icon>{{ stageIcon(column.stage) }}</mat-icon></span>
+            <div>
+              <h3>{{ column.stage }}</h3>
+              <span>{{ column.applications.length }} candidature{{ column.applications.length > 1 ? 's' : '' }}</span>
+            </div>
+          </div>
+          <span class="column-count">{{ column.applications.length }}</span>
+        </header>
+
+        <div
+          class="column-dropzone"
+          cdkDropList
+          [cdkDropListData]="column"
+          [cdkDropListSortingDisabled]="true"
+          (cdkDropListDropped)="drop($event)">
+          @for (application of column.applications; track application.id) {
+            <article
+              class="kanban-card"
+              cdkDrag
+              [cdkDragData]="application"
+              tabindex="0"
+              role="button"
+              [attr.aria-label]="'Ouvrir ' + application.position + ' chez ' + application.company"
+              (click)="viewApplication.emit(application)"
+              (keydown.enter)="viewApplication.emit(application)">
+
+              <div class="card-heading">
+                <div class="drag-handle" cdkDragHandle matTooltip="Déplacer la candidature" aria-label="Déplacer la candidature">
+                  <mat-icon>drag_indicator</mat-icon>
+                </div>
+                <div class="card-title">
+                  <strong>{{ application.company }}</strong>
+                  <span>{{ application.position }}</span>
+                </div>
+                <button
+                  mat-icon-button
+                  type="button"
+                  aria-label="Modifier la candidature"
+                  matTooltip="Modifier"
+                  (click)="$event.stopPropagation(); editApplication.emit(application)">
+                  <mat-icon>edit</mat-icon>
+                </button>
+              </div>
+
+              <div class="card-meta">
+                <span class="priority-chip" [class.high]="application.priority === 'Haute'" [class.low]="application.priority === 'Basse'">
+                  {{ application.priority }}
+                </span>
+                <span>{{ application.contractType }}</span>
+                @if (formatTargetSalary(application); as salary) {
+                  <span>{{ salary }}</span>
+                }
+              </div>
+
+              @if (application.followUpDate) {
+                <div class="follow-up" [class.overdue]="isFollowUpDue(application)">
+                  <mat-icon>{{ isFollowUpDue(application) ? 'notification_important' : 'schedule' }}</mat-icon>
+                  <span>Relance {{ application.followUpDate | date:'dd/MM/yyyy' }}</span>
+                </div>
+              }
+
+              @if (application.recruiterName) {
+                <div class="recruiter">
+                  <mat-icon>person_outline</mat-icon>
+                  <span>{{ application.recruiterName }}</span>
+                </div>
+              }
+            </article>
+          } @empty {
+            <div class="empty-column">
+              <mat-icon>inbox</mat-icon>
+              <span>Déposez une candidature ici</span>
+            </div>
+          }
+        </div>
+      </section>
+    }
+  </div>
+</section>
