@@ -17,101 +17,259 @@ import {StorageService} from '../../services/storage.service';
 import {JobFormComponent} from '../job-form/job-form.component';
 
 @Component({
-    selector: 'app-job-list', standalone: true,
-    imports: [CommonModule, FormsModule, MatButtonModule, MatCardModule, MatFormFieldModule, MatIconModule, MatInputModule, MatPaginatorModule, MatSelectModule, MatSortModule, MatTableModule, MatTooltipModule, JobFormComponent],
-    templateUrl: './job-list.component.html', styleUrl: './job-list.component.css'
+    selector: 'app-job-list',
+    standalone: true,
+    imports: [
+        CommonModule,
+        FormsModule,
+        MatButtonModule,
+        MatCardModule,
+        MatFormFieldModule,
+        MatIconModule,
+        MatInputModule,
+        MatPaginatorModule,
+        MatSelectModule,
+        MatSortModule,
+        MatTableModule,
+        MatTooltipModule,
+        JobFormComponent
+    ],
+    templateUrl: './job-list.component.html',
+    styleUrl: './job-list.component.css'
 })
 export class JobListComponent implements OnInit {
     private readonly destroyRef = inject(DestroyRef);
-    applications: JobApplication[] = []; filteredApplications: JobApplication[] = []; paginatedApplications: JobApplication[] = [];
+
+    applications: JobApplication[] = [];
+    filteredApplications: JobApplication[] = [];
+    paginatedApplications: JobApplication[] = [];
+
     displayedColumns = ['company', 'position', 'contractType', 'priority', 'followUpDate', 'status', 'actions'];
-    searchTerm = ''; statusFilter = ''; contractFilter = ''; priorityFilter = ''; sortField = 'followUpDate'; sortDirection: 'asc'|'desc' = 'asc';
-    pageSize = 10; currentPage = 0; showForm = false; editMode = false; selectedApplication: JobApplication | null = null; showDetails = false;
+
+    searchTerm = '';
+    statusFilter = '';
+    contractFilter = '';
+    priorityFilter = '';
+    sortField = 'followUpDate';
+    sortDirection: 'asc' | 'desc' = 'asc';
+
+    pageSize = 10;
+    currentPage = 0;
+
+    showForm = false;
+    editMode = false;
+    selectedApplication: JobApplication | null = null;
+    showDetails = false;
 
     constructor(private readonly storageService: StorageService) {}
 
     ngOnInit(): void {
-        this.storageService.getApplications().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(applications => {
-            this.applications = applications; this.applyFilters(false);
-        });
+        this.storageService.getApplications()
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe(applications => {
+                this.applications = applications;
+                this.applyFilters(false);
+            });
     }
 
     applyFilters(resetPage = true): void {
-        let filtered = [...this.applications]; const search = this.searchTerm.trim().toLowerCase();
-        if (search) filtered = filtered.filter(app => app.company.toLowerCase().includes(search) || app.position.toLowerCase().includes(search) || app.notes.toLowerCase().includes(search) || app.stage.toLowerCase().includes(search) || (app.recruiterName ?? '').toLowerCase().includes(search));
-        if (this.statusFilter) filtered = filtered.filter(app => app.status === this.statusFilter);
-        if (this.contractFilter) filtered = filtered.filter(app => app.contractType === this.contractFilter);
-        if (this.priorityFilter) filtered = filtered.filter(app => app.priority === this.priorityFilter);
-        if (resetPage) this.currentPage = 0;
-        this.filteredApplications = filtered; this.applySort();
+        let filtered = [...this.applications];
+        const search = this.searchTerm.trim().toLowerCase();
+
+        if (search) {
+            filtered = filtered.filter(app =>
+                app.company.toLowerCase().includes(search)
+                || app.position.toLowerCase().includes(search)
+                || app.notes.toLowerCase().includes(search)
+                || app.stage.toLowerCase().includes(search)
+                || (app.recruiterName ?? '').toLowerCase().includes(search)
+            );
+        }
+
+        if (this.statusFilter) {
+            filtered = filtered.filter(app => app.status === this.statusFilter);
+        }
+        if (this.contractFilter) {
+            filtered = filtered.filter(app => app.contractType === this.contractFilter);
+        }
+        if (this.priorityFilter) {
+            filtered = filtered.filter(app => app.priority === this.priorityFilter);
+        }
+
+        if (resetPage) {
+            this.currentPage = 0;
+        }
+
+        this.filteredApplications = filtered;
+        this.applySort();
     }
 
-    clearFilters(): void { this.searchTerm = ''; this.statusFilter = ''; this.contractFilter = ''; this.priorityFilter = ''; this.applyFilters(); }
+    clearFilters(): void {
+        this.searchTerm = '';
+        this.statusFilter = '';
+        this.contractFilter = '';
+        this.priorityFilter = '';
+        this.applyFilters();
+    }
 
     applySort(): void {
-        const priorityOrder: Record<JobApplication['priority'], number> = {Haute: 3, Moyenne: 2, Basse: 1};
-        this.filteredApplications = [...this.filteredApplications].sort((a,b) => {
+        const priorityOrder: Record<JobApplication['priority'], number> = {
+            Haute: 3,
+            Moyenne: 2,
+            Basse: 1
+        };
+
+        this.filteredApplications = [...this.filteredApplications].sort((a, b) => {
             let comparison = 0;
+
             switch (this.sortField) {
-                case 'company': comparison = a.company.localeCompare(b.company); break;
-                case 'position': comparison = a.position.localeCompare(b.position); break;
-                case 'contractType': comparison = a.contractType.localeCompare(b.contractType); break;
-                case 'priority': comparison = priorityOrder[a.priority] - priorityOrder[b.priority]; break;
-                case 'followUpDate': comparison = (a.followUpDate?.getTime() ?? Number.MAX_SAFE_INTEGER) - (b.followUpDate?.getTime() ?? Number.MAX_SAFE_INTEGER); break;
-                case 'status': comparison = a.status.localeCompare(b.status); break;
-                default: comparison = a.applicationDate.getTime() - b.applicationDate.getTime();
+                case 'company':
+                    comparison = a.company.localeCompare(b.company);
+                    break;
+                case 'position':
+                    comparison = a.position.localeCompare(b.position);
+                    break;
+                case 'contractType':
+                    comparison = a.contractType.localeCompare(b.contractType);
+                    break;
+                case 'priority':
+                    comparison = priorityOrder[a.priority] - priorityOrder[b.priority];
+                    break;
+                case 'followUpDate':
+                    comparison = (a.followUpDate?.getTime() ?? Number.MAX_SAFE_INTEGER)
+                        - (b.followUpDate?.getTime() ?? Number.MAX_SAFE_INTEGER);
+                    break;
+                case 'status':
+                    comparison = a.status.localeCompare(b.status);
+                    break;
+                default:
+                    comparison = a.applicationDate.getTime() - b.applicationDate.getTime();
             }
+
             return this.sortDirection === 'asc' ? comparison : -comparison;
         });
+
         this.updatePaginatedApplications();
     }
 
-    sortData(sort: Sort): void { this.sortField = sort.active; this.sortDirection = (sort.direction || 'asc') as 'asc'|'desc'; this.applySort(); }
-    updatePaginatedApplications(): void { const start = this.currentPage * this.pageSize; this.paginatedApplications = this.filteredApplications.slice(start, start + this.pageSize); }
-    onPageChange(event: PageEvent): void { this.currentPage = event.pageIndex; this.pageSize = event.pageSize; this.updatePaginatedApplications(); }
-    showAddForm(): void { this.editMode = false; this.selectedApplication = null; this.showForm = true; this.showDetails = false; }
-    editApplication(application: JobApplication): void { this.editMode = true; this.selectedApplication = {...application}; this.showForm = true; this.showDetails = false; }
-    viewApplicationDetails(application: JobApplication): void { this.selectedApplication = {...application}; this.showDetails = true; this.showForm = false; }
-    closeDetails(): void { this.showDetails = false; this.selectedApplication = null; }
+    sortData(sort: Sort): void {
+        this.sortField = sort.active;
+        this.sortDirection = (sort.direction || 'asc') as 'asc' | 'desc';
+        this.applySort();
+    }
+
+    updatePaginatedApplications(): void {
+        const start = this.currentPage * this.pageSize;
+        this.paginatedApplications = this.filteredApplications.slice(start, start + this.pageSize);
+    }
+
+    onPageChange(event: PageEvent): void {
+        this.currentPage = event.pageIndex;
+        this.pageSize = event.pageSize;
+        this.updatePaginatedApplications();
+    }
+
+    showAddForm(): void {
+        this.editMode = false;
+        this.selectedApplication = null;
+        this.showForm = true;
+        this.showDetails = false;
+    }
+
+    editApplication(application: JobApplication): void {
+        this.editMode = true;
+        this.selectedApplication = {...application};
+        this.showForm = true;
+        this.showDetails = false;
+    }
+
+    viewApplicationDetails(application: JobApplication): void {
+        this.selectedApplication = {...application};
+        this.showDetails = true;
+        this.showForm = false;
+    }
+
+    closeDetails(): void {
+        this.showDetails = false;
+        this.selectedApplication = null;
+    }
 
     deleteApplication(application: JobApplication): void {
-        if (!confirm(`Supprimer la candidature ${application.position} chez ${application.company} ?`)) return;
+        if (!confirm(`Supprimer la candidature ${application.position} chez ${application.company} ?`)) {
+            return;
+        }
+
         this.storageService.deleteApplication(application.id);
-        if (this.selectedApplication?.id === application.id) this.closeDetails();
+        if (this.selectedApplication?.id === application.id) {
+            this.closeDetails();
+        }
     }
 
     onFormSubmit(application: JobApplication): void {
-        this.editMode ? this.storageService.updateApplication(application) : this.storageService.addApplication(application); this.cancelForm();
+        if (this.editMode) {
+            this.storageService.updateApplication(application);
+        } else {
+            this.storageService.addApplication(application);
+        }
+        this.cancelForm();
     }
-    cancelForm(): void { this.showForm = false; this.editMode = false; this.selectedApplication = null; }
+
+    cancelForm(): void {
+        this.showForm = false;
+        this.editMode = false;
+        this.selectedApplication = null;
+    }
 
     exportApplications(): void {
         const blob = new Blob([this.storageService.exportData()], {type: 'application/json'});
-        const url = URL.createObjectURL(blob); const anchor = document.createElement('a');
-        anchor.href = url; anchor.download = `jobtrackr-backup-${new Date().toISOString().slice(0,10)}.json`; anchor.click(); URL.revokeObjectURL(url);
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+
+        anchor.href = url;
+        anchor.download = `jobtrackr-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        anchor.click();
+        URL.revokeObjectURL(url);
     }
 
     importApplications(event: Event): void {
-        const input = event.target as HTMLInputElement; const file = input.files?.[0]; if (!file) return;
+        const input = event.target as HTMLInputElement;
+        const file = input.files?.[0];
+        if (!file) {
+            return;
+        }
+
         const reader = new FileReader();
         reader.onload = () => {
             try {
-                if (!confirm('Importer ce fichier remplacera les candidatures actuellement stockées. Continuer ?')) return;
+                if (!confirm('Importer ce fichier remplacera les candidatures actuellement stockées. Continuer ?')) {
+                    return;
+                }
                 this.storageService.importData(String(reader.result ?? ''));
             } catch (error) {
-                console.error(error); alert('Le fichier sélectionné n’est pas un export JobTrackr valide.');
-            } finally { input.value = ''; }
+                console.error(error);
+                alert('Le fichier sélectionné n’est pas un export JobTrackr valide.');
+            } finally {
+                input.value = '';
+            }
         };
         reader.readAsText(file);
     }
 
     isFollowUpDue(application: JobApplication): boolean {
-        if (!application.followUpDate || application.status === 'Accepté' || application.status === 'Refusé') return false;
-        const tomorrow = new Date(); tomorrow.setHours(24,0,0,0); return application.followUpDate < tomorrow;
+        if (!application.followUpDate || application.status === 'Accepté' || application.status === 'Refusé') {
+            return false;
+        }
+
+        const tomorrow = new Date();
+        tomorrow.setHours(24, 0, 0, 0);
+        return application.followUpDate < tomorrow;
     }
 
     formatTargetSalary(application: JobApplication): string {
-        if (!application.salaryTarget) return '—';
+        if (!application.salaryTarget) {
+            return '—';
+        }
+
         const formatted = new Intl.NumberFormat('fr-FR').format(application.salaryTarget);
         return application.salaryPeriod === 'Journalier' ? `${formatted} €/j` : `${formatted} € brut/an`;
     }
