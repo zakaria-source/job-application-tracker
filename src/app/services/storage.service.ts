@@ -1,6 +1,13 @@
 import {Injectable} from '@angular/core';
 import {BehaviorSubject, Observable} from 'rxjs';
-import {JobApplication, JobStatistics, Suggestion} from '../models/job-application.model';
+import {
+    ApplicationStatus,
+    ContractType,
+    JobApplication,
+    JobStatistics,
+    RecruitmentStage,
+    Suggestion
+} from '../models/job-application.model';
 
 @Injectable({
     providedIn: 'root'
@@ -36,18 +43,49 @@ export class StorageService {
     }
 
     private hydrateApplication(rawApplication: unknown): JobApplication {
-        const app = rawApplication as JobApplication;
+        const app = rawApplication as Partial<JobApplication>;
+        const applicationDate = app.applicationDate ? this.toDate(app.applicationDate) : new Date();
+        const status: ApplicationStatus = app.status ?? 'Envoyé';
+        const contractType: ContractType = app.contractType ?? 'CDI';
 
         return {
             ...app,
-            applicationDate: this.toDate(app.applicationDate),
-            lastUpdated: this.toDate(app.lastUpdated),
+            id: app.id ?? this.generateId(),
+            company: app.company ?? '',
+            position: app.position ?? '',
+            applicationDate,
+            status,
+            notes: app.notes ?? '',
+            lastUpdated: app.lastUpdated ? this.toDate(app.lastUpdated) : new Date(applicationDate.getTime()),
             responseDate: app.responseDate ? this.toDate(app.responseDate) : undefined,
+            offerUrl: app.offerUrl || undefined,
+            contractType,
+            salaryTarget: typeof app.salaryTarget === 'number' ? app.salaryTarget : undefined,
+            salaryPeriod: app.salaryPeriod ?? (contractType === 'Freelance' ? 'Journalier' : 'Annuel'),
+            followUpDate: app.followUpDate ? this.toDate(app.followUpDate) : undefined,
+            recruiterName: app.recruiterName || app.contactPerson || undefined,
+            recruiterEmail: app.recruiterEmail || app.contactEmail || undefined,
+            recruiterPhone: app.recruiterPhone || app.contactPhone || undefined,
+            stage: app.stage ?? this.inferStage(status),
+            priority: app.priority ?? 'Moyenne',
             interviews: (app.interviews ?? []).map(interview => ({
                 ...interview,
                 date: this.toDate(interview.date)
             }))
         };
+    }
+
+    private inferStage(status: ApplicationStatus): RecruitmentStage {
+        switch (status) {
+            case 'Entretien':
+                return 'Screening RH';
+            case 'Accepté':
+                return 'Offre';
+            case 'Refusé':
+                return 'Clôturé';
+            default:
+                return 'Candidature';
+        }
     }
 
     private toDate(value: Date | string | number): Date {
@@ -107,6 +145,19 @@ export class StorageService {
 
         this.applications = nextApplications;
         this.persistAndPublish();
+    }
+
+    getDueFollowUps(now = new Date()): JobApplication[] {
+        const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+
+        return this.applications
+            .filter(app =>
+                app.status !== 'Accepté'
+                && app.status !== 'Refusé'
+                && !!app.followUpDate
+                && app.followUpDate < tomorrow
+            )
+            .sort((a, b) => (a.followUpDate?.getTime() ?? 0) - (b.followUpDate?.getTime() ?? 0));
     }
 
     calculateStatistics(): JobStatistics {
@@ -213,13 +264,29 @@ export class StorageService {
         const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
+        this.getDueFollowUps(now).forEach(app => {
+            const daysLate = app.followUpDate
+                ? Math.floor(this.daysBetween(app.followUpDate, now))
+                : 0;
+            const timing = daysLate > 0
+                ? `en retard de ${daysLate} jour${daysLate > 1 ? 's' : ''}`
+                : 'prévue aujourd\'hui';
+
+            suggestions.push({
+                id: `follow-up-${app.id}`,
+                type: 'warning',
+                message: `Relance ${timing} : ${app.company} — ${app.position}.`,
+                relatedApplicationId: app.id
+            });
+        });
+
         this.applications
-            .filter(app => app.status === 'Envoyé' && app.applicationDate < oneWeekAgo)
+            .filter(app => app.status === 'Envoyé' && !app.followUpDate && app.applicationDate < oneWeekAgo)
             .forEach(app => {
                 suggestions.push({
                     id: `pending-${app.id}`,
                     type: 'warning',
-                    message: `Pensez à relancer ${app.company} pour votre candidature au poste de ${app.position}. Aucune réponse depuis ${this.getDaysSince(app.applicationDate)} jours.`,
+                    message: `Aucune relance planifiée pour ${app.company}. Candidature envoyée il y a ${this.getDaysSince(app.applicationDate)} jours.`,
                     relatedApplicationId: app.id
                 });
             });
@@ -238,7 +305,7 @@ export class StorageService {
             suggestions.push({
                 id: 'no-recent-applications',
                 type: 'info',
-                message: 'Vous n\'avez pas postulé depuis 2 semaines. Envoyez de nouvelles candidatures pour maximiser vos chances.'
+                message: 'Vous n\'avez pas postulé depuis 2 semaines. Pensez à relancer votre pipeline.'
             });
         }
 
@@ -247,7 +314,7 @@ export class StorageService {
             suggestions.push({
                 id: 'multiple-rejections',
                 type: 'info',
-                message: 'Plusieurs de vos candidatures ont été refusées. Essayez d\'adapter votre CV pour améliorer vos chances.'
+                message: 'Plusieurs candidatures ont été refusées. Comparez les postes ciblés et adaptez votre CV ou votre approche.'
             });
         }
 
@@ -260,5 +327,9 @@ export class StorageService {
 
     private getDaysSince(date: Date): number {
         return Math.floor(this.daysBetween(date, new Date()));
+    }
+
+    private generateId(): string {
+        return Date.now().toString(36) + Math.random().toString(36).substring(2);
     }
 }
