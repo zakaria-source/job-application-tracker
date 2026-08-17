@@ -1,4 +1,4 @@
-import {Component, OnInit} from '@angular/core';
+import {Component, DestroyRef, OnInit, inject} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
 import {MatCardModule} from '@angular/material/card';
@@ -10,10 +10,8 @@ import {MatIconModule} from '@angular/material/icon';
 import {MatInputModule} from '@angular/material/input';
 import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatSelectModule} from '@angular/material/select';
-import {MatChipsModule} from '@angular/material/chips';
-import {MatMenuModule} from '@angular/material/menu';
 import {MatTooltipModule} from '@angular/material/tooltip';
-import {MatDialogModule} from '@angular/material/dialog';
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {JobApplication} from '../../models/job-application.model';
 import {StorageService} from '../../services/storage.service';
 import {JobFormComponent} from '../job-form/job-form.component';
@@ -33,23 +31,21 @@ import {JobFormComponent} from '../job-form/job-form.component';
         MatInputModule,
         MatFormFieldModule,
         MatSelectModule,
-        MatChipsModule,
-        MatMenuModule,
         MatTooltipModule,
-        MatDialogModule,
         JobFormComponent
     ],
     template: `
     <mat-card>
       <mat-card-header>
-        <mat-card-title>Mes Candidatures</mat-card-title>
+        <mat-card-title>Mes candidatures</mat-card-title>
+        <mat-card-subtitle>Recherchez, filtrez et cliquez sur une colonne pour trier</mat-card-subtitle>
       </mat-card-header>
       <mat-card-content>
-        <div class="filters">
+        <div class="filters" *ngIf="applications.length > 0">
           <mat-form-field appearance="outline">
             <mat-label>Rechercher</mat-label>
             <input matInput [(ngModel)]="searchTerm" (input)="applyFilters()">
-            <button *ngIf="searchTerm" matSuffix mat-icon-button aria-label="Clear" (click)="searchTerm=''; applyFilters()">
+            <button *ngIf="searchTerm" matSuffix mat-icon-button aria-label="Effacer la recherche" (click)="searchTerm=''; applyFilters()">
               <mat-icon>close</mat-icon>
             </button>
           </mat-form-field>
@@ -57,48 +53,40 @@ import {JobFormComponent} from '../job-form/job-form.component';
           <mat-form-field appearance="outline">
             <mat-label>Statut</mat-label>
             <mat-select [(ngModel)]="statusFilter" (selectionChange)="applyFilters()">
-              <mat-option value="">Tous</mat-option>
+              <mat-option value="">Tous les statuts</mat-option>
               <mat-option value="Envoyé">Envoyé</mat-option>
               <mat-option value="Entretien">Entretien</mat-option>
               <mat-option value="Accepté">Accepté</mat-option>
               <mat-option value="Refusé">Refusé</mat-option>
             </mat-select>
           </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Trier par</mat-label>
-            <mat-select [(ngModel)]="sortField" (selectionChange)="applySort()">
-              <mat-option value="applicationDate">Date de candidature</mat-option>
-              <mat-option value="company">Entreprise</mat-option>
-              <mat-option value="position">Poste</mat-option>
-              <mat-option value="status">Statut</mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <button mat-icon-button [matMenuTriggerFor]="sortMenu" matTooltip="Ordre de tri">
-            <mat-icon>{{ sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
-          </button>
-          <mat-menu #sortMenu="matMenu">
-            <button mat-menu-item (click)="setSortDirection('asc')">
-              <mat-icon>arrow_upward</mat-icon>
-              <span>Croissant</span>
-            </button>
-            <button mat-menu-item (click)="setSortDirection('desc')">
-              <mat-icon>arrow_downward</mat-icon>
-              <span>Décroissant</span>
-            </button>
-          </mat-menu>
         </div>
 
-        <div *ngIf="filteredApplications.length === 0" class="no-data">
-          <p>Aucune candidature trouvée.</p>
+        <div *ngIf="applications.length === 0" class="no-data">
+          <mat-icon>work_outline</mat-icon>
+          <h3>Commencez votre suivi</h3>
+          <p>Ajoutez votre première candidature pour alimenter le tableau de bord.</p>
           <button mat-raised-button color="primary" (click)="showAddForm()">
             <mat-icon>add</mat-icon> Ajouter une candidature
           </button>
         </div>
 
+        <div *ngIf="applications.length > 0 && filteredApplications.length === 0" class="no-data">
+          <mat-icon>search_off</mat-icon>
+          <h3>Aucun résultat</h3>
+          <p>Aucune candidature ne correspond à vos filtres actuels.</p>
+          <button mat-stroked-button (click)="clearFilters()">
+            Réinitialiser les filtres
+          </button>
+        </div>
+
         <div *ngIf="filteredApplications.length > 0" class="table-container">
-          <table mat-table [dataSource]="paginatedApplications" matSort (matSortChange)="sortData($event)">
+          <table mat-table
+                 [dataSource]="paginatedApplications"
+                 matSort
+                 [matSortActive]="sortField"
+                 [matSortDirection]="sortDirection"
+                 (matSortChange)="sortData($event)">
             <ng-container matColumnDef="company">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Entreprise</th>
               <td mat-cell *matCellDef="let application">{{ application.company }}</td>
@@ -117,7 +105,7 @@ import {JobFormComponent} from '../job-form/job-form.component';
             <ng-container matColumnDef="status">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Statut</th>
               <td mat-cell *matCellDef="let application">
-                <span class="status-badge" 
+                <span class="status-badge"
                       [ngClass]="{
                         'status-sent': application.status === 'Envoyé',
                         'status-interview': application.status === 'Entretien',
@@ -132,20 +120,28 @@ import {JobFormComponent} from '../job-form/job-form.component';
             <ng-container matColumnDef="actions">
               <th mat-header-cell *matHeaderCellDef>Actions</th>
               <td mat-cell *matCellDef="let application">
-                <button mat-icon-button color="primary" (click)="editApplication(application)" matTooltip="Modifier">
+                <button mat-icon-button color="primary"
+                        (click)="$event.stopPropagation(); editApplication(application)"
+                        matTooltip="Modifier"
+                        aria-label="Modifier la candidature">
                   <mat-icon>edit</mat-icon>
                 </button>
-                <button mat-icon-button color="warn" (click)="deleteApplication(application)" matTooltip="Supprimer">
+                <button mat-icon-button color="warn"
+                        (click)="$event.stopPropagation(); deleteApplication(application)"
+                        matTooltip="Supprimer"
+                        aria-label="Supprimer la candidature">
                   <mat-icon>delete</mat-icon>
                 </button>
               </td>
             </ng-container>
 
             <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns;" (click)="viewApplicationDetails(row)" class="application-row"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+                (click)="viewApplicationDetails(row)"
+                class="application-row"></tr>
           </table>
 
-          <mat-paginator 
+          <mat-paginator
             [length]="filteredApplications.length"
             [pageSize]="pageSize"
             [pageSizeOptions]="[5, 10, 25, 50]"
@@ -153,16 +149,17 @@ import {JobFormComponent} from '../job-form/job-form.component';
           </mat-paginator>
         </div>
       </mat-card-content>
-      <mat-card-actions>
-        <button mat-raised-button color="primary" (click)="showAddForm()" *ngIf="!showForm">
+
+      <mat-card-actions *ngIf="applications.length > 0 && !showForm">
+        <button mat-raised-button color="primary" (click)="showAddForm()">
           <mat-icon>add</mat-icon> Ajouter une candidature
         </button>
       </mat-card-actions>
     </mat-card>
 
-    <div *ngIf="showForm">
-      <app-job-form 
-        [editMode]="editMode" 
+    <div *ngIf="showForm" class="secondary-panel">
+      <app-job-form
+        [editMode]="editMode"
         [application]="selectedApplication"
         (formSubmit)="onFormSubmit($event)"
         (cancel)="cancelForm()">
@@ -174,7 +171,7 @@ import {JobFormComponent} from '../job-form/job-form.component';
         <mat-card-header>
           <mat-card-title>{{ selectedApplication.position }} - {{ selectedApplication.company }}</mat-card-title>
           <mat-card-subtitle>
-            <span class="status-badge" 
+            <span class="status-badge"
                   [ngClass]="{
                     'status-sent': selectedApplication.status === 'Envoyé',
                     'status-interview': selectedApplication.status === 'Entretien',
@@ -184,30 +181,30 @@ import {JobFormComponent} from '../job-form/job-form.component';
               {{ selectedApplication.status }}
             </span>
           </mat-card-subtitle>
-          <button mat-icon-button (click)="closeDetails()" class="close-button">
+          <button mat-icon-button (click)="closeDetails()" class="close-button" aria-label="Fermer les détails">
             <mat-icon>close</mat-icon>
           </button>
         </mat-card-header>
         <mat-card-content>
           <div class="details-grid">
             <div class="detail-item">
-              <strong>Date de candidature:</strong>
+              <strong>Date de candidature</strong>
               <span>{{ selectedApplication.applicationDate | date:'dd/MM/yyyy' }}</span>
             </div>
             <div class="detail-item" *ngIf="selectedApplication.responseDate">
-              <strong>Date de réponse:</strong>
+              <strong>Date de réponse</strong>
               <span>{{ selectedApplication.responseDate | date:'dd/MM/yyyy' }}</span>
             </div>
             <div class="detail-item" *ngIf="selectedApplication.contactPerson">
-              <strong>Contact:</strong>
+              <strong>Contact</strong>
               <span>{{ selectedApplication.contactPerson }}</span>
             </div>
             <div class="detail-item" *ngIf="selectedApplication.contactEmail">
-              <strong>Email:</strong>
-              <span>{{ selectedApplication.contactEmail }}</span>
+              <strong>Email</strong>
+              <a [href]="'mailto:' + selectedApplication.contactEmail">{{ selectedApplication.contactEmail }}</a>
             </div>
             <div class="detail-item" *ngIf="selectedApplication.contactPhone">
-              <strong>Téléphone:</strong>
+              <strong>Téléphone</strong>
               <span>{{ selectedApplication.contactPhone }}</span>
             </div>
           </div>
@@ -241,15 +238,10 @@ import {JobFormComponent} from '../job-form/job-form.component';
   `,
     styles: [`
     .filters {
-      display: flex;
+      display: grid;
+      grid-template-columns: minmax(260px, 2fr) minmax(180px, 1fr);
       gap: 16px;
-      align-items: center;
-      margin-bottom: 16px;
-      flex-wrap: wrap;
-    }
-    .filters mat-form-field {
-      flex: 1;
-      min-width: 200px;
+      margin: 20px 0 8px;
     }
     .table-container {
       overflow-x: auto;
@@ -264,8 +256,25 @@ import {JobFormComponent} from '../job-form/job-form.component';
       background-color: rgba(0, 0, 0, 0.04);
     }
     .no-data {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
       text-align: center;
-      padding: 20px;
+      padding: 40px 20px;
+      color: #757575;
+    }
+    .no-data > mat-icon {
+      width: 48px;
+      height: 48px;
+      font-size: 48px;
+      margin-bottom: 4px;
+    }
+    .no-data h3 {
+      margin: 8px 0 0;
+      color: #424242;
+    }
+    .no-data p {
+      margin: 8px 0 18px;
     }
     .status-badge {
       padding: 4px 8px;
@@ -273,6 +282,7 @@ import {JobFormComponent} from '../job-form/job-form.component';
       font-size: 12px;
       font-weight: 500;
     }
+    .secondary-panel,
     .details-card {
       margin-top: 20px;
     }
@@ -285,13 +295,15 @@ import {JobFormComponent} from '../job-form/job-form.component';
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
       gap: 16px;
-      margin-bottom: 20px;
+      margin: 20px 0;
     }
     .detail-item {
       display: flex;
       flex-direction: column;
+      gap: 4px;
     }
-    .notes-section, .interviews-section {
+    .notes-section,
+    .interviews-section {
       margin-top: 20px;
     }
     .interview-item {
@@ -303,57 +315,59 @@ import {JobFormComponent} from '../job-form/job-form.component';
     .interview-header {
       display: flex;
       justify-content: space-between;
+      gap: 12px;
       margin-bottom: 8px;
       font-weight: 500;
     }
     .interview-type {
       color: #3f51b5;
     }
+    @media (max-width: 700px) {
+      .filters {
+        grid-template-columns: 1fr;
+      }
+    }
   `]
 })
 export class JobListComponent implements OnInit {
+    private readonly destroyRef = inject(DestroyRef);
+
     applications: JobApplication[] = [];
     filteredApplications: JobApplication[] = [];
     paginatedApplications: JobApplication[] = [];
 
     displayedColumns: string[] = ['company', 'position', 'applicationDate', 'status', 'actions'];
 
-    // Filters and sorting
     searchTerm = '';
     statusFilter = '';
     sortField = 'applicationDate';
     sortDirection: 'asc' | 'desc' = 'desc';
 
-    // Pagination
     pageSize = 10;
     currentPage = 0;
 
-    // Form handling
     showForm = false;
     editMode = false;
     selectedApplication: JobApplication | null = null;
     showDetails = false;
 
-    constructor(private storageService: StorageService) {
+    constructor(private readonly storageService: StorageService) {
     }
 
     ngOnInit(): void {
-        this.loadApplications();
+        this.storageService.getApplications()
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe(applications => {
+                this.applications = applications;
+                this.applyFilters(false);
+            });
     }
 
-    loadApplications(): void {
-        this.storageService.getApplications().subscribe(applications => {
-            this.applications = applications;
-            this.applyFilters();
-        });
-    }
-
-    applyFilters(): void {
+    applyFilters(resetPage = true): void {
         let filtered = [...this.applications];
 
-        // Apply search filter
-        if (this.searchTerm) {
-            const searchLower = this.searchTerm.toLowerCase();
+        if (this.searchTerm.trim()) {
+            const searchLower = this.searchTerm.trim().toLowerCase();
             filtered = filtered.filter(app =>
                 app.company.toLowerCase().includes(searchLower) ||
                 app.position.toLowerCase().includes(searchLower) ||
@@ -361,22 +375,31 @@ export class JobListComponent implements OnInit {
             );
         }
 
-        // Apply status filter
         if (this.statusFilter) {
             filtered = filtered.filter(app => app.status === this.statusFilter);
+        }
+
+        if (resetPage) {
+            this.currentPage = 0;
         }
 
         this.filteredApplications = filtered;
         this.applySort();
     }
 
+    clearFilters(): void {
+        this.searchTerm = '';
+        this.statusFilter = '';
+        this.applyFilters();
+    }
+
     applySort(): void {
-        const sorted = [...this.filteredApplications].sort((a, b) => {
+        this.filteredApplications = [...this.filteredApplications].sort((a, b) => {
             let comparison = 0;
 
             switch (this.sortField) {
                 case 'applicationDate':
-                    comparison = new Date(a.applicationDate).getTime() - new Date(b.applicationDate).getTime();
+                    comparison = a.applicationDate.getTime() - b.applicationDate.getTime();
                     break;
                 case 'company':
                     comparison = a.company.localeCompare(b.company);
@@ -387,25 +410,17 @@ export class JobListComponent implements OnInit {
                 case 'status':
                     comparison = a.status.localeCompare(b.status);
                     break;
-                default:
-                    comparison = new Date(a.applicationDate).getTime() - new Date(b.applicationDate).getTime();
             }
 
             return this.sortDirection === 'asc' ? comparison : -comparison;
         });
 
-        this.filteredApplications = sorted;
         this.updatePaginatedApplications();
     }
 
     sortData(sort: Sort): void {
         this.sortField = sort.active;
-        this.sortDirection = sort.direction as 'asc' | 'desc' || 'asc';
-        this.applySort();
-    }
-
-    setSortDirection(direction: 'asc' | 'desc'): void {
-        this.sortDirection = direction;
+        this.sortDirection = (sort.direction || 'asc') as 'asc' | 'desc';
         this.applySort();
     }
 

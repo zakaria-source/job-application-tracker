@@ -12,7 +12,6 @@ export class NotificationService {
     }
 
     private async requestNotificationPermission(): Promise<void> {
-        // Check if we've already asked for permission to avoid prompting the user repeatedly
         const permissionRequested = localStorage.getItem(this.NOTIFICATION_PERMISSION_KEY);
 
         if (!permissionRequested && 'Notification' in window) {
@@ -20,7 +19,10 @@ export class NotificationService {
             localStorage.setItem(this.NOTIFICATION_PERMISSION_KEY, 'true');
 
             if (permission === 'granted') {
-                this.showNotification('Notifications activées', 'Vous recevrez des notifications pour vos entretiens à venir.');
+                this.showNotification(
+                    'Notifications activées',
+                    'Vous recevrez des notifications pour vos entretiens à venir.'
+                );
             }
         }
     }
@@ -31,29 +33,24 @@ export class NotificationService {
             return;
         }
 
-        const interviewDate = new Date(interview.date);
-        const now = new Date();
+        const now = Date.now();
+        const reminderTime = interview.date.getTime() - 60 * 60 * 1000;
 
-        // Schedule notification 1 hour before interview
-        const reminderTime = new Date(interviewDate.getTime() - 60 * 60 * 1000);
-
-        if (reminderTime > now) {
-            const timeUntilReminder = reminderTime.getTime() - now.getTime();
-
-            setTimeout(() => {
-                this.showNotification(
-                    `Rappel d'entretien avec ${application.company}`,
-                    `Vous avez un entretien ${interview.type} dans 1 heure pour le poste de ${application.position}.`
-                );
-            }, timeUntilReminder);
-
-            console.log(`Reminder scheduled for ${reminderTime.toLocaleString()} (${timeUntilReminder / 1000 / 60} minutes from now)`);
+        if (reminderTime <= now) {
+            return;
         }
+
+        const timeUntilReminder = reminderTime - now;
+        setTimeout(() => {
+            this.showNotification(
+                `Rappel d'entretien avec ${application.company}`,
+                `Vous avez un entretien ${interview.type} dans 1 heure pour le poste de ${application.position}.`
+            );
+        }, timeUntilReminder);
     }
 
     showNotification(title: string, body: string): void {
         if (!('Notification' in window) || Notification.permission !== 'granted') {
-            console.warn('Notifications not supported or permission not granted');
             return;
         }
 
@@ -65,11 +62,5 @@ export class NotificationService {
         } catch (error) {
             console.error('Error showing notification:', error);
         }
-    }
-
-    cancelAllReminders(): void {
-        // This is a placeholder. In a real implementation, we would need to
-        // store references to all setTimeout calls to be able to clear them.
-        console.log('All reminders cancelled');
     }
 }
