@@ -461,12 +461,12 @@ export class DashboardComponent implements OnInit {
             .flatMap(app =>
                 (app.interviews ?? [])
                     .filter(interview => {
-                        const interviewDate = new Date(interview.date);
-                        return interviewDate >= now && interviewDate <= twoWeeksLater;
+                        const interviewTime = interview.date.getTime();
+                        return interviewTime >= now.getTime() && interviewTime <= twoWeeksLater.getTime();
                     })
                     .map(interview => ({
                         id: interview.id,
-                        date: new Date(interview.date),
+                        date: new Date(interview.date.getTime()),
                         type: interview.type,
                         company: app.company,
                         position: app.position,
