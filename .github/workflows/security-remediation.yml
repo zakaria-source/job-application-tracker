@@ -1,0 +1,74 @@
+name: Dependency security remediation
+
+on:
+  push:
+    branches:
+      - agent/dependency-security-audit
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Capture audit before remediation
+        run: npm audit --json > audit-before.json || true
+
+      - name: Apply non-breaking npm audit fixes to lockfile
+        run: npm audit fix --package-lock-only
+
+      - name: Reinstall remediated dependency tree
+        run: npm ci
+
+      - name: Capture audit after remediation
+        run: npm audit --json > audit-after.json || true
+
+      - name: Validate production build
+        run: npm run build -- --configuration production
+
+      - name: Summarize remaining vulnerabilities
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          for (const file of ['audit-before.json', 'audit-after.json']) {
+            const audit = JSON.parse(fs.readFileSync(file, 'utf8'));
+            console.log(`=== ${file} ===`);
+            console.log(JSON.stringify(audit.metadata?.vulnerabilities ?? {}, null, 2));
+            for (const [name, vulnerability] of Object.entries(audit.vulnerabilities ?? {})) {
+              console.log(JSON.stringify({
+                name,
+                severity: vulnerability.severity,
+                isDirect: vulnerability.isDirect,
+                via: vulnerability.via,
+                effects: vulnerability.effects,
+                range: vulnerability.range,
+                fixAvailable: vulnerability.fixAvailable
+              }));
+            }
+          }
+          NODE
+
+      - name: Upload remediation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-security-remediation
+          path: |
+            package-lock.json
+            audit-before.json
+            audit-after.json
+          retention-days: 1
