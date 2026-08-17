@@ -1,5 +1,4 @@
 import {Component, EventEmitter, Input, OnInit, Output} from '@angular/core';
-
 import {FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
 import {MatCardModule} from '@angular/material/card';
@@ -11,6 +10,7 @@ import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatIconModule} from '@angular/material/icon';
 import {MatInputModule} from '@angular/material/input';
 import {MatSelectModule} from '@angular/material/select';
+import {ApplicationWorkflowService} from '../../domain/application-workflow.service';
 import {Interview, JobApplication} from '../../models/job-application.model';
 import {NotificationService} from '../../services/notification.service';
 
@@ -18,18 +18,18 @@ import {NotificationService} from '../../services/notification.service';
     selector: 'app-job-form',
     standalone: true,
     imports: [
-    ReactiveFormsModule,
-    MatButtonModule,
-    MatCardModule,
-    MatCheckboxModule,
-    MatDatepickerModule,
-    MatDividerModule,
-    MatFormFieldModule,
-    MatIconModule,
-    MatInputModule,
-    MatNativeDateModule,
-    MatSelectModule
-],
+        ReactiveFormsModule,
+        MatButtonModule,
+        MatCardModule,
+        MatCheckboxModule,
+        MatDatepickerModule,
+        MatDividerModule,
+        MatFormFieldModule,
+        MatIconModule,
+        MatInputModule,
+        MatNativeDateModule,
+        MatSelectModule
+    ],
     templateUrl: './job-form.component.html',
     styleUrl: './job-form.component.css'
 })
@@ -43,9 +43,9 @@ export class JobFormComponent implements OnInit {
 
     constructor(
         private readonly fb: FormBuilder,
-        private readonly notificationService: NotificationService
-    ) {
-    }
+        private readonly notificationService: NotificationService,
+        private readonly workflow: ApplicationWorkflowService
+    ) {}
 
     ngOnInit(): void {
         this.initForm();
@@ -60,7 +60,6 @@ export class JobFormComponent implements OnInit {
             salaryTarget: [null, Validators.min(0)],
             salaryPeriod: ['Annuel', Validators.required],
             applicationDate: [new Date(), Validators.required],
-            status: ['Envoyé', Validators.required],
             stage: ['Candidature', Validators.required],
             priority: ['Moyenne', Validators.required],
             followUpDate: [null],
@@ -83,7 +82,6 @@ export class JobFormComponent implements OnInit {
             salaryTarget: this.application.salaryTarget ?? null,
             salaryPeriod: this.application.salaryPeriod,
             applicationDate: this.application.applicationDate,
-            status: this.application.status,
             stage: this.application.stage,
             priority: this.application.priority,
             followUpDate: this.application.followUpDate ?? null,
@@ -120,13 +118,20 @@ export class JobFormComponent implements OnInit {
         this.interviews.removeAt(index);
     }
 
-    onSubmit(): void {
+    async onSubmit(): Promise<void> {
         if (this.jobForm.invalid) {
             this.jobForm.markAllAsTouched();
             return;
         }
 
         const formValue = this.jobForm.getRawValue();
+        const status = this.workflow.statusForStage(formValue.stage);
+        const hasReminder = formValue.interviews.some((interview: Interview) => interview.reminderSet);
+
+        if (hasReminder) {
+            await this.notificationService.ensurePermission();
+        }
+
         const jobApplication: JobApplication = {
             id: this.application?.id ?? this.generateId(),
             company: formValue.company.trim(),
@@ -138,7 +143,7 @@ export class JobFormComponent implements OnInit {
                 : Number(formValue.salaryTarget),
             salaryPeriod: formValue.salaryPeriod,
             applicationDate: formValue.applicationDate,
-            status: formValue.status,
+            status,
             stage: formValue.stage,
             priority: formValue.priority,
             followUpDate: formValue.followUpDate || undefined,
@@ -148,14 +153,8 @@ export class JobFormComponent implements OnInit {
             notes: formValue.notes?.trim() ?? '',
             interviews: formValue.interviews,
             lastUpdated: new Date(),
-            responseDate: this.getResponseDate(formValue.status)
+            responseDate: this.getResponseDate(status)
         };
-
-        (jobApplication.interviews ?? []).forEach(interview => {
-            if (interview.reminderSet) {
-                this.notificationService.scheduleInterviewReminder(jobApplication, interview);
-            }
-        });
 
         this.formSubmit.emit(jobApplication);
     }
@@ -172,6 +171,7 @@ export class JobFormComponent implements OnInit {
     }
 
     private generateId(): string {
-        return Date.now().toString(36) + Math.random().toString(36).substring(2);
+        return globalThis.crypto?.randomUUID?.()
+            ?? Date.now().toString(36) + Math.random().toString(36).slice(2);
     }
 }

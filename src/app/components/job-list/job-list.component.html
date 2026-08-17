@@ -4,6 +4,11 @@
     <mat-card-subtitle>Votre pipeline : priorités, relances, étapes et contacts.</mat-card-subtitle>
   </mat-card-header>
   <mat-card-content>
+    <div class="data-actions">
+      <button mat-stroked-button type="button" (click)="exportApplications()"><mat-icon>download</mat-icon> Exporter</button>
+      <button mat-stroked-button type="button" (click)="importFile.click()"><mat-icon>upload</mat-icon> Importer</button>
+      <input #importFile hidden type="file" accept="application/json,.json" (change)="importApplications($event)">
+    </div>
     @if (applications.length > 0) {
       <div class="filters">
         <mat-form-field appearance="outline" class="search-field">
@@ -159,8 +164,13 @@
           </ng-container>
           <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
           <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+            class="application-row"
+            tabindex="0"
+            role="button"
+            [attr.aria-label]="'Ouvrir la candidature ' + row.position + ' chez ' + row.company"
             (click)="viewApplicationDetails(row)"
-          class="application-row"></tr>
+            (keydown.enter)="viewApplicationDetails(row)"
+            (keydown.space)="$event.preventDefault(); viewApplicationDetails(row)"></tr>
         </table>
         <mat-paginator
           [length]="filteredApplications.length"

@@ -44,7 +44,7 @@ export class JobListComponent implements OnInit {
     filteredApplications: JobApplication[] = [];
     paginatedApplications: JobApplication[] = [];
 
-    displayedColumns: string[] = ['company', 'position', 'contractType', 'priority', 'followUpDate', 'status', 'actions'];
+    displayedColumns = ['company', 'position', 'contractType', 'priority', 'followUpDate', 'status', 'actions'];
 
     searchTerm = '';
     statusFilter = '';
@@ -61,8 +61,7 @@ export class JobListComponent implements OnInit {
     selectedApplication: JobApplication | null = null;
     showDetails = false;
 
-    constructor(private readonly storageService: StorageService) {
-    }
+    constructor(private readonly storageService: StorageService) {}
 
     ngOnInit(): void {
         this.storageService.getApplications()
@@ -114,7 +113,11 @@ export class JobListComponent implements OnInit {
     }
 
     applySort(): void {
-        const priorityOrder: Record<JobApplication['priority'], number> = {Haute: 3, Moyenne: 2, Basse: 1};
+        const priorityOrder: Record<JobApplication['priority'], number> = {
+            Haute: 3,
+            Moyenne: 2,
+            Basse: 1
+        };
 
         this.filteredApplications = [...this.filteredApplications].sort((a, b) => {
             let comparison = 0;
@@ -156,8 +159,8 @@ export class JobListComponent implements OnInit {
     }
 
     updatePaginatedApplications(): void {
-        const startIndex = this.currentPage * this.pageSize;
-        this.paginatedApplications = this.filteredApplications.slice(startIndex, startIndex + this.pageSize);
+        const start = this.currentPage * this.pageSize;
+        this.paginatedApplications = this.filteredApplications.slice(start, start + this.pageSize);
     }
 
     onPageChange(event: PageEvent): void {
@@ -217,10 +220,46 @@ export class JobListComponent implements OnInit {
         this.selectedApplication = null;
     }
 
+    exportApplications(): void {
+        const blob = new Blob([this.storageService.exportData()], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+
+        anchor.href = url;
+        anchor.download = `jobtrackr-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        anchor.click();
+        URL.revokeObjectURL(url);
+    }
+
+    importApplications(event: Event): void {
+        const input = event.target as HTMLInputElement;
+        const file = input.files?.[0];
+        if (!file) {
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                if (!confirm('Importer ce fichier remplacera les candidatures actuellement stockées. Continuer ?')) {
+                    return;
+                }
+                this.storageService.importData(String(reader.result ?? ''));
+            } catch (error) {
+                console.error(error);
+                alert('Le fichier sélectionné n’est pas un export JobTrackr valide.');
+            } finally {
+                input.value = '';
+            }
+        };
+        reader.readAsText(file);
+    }
+
     isFollowUpDue(application: JobApplication): boolean {
         if (!application.followUpDate || application.status === 'Accepté' || application.status === 'Refusé') {
             return false;
         }
+
         const tomorrow = new Date();
         tomorrow.setHours(24, 0, 0, 0);
         return application.followUpDate < tomorrow;
@@ -230,6 +269,7 @@ export class JobListComponent implements OnInit {
         if (!application.salaryTarget) {
             return '—';
         }
+
         const formatted = new Intl.NumberFormat('fr-FR').format(application.salaryTarget);
         return application.salaryPeriod === 'Journalier' ? `${formatted} €/j` : `${formatted} € brut/an`;
     }

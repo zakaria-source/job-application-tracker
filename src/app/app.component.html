@@ -1,19 +1,12 @@
 <div class="app-shell">
   <header class="topbar">
     <div class="topbar-inner">
-      <div class="brand" aria-label="JobTrackr">
-        <div class="brand-mark">
-          <mat-icon>work_outline</mat-icon>
-        </div>
-        <div class="brand-copy">
-          <strong>JobTrackr</strong>
-          <span>Career workspace</span>
-        </div>
-      </div>
-
+      <a class="brand" routerLink="/dashboard" aria-label="JobTrackr - Dashboard">
+        <div class="brand-mark"><mat-icon>work_outline</mat-icon></div>
+        <div class="brand-copy"><strong>JobTrackr</strong><span>Career workspace</span></div>
+      </a>
       <div class="product-status" title="Vos données restent dans ce navigateur">
-        <span class="status-dot"></span>
-        <span>Local-first</span>
+        <span class="status-dot"></span><span>Local-first</span>
       </div>
     </div>
   </header>
@@ -22,40 +15,20 @@
     <section class="page-heading">
       <div>
         <span class="eyebrow">JOB SEARCH OS</span>
-        @if (selectedTabIndex === 0) {
-          <h1>Vue d’ensemble</h1>
-          <p>Les actions et opportunités qui méritent votre attention aujourd’hui.</p>
-        } @else {
-          <h1>Pipeline de candidatures</h1>
-          <p>Centralisez vos offres, relances, contacts et étapes de recrutement.</p>
-        }
+        <h1>{{ pageTitle }}</h1>
+        <p>{{ pageDescription }}</p>
       </div>
     </section>
 
-    <mat-tab-group
-      class="workspace-tabs"
-      animationDuration="180ms"
-      [selectedIndex]="selectedTabIndex"
-      (selectedIndexChange)="selectedTabIndex = $event">
-      <mat-tab>
-        <ng-template mat-tab-label>
-          <mat-icon>space_dashboard</mat-icon>
-          <span>Dashboard</span>
-        </ng-template>
-        <div class="tab-content">
-          <app-dashboard></app-dashboard>
-        </div>
-      </mat-tab>
+    <nav class="workspace-nav" aria-label="Navigation principale">
+      <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+        <mat-icon>space_dashboard</mat-icon><span>Dashboard</span>
+      </a>
+      <a routerLink="/applications" routerLinkActive="active">
+        <mat-icon>view_list</mat-icon><span>Candidatures</span>
+      </a>
+    </nav>
 
-      <mat-tab>
-        <ng-template mat-tab-label>
-          <mat-icon>view_list</mat-icon>
-          <span>Candidatures</span>
-        </ng-template>
-        <div class="tab-content">
-          <app-job-list></app-job-list>
-        </div>
-      </mat-tab>
-    </mat-tab-group>
+    <div class="route-content"><router-outlet></router-outlet></div>
   </main>
 </div>

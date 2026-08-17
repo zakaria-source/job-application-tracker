@@ -67,22 +67,12 @@
       <mat-divider></mat-divider>
       <h3>Suivi de candidature</h3>
 
-      <div class="form-grid three-columns">
+      <div class="form-grid two-columns">
         <mat-form-field>
           <mat-label>Date de candidature</mat-label>
           <input matInput [matDatepicker]="applicationPicker" formControlName="applicationDate" required>
           <mat-datepicker-toggle matIconSuffix [for]="applicationPicker"></mat-datepicker-toggle>
           <mat-datepicker #applicationPicker></mat-datepicker>
-        </mat-form-field>
-
-        <mat-form-field>
-          <mat-label>Statut</mat-label>
-          <mat-select formControlName="status" required>
-            <mat-option value="Envoyé">Envoyé</mat-option>
-            <mat-option value="Entretien">Entretien</mat-option>
-            <mat-option value="Accepté">Accepté</mat-option>
-            <mat-option value="Refusé">Refusé</mat-option>
-          </mat-select>
         </mat-form-field>
 
         <mat-form-field>
@@ -107,6 +97,7 @@
             <mat-option value="Offre">Offre</mat-option>
             <mat-option value="Clôturé">Clôturé</mat-option>
           </mat-select>
+          <mat-hint>Le statut est calculé automatiquement depuis cette étape.</mat-hint>
         </mat-form-field>
 
         <mat-form-field>

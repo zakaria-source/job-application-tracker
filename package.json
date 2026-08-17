@@ -4,7 +4,9 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build"
+    "build": "ng build",
+    "test": "ng test",
+    "test:ci": "ng test --watch=false --coverage"
   },
   "dependencies": {
     "@angular/animations": "^21.2.20",
@@ -27,6 +29,9 @@
     "@angular-devkit/build-angular": "^21.2.21",
     "@angular/cli": "^21.2.21",
     "@angular/compiler-cli": "^21.2.20",
-    "typescript": "^5.9.3"
+    "@vitest/coverage-v8": "^4.1.10",
+    "jsdom": "^29.1.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10"
   }
 }
