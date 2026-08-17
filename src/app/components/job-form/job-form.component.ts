@@ -10,14 +10,26 @@ import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatIconModule} from '@angular/material/icon';
 import {MatInputModule} from '@angular/material/input';
 import {MatSelectModule} from '@angular/material/select';
+import {ApplicationWorkflowService} from '../../domain/application-workflow.service';
 import {Interview, JobApplication} from '../../models/job-application.model';
 import {NotificationService} from '../../services/notification.service';
-import {ApplicationWorkflowService} from '../../domain/application-workflow.service';
 
 @Component({
     selector: 'app-job-form',
     standalone: true,
-    imports: [ReactiveFormsModule, MatButtonModule, MatCardModule, MatCheckboxModule, MatDatepickerModule, MatDividerModule, MatFormFieldModule, MatIconModule, MatInputModule, MatNativeDateModule, MatSelectModule],
+    imports: [
+        ReactiveFormsModule,
+        MatButtonModule,
+        MatCardModule,
+        MatCheckboxModule,
+        MatDatepickerModule,
+        MatDividerModule,
+        MatFormFieldModule,
+        MatIconModule,
+        MatInputModule,
+        MatNativeDateModule,
+        MatSelectModule
+    ],
     templateUrl: './job-form.component.html',
     styleUrl: './job-form.component.css'
 })
@@ -26,6 +38,7 @@ export class JobFormComponent implements OnInit {
     @Input() application: JobApplication | null = null;
     @Output() formSubmit = new EventEmitter<JobApplication>();
     @Output() cancel = new EventEmitter<void>();
+
     jobForm!: FormGroup;
 
     constructor(
@@ -34,70 +47,131 @@ export class JobFormComponent implements OnInit {
         private readonly workflow: ApplicationWorkflowService
     ) {}
 
-    ngOnInit(): void { this.initForm(); }
+    ngOnInit(): void {
+        this.initForm();
+    }
 
     private initForm(): void {
         this.jobForm = this.fb.group({
-            company: ['', Validators.required], position: ['', Validators.required],
-            offerUrl: ['', Validators.pattern(/^https?:\/\/.+/i)], contractType: ['CDI', Validators.required],
-            salaryTarget: [null, Validators.min(0)], salaryPeriod: ['Annuel', Validators.required],
-            applicationDate: [new Date(), Validators.required], stage: ['Candidature', Validators.required],
-            priority: ['Moyenne', Validators.required], followUpDate: [null], recruiterName: [''],
-            recruiterEmail: ['', Validators.email], recruiterPhone: [''], notes: [''], interviews: this.fb.array([])
+            company: ['', Validators.required],
+            position: ['', Validators.required],
+            offerUrl: ['', Validators.pattern(/^https?:\/\/.+/i)],
+            contractType: ['CDI', Validators.required],
+            salaryTarget: [null, Validators.min(0)],
+            salaryPeriod: ['Annuel', Validators.required],
+            applicationDate: [new Date(), Validators.required],
+            stage: ['Candidature', Validators.required],
+            priority: ['Moyenne', Validators.required],
+            followUpDate: [null],
+            recruiterName: [''],
+            recruiterEmail: ['', Validators.email],
+            recruiterPhone: [''],
+            notes: [''],
+            interviews: this.fb.array([])
         });
-        if (!this.application) return;
+
+        if (!this.application) {
+            return;
+        }
+
         this.jobForm.patchValue({
-            company: this.application.company, position: this.application.position, offerUrl: this.application.offerUrl ?? '',
-            contractType: this.application.contractType, salaryTarget: this.application.salaryTarget ?? null,
-            salaryPeriod: this.application.salaryPeriod, applicationDate: this.application.applicationDate,
-            stage: this.application.stage, priority: this.application.priority, followUpDate: this.application.followUpDate ?? null,
+            company: this.application.company,
+            position: this.application.position,
+            offerUrl: this.application.offerUrl ?? '',
+            contractType: this.application.contractType,
+            salaryTarget: this.application.salaryTarget ?? null,
+            salaryPeriod: this.application.salaryPeriod,
+            applicationDate: this.application.applicationDate,
+            stage: this.application.stage,
+            priority: this.application.priority,
+            followUpDate: this.application.followUpDate ?? null,
             recruiterName: this.application.recruiterName ?? this.application.contactPerson ?? '',
             recruiterEmail: this.application.recruiterEmail ?? this.application.contactEmail ?? '',
-            recruiterPhone: this.application.recruiterPhone ?? this.application.contactPhone ?? '', notes: this.application.notes
+            recruiterPhone: this.application.recruiterPhone ?? this.application.contactPhone ?? '',
+            notes: this.application.notes
         });
-        (this.application.interviews ?? []).forEach(interview => this.interviews.push(this.createInterviewFormGroup(interview)));
+
+        (this.application.interviews ?? []).forEach(interview => {
+            this.interviews.push(this.createInterviewFormGroup(interview));
+        });
     }
 
-    get interviews(): FormArray { return this.jobForm.get('interviews') as FormArray; }
+    get interviews(): FormArray {
+        return this.jobForm.get('interviews') as FormArray;
+    }
 
     private createInterviewFormGroup(interview?: Interview): FormGroup {
         return this.fb.group({
-            id: [interview?.id ?? this.generateId()], date: [interview?.date ?? new Date(), Validators.required],
-            type: [interview?.type ?? 'Téléphone', Validators.required], notes: [interview?.notes ?? ''], reminderSet: [interview?.reminderSet ?? false]
+            id: [interview?.id ?? this.generateId()],
+            date: [interview?.date ?? new Date(), Validators.required],
+            type: [interview?.type ?? 'Téléphone', Validators.required],
+            notes: [interview?.notes ?? ''],
+            reminderSet: [interview?.reminderSet ?? false]
         });
     }
 
-    addInterview(): void { this.interviews.push(this.createInterviewFormGroup()); }
-    removeInterview(index: number): void { this.interviews.removeAt(index); }
+    addInterview(): void {
+        this.interviews.push(this.createInterviewFormGroup());
+    }
+
+    removeInterview(index: number): void {
+        this.interviews.removeAt(index);
+    }
 
     async onSubmit(): Promise<void> {
-        if (this.jobForm.invalid) { this.jobForm.markAllAsTouched(); return; }
+        if (this.jobForm.invalid) {
+            this.jobForm.markAllAsTouched();
+            return;
+        }
+
         const formValue = this.jobForm.getRawValue();
         const status = this.workflow.statusForStage(formValue.stage);
-        if (formValue.interviews.some((interview: Interview) => interview.reminderSet)) {
+        const hasReminder = formValue.interviews.some((interview: Interview) => interview.reminderSet);
+
+        if (hasReminder) {
             await this.notificationService.ensurePermission();
         }
+
         const jobApplication: JobApplication = {
-            id: this.application?.id ?? this.generateId(), company: formValue.company.trim(), position: formValue.position.trim(),
-            offerUrl: formValue.offerUrl?.trim() || undefined, contractType: formValue.contractType,
-            salaryTarget: formValue.salaryTarget === null || formValue.salaryTarget === '' ? undefined : Number(formValue.salaryTarget),
-            salaryPeriod: formValue.salaryPeriod, applicationDate: formValue.applicationDate, status, stage: formValue.stage,
-            priority: formValue.priority, followUpDate: formValue.followUpDate || undefined,
-            recruiterName: formValue.recruiterName?.trim() || undefined, recruiterEmail: formValue.recruiterEmail?.trim() || undefined,
-            recruiterPhone: formValue.recruiterPhone?.trim() || undefined, notes: formValue.notes?.trim() ?? '',
-            interviews: formValue.interviews, lastUpdated: new Date(), responseDate: this.getResponseDate(status)
+            id: this.application?.id ?? this.generateId(),
+            company: formValue.company.trim(),
+            position: formValue.position.trim(),
+            offerUrl: formValue.offerUrl?.trim() || undefined,
+            contractType: formValue.contractType,
+            salaryTarget: formValue.salaryTarget === null || formValue.salaryTarget === ''
+                ? undefined
+                : Number(formValue.salaryTarget),
+            salaryPeriod: formValue.salaryPeriod,
+            applicationDate: formValue.applicationDate,
+            status,
+            stage: formValue.stage,
+            priority: formValue.priority,
+            followUpDate: formValue.followUpDate || undefined,
+            recruiterName: formValue.recruiterName?.trim() || undefined,
+            recruiterEmail: formValue.recruiterEmail?.trim() || undefined,
+            recruiterPhone: formValue.recruiterPhone?.trim() || undefined,
+            notes: formValue.notes?.trim() ?? '',
+            interviews: formValue.interviews,
+            lastUpdated: new Date(),
+            responseDate: this.getResponseDate(status)
         };
+
         this.formSubmit.emit(jobApplication);
     }
 
-    onCancel(): void { this.cancel.emit(); }
+    onCancel(): void {
+        this.cancel.emit();
+    }
 
     private getResponseDate(status: JobApplication['status']): Date | undefined {
-        if (status === 'Envoyé') return undefined;
+        if (status === 'Envoyé') {
+            return undefined;
+        }
         return this.application?.responseDate ?? new Date();
     }
 
     private generateId(): string {
-        return globalThis.crypto?.randomUUID?.() ?? Date.now().toString(36) + Math.random().toString(36).slice(2);
+        return globalThis.crypto?.randomUUID?.()
+            ?? Date.now().toString(36) + Math.random().toString(36).slice(2);
     }
 }
