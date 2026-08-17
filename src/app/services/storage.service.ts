@@ -40,14 +40,21 @@ export class StorageService {
 
         return {
             ...app,
-            applicationDate: new Date(app.applicationDate),
-            lastUpdated: new Date(app.lastUpdated),
-            responseDate: app.responseDate ? new Date(app.responseDate) : undefined,
+            applicationDate: this.toDate(app.applicationDate),
+            lastUpdated: this.toDate(app.lastUpdated),
+            responseDate: app.responseDate ? this.toDate(app.responseDate) : undefined,
             interviews: (app.interviews ?? []).map(interview => ({
                 ...interview,
-                date: new Date(interview.date)
+                date: this.toDate(interview.date)
             }))
         };
+    }
+
+    private toDate(value: Date | string | number): Date {
+        if (value instanceof Date) {
+            return new Date(value.getTime());
+        }
+        return new Date(value);
     }
 
     private saveToLocalStorage(): void {
@@ -159,9 +166,8 @@ export class StorageService {
         const weeks = new Map<string, number>();
 
         this.applications.forEach(app => {
-            const date = new Date(app.applicationDate);
-            const weekNumber = this.getWeekNumber(date).toString().padStart(2, '0');
-            const weekKey = `${date.getFullYear()}-W${weekNumber}`;
+            const weekNumber = this.getWeekNumber(app.applicationDate).toString().padStart(2, '0');
+            const weekKey = `${app.applicationDate.getFullYear()}-W${weekNumber}`;
             weeks.set(weekKey, (weeks.get(weekKey) ?? 0) + 1);
         });
 
@@ -208,7 +214,7 @@ export class StorageService {
         const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
         this.applications
-            .filter(app => app.status === 'Envoyé' && new Date(app.applicationDate) < oneWeekAgo)
+            .filter(app => app.status === 'Envoyé' && app.applicationDate < oneWeekAgo)
             .forEach(app => {
                 suggestions.push({
                     id: `pending-${app.id}`,
@@ -223,12 +229,12 @@ export class StorageService {
                 return application;
             }
 
-            return new Date(application.applicationDate) > new Date(latest.applicationDate)
+            return application.applicationDate.getTime() > latest.applicationDate.getTime()
                 ? application
                 : latest;
         }, undefined);
 
-        if (latestApplication && new Date(latestApplication.applicationDate) < twoWeeksAgo) {
+        if (latestApplication && latestApplication.applicationDate < twoWeeksAgo) {
             suggestions.push({
                 id: 'no-recent-applications',
                 type: 'info',
@@ -249,8 +255,9 @@ export class StorageService {
             .flatMap(app =>
                 (app.interviews ?? [])
                     .filter(interview => {
-                        const interviewDate = new Date(interview.date);
-                        return interviewDate > now && interviewDate < new Date(now.getTime() + 48 * 60 * 60 * 1000);
+                        const interviewTime = interview.date.getTime();
+                        return interviewTime > now.getTime()
+                            && interviewTime < now.getTime() + 48 * 60 * 60 * 1000;
                     })
                     .map(interview => ({application: app, interview}))
             )
@@ -267,7 +274,7 @@ export class StorageService {
     }
 
     private daysBetween(start: Date, end: Date): number {
-        return Math.max(0, (new Date(end).getTime() - new Date(start).getTime()) / (1000 * 60 * 60 * 24));
+        return Math.max(0, (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     }
 
     private getDaysSince(date: Date): number {
@@ -275,7 +282,7 @@ export class StorageService {
     }
 
     private formatDate(date: Date): string {
-        return new Date(date).toLocaleDateString('fr-FR', {
+        return date.toLocaleDateString('fr-FR', {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric',
