@@ -1,37 +1,35 @@
-import {Component, DestroyRef, OnInit, inject} from '@angular/core';
-import {CommonModule} from '@angular/common';
-import {FormsModule} from '@angular/forms';
+import {Component, DestroyRef, OnInit, ViewChild, inject} from '@angular/core';
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {MatButtonModule} from '@angular/material/button';
 import {MatCardModule} from '@angular/material/card';
-import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatIconModule} from '@angular/material/icon';
-import {MatInputModule} from '@angular/material/input';
-import {MatPaginatorModule, PageEvent} from '@angular/material/paginator';
-import {MatSelectModule} from '@angular/material/select';
-import {MatSortModule, Sort} from '@angular/material/sort';
-import {MatTableModule} from '@angular/material/table';
-import {MatTooltipModule} from '@angular/material/tooltip';
-import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {JobApplication} from '../../models/job-application.model';
 import {StorageService} from '../../services/storage.service';
+import {
+    ApplicationFilterCriteria,
+    ApplicationFiltersComponent
+} from '../application-filters/application-filters.component';
+import {ApplicationListComponent} from '../application-list/application-list.component';
+import {ApplicationDetailsComponent} from '../application-details/application-details.component';
 import {JobFormComponent} from '../job-form/job-form.component';
+
+const EMPTY_FILTERS: ApplicationFilterCriteria = {
+    searchTerm: '',
+    status: '',
+    contractType: '',
+    priority: ''
+};
 
 @Component({
     selector: 'app-job-list',
     standalone: true,
     imports: [
-        CommonModule,
-        FormsModule,
         MatButtonModule,
         MatCardModule,
-        MatFormFieldModule,
         MatIconModule,
-        MatInputModule,
-        MatPaginatorModule,
-        MatSelectModule,
-        MatSortModule,
-        MatTableModule,
-        MatTooltipModule,
+        ApplicationFiltersComponent,
+        ApplicationListComponent,
+        ApplicationDetailsComponent,
         JobFormComponent
     ],
     templateUrl: './job-list.component.html',
@@ -40,26 +38,17 @@ import {JobFormComponent} from '../job-form/job-form.component';
 export class JobListComponent implements OnInit {
     private readonly destroyRef = inject(DestroyRef);
 
+    @ViewChild(ApplicationFiltersComponent)
+    private filtersComponent?: ApplicationFiltersComponent;
+
     applications: JobApplication[] = [];
     filteredApplications: JobApplication[] = [];
-    paginatedApplications: JobApplication[] = [];
-
-    displayedColumns = ['company', 'position', 'contractType', 'priority', 'followUpDate', 'status', 'actions'];
-
-    searchTerm = '';
-    statusFilter = '';
-    contractFilter = '';
-    priorityFilter = '';
-    sortField = 'followUpDate';
-    sortDirection: 'asc' | 'desc' = 'asc';
-
-    pageSize = 10;
-    currentPage = 0;
-
-    showForm = false;
-    editMode = false;
     selectedApplication: JobApplication | null = null;
+    showForm = false;
     showDetails = false;
+    editMode = false;
+
+    private activeFilters: ApplicationFilterCriteria = EMPTY_FILTERS;
 
     constructor(private readonly storageService: StorageService) {}
 
@@ -68,105 +57,22 @@ export class JobListComponent implements OnInit {
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe(applications => {
                 this.applications = applications;
-                this.applyFilters(false);
+                this.applyFilters(this.activeFilters);
             });
     }
 
-    applyFilters(resetPage = true): void {
-        let filtered = [...this.applications];
-        const search = this.searchTerm.trim().toLowerCase();
-
-        if (search) {
-            filtered = filtered.filter(app =>
-                app.company.toLowerCase().includes(search)
-                || app.position.toLowerCase().includes(search)
-                || app.notes.toLowerCase().includes(search)
-                || app.stage.toLowerCase().includes(search)
-                || (app.recruiterName ?? '').toLowerCase().includes(search)
-            );
-        }
-
-        if (this.statusFilter) {
-            filtered = filtered.filter(app => app.status === this.statusFilter);
-        }
-        if (this.contractFilter) {
-            filtered = filtered.filter(app => app.contractType === this.contractFilter);
-        }
-        if (this.priorityFilter) {
-            filtered = filtered.filter(app => app.priority === this.priorityFilter);
-        }
-
-        if (resetPage) {
-            this.currentPage = 0;
-        }
-
-        this.filteredApplications = filtered;
-        this.applySort();
+    onFiltersChange(criteria: ApplicationFilterCriteria): void {
+        this.activeFilters = criteria;
+        this.applyFilters(criteria);
     }
 
     clearFilters(): void {
-        this.searchTerm = '';
-        this.statusFilter = '';
-        this.contractFilter = '';
-        this.priorityFilter = '';
-        this.applyFilters();
-    }
+        if (this.filtersComponent) {
+            this.filtersComponent.resetFilters();
+            return;
+        }
 
-    applySort(): void {
-        const priorityOrder: Record<JobApplication['priority'], number> = {
-            Haute: 3,
-            Moyenne: 2,
-            Basse: 1
-        };
-
-        this.filteredApplications = [...this.filteredApplications].sort((a, b) => {
-            let comparison = 0;
-
-            switch (this.sortField) {
-                case 'company':
-                    comparison = a.company.localeCompare(b.company);
-                    break;
-                case 'position':
-                    comparison = a.position.localeCompare(b.position);
-                    break;
-                case 'contractType':
-                    comparison = a.contractType.localeCompare(b.contractType);
-                    break;
-                case 'priority':
-                    comparison = priorityOrder[a.priority] - priorityOrder[b.priority];
-                    break;
-                case 'followUpDate':
-                    comparison = (a.followUpDate?.getTime() ?? Number.MAX_SAFE_INTEGER)
-                        - (b.followUpDate?.getTime() ?? Number.MAX_SAFE_INTEGER);
-                    break;
-                case 'status':
-                    comparison = a.status.localeCompare(b.status);
-                    break;
-                default:
-                    comparison = a.applicationDate.getTime() - b.applicationDate.getTime();
-            }
-
-            return this.sortDirection === 'asc' ? comparison : -comparison;
-        });
-
-        this.updatePaginatedApplications();
-    }
-
-    sortData(sort: Sort): void {
-        this.sortField = sort.active;
-        this.sortDirection = (sort.direction || 'asc') as 'asc' | 'desc';
-        this.applySort();
-    }
-
-    updatePaginatedApplications(): void {
-        const start = this.currentPage * this.pageSize;
-        this.paginatedApplications = this.filteredApplications.slice(start, start + this.pageSize);
-    }
-
-    onPageChange(event: PageEvent): void {
-        this.currentPage = event.pageIndex;
-        this.pageSize = event.pageSize;
-        this.updatePaginatedApplications();
+        this.onFiltersChange(EMPTY_FILTERS);
     }
 
     showAddForm(): void {
@@ -255,22 +161,21 @@ export class JobListComponent implements OnInit {
         reader.readAsText(file);
     }
 
-    isFollowUpDue(application: JobApplication): boolean {
-        if (!application.followUpDate || application.status === 'Accepté' || application.status === 'Refusé') {
-            return false;
-        }
+    private applyFilters(criteria: ApplicationFilterCriteria): void {
+        const search = criteria.searchTerm.trim().toLowerCase();
 
-        const tomorrow = new Date();
-        tomorrow.setHours(24, 0, 0, 0);
-        return application.followUpDate < tomorrow;
-    }
+        this.filteredApplications = this.applications.filter(application => {
+            const matchesSearch = !search
+                || application.company.toLowerCase().includes(search)
+                || application.position.toLowerCase().includes(search)
+                || application.notes.toLowerCase().includes(search)
+                || application.stage.toLowerCase().includes(search)
+                || (application.recruiterName ?? '').toLowerCase().includes(search);
 
-    formatTargetSalary(application: JobApplication): string {
-        if (!application.salaryTarget) {
-            return '—';
-        }
-
-        const formatted = new Intl.NumberFormat('fr-FR').format(application.salaryTarget);
-        return application.salaryPeriod === 'Journalier' ? `${formatted} €/j` : `${formatted} € brut/an`;
+            return matchesSearch
+                && (!criteria.status || application.status === criteria.status)
+                && (!criteria.contractType || application.contractType === criteria.contractType)
+                && (!criteria.priority || application.priority === criteria.priority);
+        });
     }
 }
