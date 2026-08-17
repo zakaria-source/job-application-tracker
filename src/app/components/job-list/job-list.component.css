@@ -1,131 +1,21 @@
-.filters {
-  display: grid;
-  grid-template-columns: minmax(260px, 2fr) repeat(3, minmax(145px, 1fr));
-  gap: 12px;
-  margin: 20px 0 8px;
-}
-.table-container {
-  overflow-x: auto;
-}
-table {
-  width: 100%;
-  min-width: 980px;
-}
-.application-row {
-  cursor: pointer;
-}
-.application-row:hover {
-  background-color: rgba(0, 0, 0, 0.04);
-}
-.company-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.company-cell span {
-  font-size: 12px;
-  color: #757575;
-}
-.no-data {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 40px 20px;
-  color: #757575;
-}
-.no-data > mat-icon {
-  width: 48px;
-  height: 48px;
-  font-size: 48px;
-}
-.no-data h3 {
-  margin: 8px 0 0;
-  color: #424242;
-}
-.no-data p {
-  margin: 8px 0 18px;
-}
-.status-badge,
-.priority-badge {
-  display: inline-flex;
-  padding: 4px 8px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-}
-.priority-haute {
-  background: #ffebee;
-  color: #c62828;
-}
-.priority-moyenne {
-  background: #fff8e1;
-  color: #ef6c00;
-}
-.priority-basse {
-  background: #f1f8e9;
-  color: #558b2f;
-}
-.follow-up-due {
-  color: #d84315;
-  font-weight: 700;
-}
-.secondary-panel,
-.details-card {
-  margin-top: 20px;
-}
-.close-button {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-}
-.details-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 16px;
-  margin: 20px 0;
-}
-.detail-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.notes-section,
-.interviews-section {
-  margin-top: 24px;
-}
-.notes-section p {
-  white-space: pre-wrap;
-}
-.interview-item {
-  padding: 12px;
-  border-left: 3px solid #3f51b5;
-  background: rgba(0, 0, 0, 0.02);
-  margin-bottom: 12px;
-}
-.interview-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
-  font-weight: 500;
-}
-.interview-type {
-  color: #3f51b5;
-}
-@media (max-width: 950px) {
-  .filters {
-    grid-template-columns: 1fr 1fr;
-  }
-  .search-field {
-    grid-column: 1 / -1;
-  }
-}
-@media (max-width: 600px) {
-  .filters {
-    grid-template-columns: 1fr;
-  }
-  .search-field {
-    grid-column: auto;
-  }
-}
+.filters { display:grid; grid-template-columns:minmax(260px,2fr) repeat(3,minmax(145px,1fr)); gap:12px; margin:20px 0 8px; }
+.data-actions { display:flex; justify-content:flex-end; gap:10px; margin:16px 0 4px; flex-wrap:wrap; }
+.table-container { overflow-x:auto; }
+table { width:100%; min-width:980px; }
+.application-row { cursor:pointer; }
+.application-row:hover { background-color:rgba(0,0,0,.04); }
+.application-row:focus-visible { outline:3px solid rgba(79,70,229,.28); outline-offset:-3px; }
+.company-cell { display:flex; flex-direction:column; gap:2px; }
+.company-cell span { font-size:12px; color:#757575; }
+.no-data { display:flex; flex-direction:column; align-items:center; text-align:center; padding:40px 20px; color:#757575; }
+.no-data > mat-icon { width:48px; height:48px; font-size:48px; }
+.no-data h3 { margin:8px 0 0; color:#424242; }
+.no-data p { margin:8px 0 18px; }
+.status-badge,.priority-badge { display:inline-flex; padding:4px 8px; border-radius:999px; font-size:12px; font-weight:600; }
+.priority-haute { background:#ffebee; color:#c62828; }.priority-moyenne { background:#fff8e1; color:#ef6c00; }.priority-basse { background:#f1f8e9; color:#558b2f; }
+.follow-up-due { color:#d84315; font-weight:700; }.secondary-panel,.details-card { margin-top:20px; }.close-button { position:absolute; top:8px; right:8px; }
+.details-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:16px; margin:20px 0; }.detail-item { display:flex; flex-direction:column; gap:4px; }
+.notes-section,.interviews-section { margin-top:24px; }.notes-section p { white-space:pre-wrap; }.interview-item { padding:12px; border-left:3px solid #3f51b5; background:rgba(0,0,0,.02); margin-bottom:12px; }
+.interview-header { display:flex; justify-content:space-between; gap:12px; margin-bottom:8px; font-weight:500; }.interview-type { color:#3f51b5; }
+@media (max-width:950px) { .filters { grid-template-columns:1fr 1fr; }.search-field { grid-column:1/-1; } }
+@media (max-width:600px) { .filters { grid-template-columns:1fr; }.search-field { grid-column:auto; }.data-actions { justify-content:stretch; }.data-actions button { flex:1; } }

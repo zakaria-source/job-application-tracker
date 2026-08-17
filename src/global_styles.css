@@ -152,55 +152,6 @@ a {
     opacity: 0 !important;
 }
 
-/* Workspace navigation */
-.workspace-tabs > .mat-mdc-tab-header {
-    width: fit-content;
-    max-width: 100%;
-    padding: 5px;
-    border: 1px solid var(--jt-border);
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.82);
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.02);
-}
-
-.workspace-tabs .mat-mdc-tab-label-container {
-    border-bottom: 0 !important;
-}
-
-.workspace-tabs .mat-mdc-tab {
-    min-width: 150px;
-    height: 42px !important;
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-.workspace-tabs .mat-mdc-tab .mdc-tab__content {
-    gap: 8px;
-}
-
-.workspace-tabs .mat-mdc-tab .mat-icon {
-    width: 18px;
-    height: 18px;
-    font-size: 18px;
-}
-
-.workspace-tabs .mat-mdc-tab.mdc-tab--active {
-    background: var(--jt-text);
-}
-
-.workspace-tabs .mat-mdc-tab.mdc-tab--active .mdc-tab__text-label,
-.workspace-tabs .mat-mdc-tab.mdc-tab--active .mat-icon {
-    color: #fff !important;
-}
-
-.workspace-tabs .mdc-tab-indicator {
-    display: none !important;
-}
-
-.workspace-tabs .mat-mdc-tab-body-wrapper {
-    overflow: visible;
-}
-
 /* Dashboard */
 app-dashboard .dashboard-container {
     gap: 22px !important;
