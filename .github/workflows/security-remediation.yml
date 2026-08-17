@@ -35,6 +35,35 @@ jobs:
       - name: Align CDK and chart dependencies with Angular 21
         run: npm install @angular/cdk@21.2.14 ng2-charts@10.0.0 chart.js@latest
 
+      - name: Migrate ng2-charts standalone API
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+
+          const dashboardPath = 'src/app/components/dashboard/dashboard.component.ts';
+          let dashboard = fs.readFileSync(dashboardPath, 'utf8');
+          dashboard = dashboard.replace(
+            "import {NgChartsModule} from 'ng2-charts';",
+            "import {BaseChartDirective} from 'ng2-charts';"
+          );
+          dashboard = dashboard.replace(/\bNgChartsModule\b/g, 'BaseChartDirective');
+          fs.writeFileSync(dashboardPath, dashboard);
+
+          const mainPath = 'src/main.ts';
+          let main = fs.readFileSync(mainPath, 'utf8');
+          if (!main.includes("provideCharts")) {
+            main = main.replace(
+              "import {App} from './app/app.component';",
+              "import {App} from './app/app.component';\nimport {provideCharts, withDefaultRegisterables} from 'ng2-charts';"
+            );
+            main = main.replace(
+              /providers:\s*\[/,
+              'providers: [\n        provideCharts(withDefaultRegisterables()),'
+            );
+          }
+          fs.writeFileSync(mainPath, main);
+          NODE
+
       - name: Reinstall from migrated lockfile
         run: npm ci
 
