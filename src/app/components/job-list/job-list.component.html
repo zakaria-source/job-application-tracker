@@ -5,19 +5,44 @@
   </mat-card-header>
 
   <mat-card-content>
-    <div class="data-actions">
-      <button mat-stroked-button type="button" (click)="exportApplications()">
-        <mat-icon>download</mat-icon> Exporter
-      </button>
-      <button mat-stroked-button type="button" (click)="importFile.click()">
-        <mat-icon>upload</mat-icon> Importer
-      </button>
-      <input
-        #importFile
-        hidden
-        type="file"
-        accept="application/json,.json"
-        (change)="importApplications($event)">
+    <div class="workspace-toolbar">
+      @if (applications.length > 0) {
+        <div class="view-switcher" role="group" aria-label="Mode d'affichage">
+          <button
+            mat-stroked-button
+            type="button"
+            [class.active]="viewMode === 'list'"
+            [attr.aria-pressed]="viewMode === 'list'"
+            (click)="viewMode = 'list'">
+            <mat-icon>view_list</mat-icon>
+            Liste
+          </button>
+          <button
+            mat-stroked-button
+            type="button"
+            [class.active]="viewMode === 'kanban'"
+            [attr.aria-pressed]="viewMode === 'kanban'"
+            (click)="viewMode = 'kanban'">
+            <mat-icon>view_kanban</mat-icon>
+            Kanban
+          </button>
+        </div>
+      }
+
+      <div class="data-actions">
+        <button mat-stroked-button type="button" (click)="exportApplications()">
+          <mat-icon>download</mat-icon> Exporter
+        </button>
+        <button mat-stroked-button type="button" (click)="importFile.click()">
+          <mat-icon>upload</mat-icon> Importer
+        </button>
+        <input
+          #importFile
+          hidden
+          type="file"
+          accept="application/json,.json"
+          (change)="importApplications($event)">
+      </div>
     </div>
 
     @if (applications.length > 0) {
@@ -45,11 +70,19 @@
     }
 
     @if (filteredApplications.length > 0) {
-      <app-application-list
-        [applications]="filteredApplications"
-        (viewApplication)="viewApplicationDetails($event)"
-        (editApplication)="editApplication($event)"
-        (deleteApplication)="deleteApplication($event)" />
+      @if (viewMode === 'list') {
+        <app-application-list
+          [applications]="filteredApplications"
+          (viewApplication)="viewApplicationDetails($event)"
+          (editApplication)="editApplication($event)"
+          (deleteApplication)="deleteApplication($event)" />
+      } @else {
+        <app-application-kanban
+          [applications]="filteredApplications"
+          (viewApplication)="viewApplicationDetails($event)"
+          (editApplication)="editApplication($event)"
+          (stageChange)="onStageChange($event)" />
+      }
     }
   </mat-card-content>
 
