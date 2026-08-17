@@ -1,52 +1,46 @@
 # JobTrackr
 
-JobTrackr is a lightweight job-application tracking dashboard built with **Angular 19**, **Angular Material**, **RxJS** and **Chart.js**.
-
-It helps candidates centralize applications, monitor response rates, identify follow-ups and keep upcoming interviews visible from one dashboard.
+JobTrackr is an Angular application for tracking job applications, follow-ups, responses and interviews from a single dashboard.
 
 **Live demo:** https://trackmyjob-zakaria.netlify.app/
 
-## Why this project exists
+## Product scope
 
-Job searches quickly become difficult to manage across spreadsheets, emails and job boards. JobTrackr turns that workflow into a small product with a clear domain model, reactive state and useful analytics while remaining simple enough to run entirely in the browser.
+The application is intentionally focused on two clear areas:
 
-## Product highlights
+- **Dashboard** — understand the current state of the job search, identify follow-ups and see upcoming interviews.
+- **Applications** — create, search, filter, inspect, edit and delete job applications.
 
-- Create, edit and delete job applications
+Keeping these responsibilities separate avoids duplicated user journeys and makes the interface easier to understand.
+
+## Features
+
+- Create, update and delete job applications
+- Search applications by company, position or notes
+- Filter applications by status
+- Sort directly from table columns
 - Track application status: sent, interview, accepted or rejected
-- Store recruiter/contact information and application notes
-- Manage interviews and optional browser reminders
-- Search, filter, sort and paginate applications
-- Persist data in browser local storage
-- Calculate response rate and average response time
-- Visualize weekly application activity and status distribution
-- Rank the most responsive companies
-- Suggest follow-ups for applications without a response
-- Surface interviews scheduled in the next 14 days
-
-## Engineering highlights
-
-- **Standalone Angular components** with a small, explicit component hierarchy
-- **Reactive application state** backed by RxJS `BehaviorSubject`
-- **Lifecycle-safe dashboard subscriptions** using `takeUntilDestroyed`
-- **Immutable state updates** before publishing new application snapshots
-- **Local-storage hydration** that restores serialized dates into domain objects
-- **Derived analytics** kept in the storage/domain service instead of duplicated in UI components
-- **Responsive Angular Material UI** with Chart.js visualizations
-- **Continuous integration** that runs a clean production build on every pull request and on `master`
-- **Reproducible Node setup** through `.nvmrc`
+- Store recruiter/contact information
+- Track interviews and reminders
+- Persist application data in browser local storage
+- Dashboard statistics and application trends
+- Response-rate and average-response-time calculation
+- Weekly application activity
+- Most responsive companies ranking
+- Follow-up suggestions for applications without a response
+- Upcoming interview agenda
+- Responsive Angular Material interface
 
 ## Tech stack
 
-| Area | Technology |
-| --- | --- |
-| Frontend | Angular 19, TypeScript |
-| UI | Angular Material |
-| Reactive state | RxJS |
-| Charts | Chart.js, ng2-charts |
-| Persistence | Browser Local Storage |
-| Hosting | Netlify |
-| CI | GitHub Actions |
+- Angular 19
+- TypeScript
+- Angular Material
+- RxJS
+- Chart.js / ng2-charts
+- Browser Local Storage
+- GitHub Actions
+- Netlify
 
 ## Architecture
 
@@ -64,44 +58,61 @@ src/app
 └── app.component.ts
 ```
 
-### Main responsibilities
-
-- `JobFormComponent` owns application/interview form validation and emits domain objects.
-- `JobListComponent` provides application discovery and CRUD interactions.
-- `DashboardComponent` derives a live view from application state and time-based refresh signals.
-- `StorageService` is the client-side source of truth: persistence, hydration, statistics and recommendations.
-- `NotificationService` handles browser notification reminders.
-
-## Data flow
+### State flow
 
 ```text
-User action
-   │
-   ▼
-Angular component
-   │
-   ▼
-StorageService ─────► Local Storage
-   │
-   ▼
-BehaviorSubject<JobApplication[]>
-   │
-   ├────────► Job list
-   └────────► Dashboard / analytics / suggestions
+JobForm / JobList
+       │
+       ▼
+StorageService
+       │
+       ├── Browser Local Storage
+       │
+       └── BehaviorSubject<JobApplication[]>
+                    │
+                    ├── JobList
+                    └── Dashboard
 ```
 
-The UI does not read local storage directly. State changes go through `StorageService`, which persists the new state and publishes a fresh array to subscribers.
+`StorageService` owns the application collection and exposes immutable snapshots through RxJS. Stored JSON is hydrated back into typed application objects, including `Date` values, before being published to the UI.
+
+Subscriptions in long-lived components use Angular's `takeUntilDestroyed` lifecycle integration so they are disposed automatically.
+
+## Dashboard responsibilities
+
+The dashboard deliberately avoids reproducing the full applications page. It focuses on information that helps decide what to do next:
+
+- total applications
+- response rate
+- average response time
+- follow-ups currently due
+- application status distribution
+- application activity over time
+- company response-time comparison
+- upcoming interviews
+
+Interview events are shown in the agenda rather than duplicated again as generic suggestions.
+
+## Application management
+
+The Applications view is the single workspace for application operations:
+
+- add a new application
+- filter and search
+- sort using table headers
+- inspect application details
+- edit an application
+- delete an application
+- manage associated interviews
+
+The UI distinguishes between an empty tracker and a filter returning no results, so each state presents the appropriate action.
 
 ## Run locally
 
-### Prerequisites
-
-- Node.js 20
-- npm
+Node.js 20 is the reference runtime and is declared in `.nvmrc`.
 
 ```bash
-git clone https://github.com/zakaria-source/job-application-tracker.git
-cd job-application-tracker
+nvm use
 npm ci
 npm start
 ```
@@ -114,24 +125,71 @@ Then open `http://localhost:4200`.
 npm run build -- --configuration production
 ```
 
-The same command is executed by the GitHub Actions CI workflow.
+## CI/CD
 
-## Current scope and trade-offs
+Pull requests and pushes to the default branch are validated by GitHub Actions with a clean install and production Angular build.
 
-JobTrackr is intentionally frontend-only. This keeps deployment friction low and makes the project usable without an account, but it also means data is tied to one browser and browser notifications are best-effort rather than durable scheduled jobs.
+```text
+GitHub
+  │
+  ├── Pull Request
+  │     ├── GitHub Actions production build
+  │     └── Netlify Deploy Preview
+  │
+  └── master
+        └── Netlify production deployment
+```
 
-Those constraints are explicit rather than hidden: they define the boundary for the next architectural iteration.
+This keeps production deployment separate from feature validation: changes can be checked through a Netlify preview before being merged.
+
+## Engineering decisions
+
+### Why local storage?
+
+The current version is intentionally frontend-only. This keeps deployment simple while demonstrating Angular component design, reactive state, persistence and data visualization.
+
+### Why a dedicated storage service?
+
+Components do not manipulate browser storage directly. Persistence and application state are centralized behind `StorageService`, making a future replacement with an HTTP repository considerably easier.
+
+### Why derived dashboard statistics?
+
+Statistics and suggestions are calculated from the application state rather than persisted separately. This avoids synchronization problems between stored applications and derived analytics.
+
+## Current limitations
+
+- Data is limited to the current browser/device
+- No authentication or user accounts
+- No server-side persistence
+- Browser notifications are limited by browser lifecycle and permissions
+- No automated unit or end-to-end test suite yet
 
 ## Roadmap
 
-The next version is intended to evolve the project into a cloud-backed application:
+A natural backend evolution would turn the project into a full-stack application:
 
-1. **Spring Boot REST API** for application and interview management
-2. **PostgreSQL** persistence with schema migrations
-3. **Authentication and authorization** with OAuth2/OIDC
-4. **Containerization** with Docker and deployment to Kubernetes or a managed cloud runtime
-5. **Durable reminders** through backend scheduling and event-driven notifications
-6. **Automated tests** for domain statistics, persistence and critical UI flows
-7. **Import/export** for existing spreadsheet-based job searches
+```text
+Angular
+   │ REST / OAuth2
+   ▼
+Spring Boot
+   │
+   ├── PostgreSQL
+   ├── Spring Security / JWT or OIDC
+   ├── OpenAPI
+   └── scheduled/event-driven reminders
+```
 
-This roadmap deliberately turns the current Angular product into a full-stack system without discarding the existing domain model and frontend.
+Potential additions:
+
+1. Spring Boot REST API
+2. PostgreSQL persistence
+3. Authentication with Spring Security and OAuth2/OIDC
+4. Docker Compose development environment
+5. Unit and integration tests with Testcontainers
+6. OpenAPI API documentation
+7. Import/export of application data
+8. Cloud deployment and observability
+9. Optional Kafka-based notification/event workflow
+
+The frontend is structured so the browser persistence layer can eventually be replaced by an API-backed repository without redesigning the entire UI.
