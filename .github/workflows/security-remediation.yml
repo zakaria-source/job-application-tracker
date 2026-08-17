@@ -1,4 +1,4 @@
-name: Angular security migration rehearsal
+name: Publish validated Angular security migration
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - agent/dependency-security-audit
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   migrate:
@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: agent/dependency-security-audit
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -50,18 +52,20 @@ jobs:
           fs.writeFileSync(dashboardPath, dashboard);
 
           const mainPath = 'src/main.ts';
-          let main = fs.readFileSync(mainPath, 'utf8');
-          if (!main.includes("provideCharts")) {
-            main = main.replace(
-              "import {App} from './app/app.component';",
-              "import {App} from './app/app.component';\nimport {provideCharts, withDefaultRegisterables} from 'ng2-charts';"
-            );
-            main = main.replace(
-              /providers:\s*\[/,
-              'providers: [\n        provideCharts(withDefaultRegisterables()),'
-            );
-          }
-          fs.writeFileSync(mainPath, main);
+          fs.writeFileSync(mainPath, `import {provideZoneChangeDetection} from '@angular/core';
+import {bootstrapApplication} from '@angular/platform-browser';
+import {provideAnimations} from '@angular/platform-browser/animations';
+import {provideCharts, withDefaultRegisterables} from 'ng2-charts';
+import {App} from './app/app.component';
+
+bootstrapApplication(App, {
+    providers: [
+        provideCharts(withDefaultRegisterables()),
+        provideZoneChangeDetection(),
+        provideAnimations()
+    ]
+}).catch(err => console.error(err));
+`);
           NODE
 
       - name: Reinstall from migrated lockfile
@@ -70,46 +74,21 @@ jobs:
       - name: Validate production build
         run: npm run build -- --configuration production
 
-      - name: Capture full audit
-        run: npm audit --json > audit-full.json || true
+      - name: Require clean production dependency audit
+        run: npm audit --omit=dev
 
-      - name: Capture production audit
-        run: npm audit --omit=dev --json > audit-production.json || true
+      - name: Report full dependency audit
+        run: npm audit || true
 
-      - name: Summarize audit and migration diff
+      - name: Commit validated migration
         run: |
-          node - <<'NODE'
-          const fs = require('fs');
-          for (const file of ['audit-full.json', 'audit-production.json']) {
-            const audit = JSON.parse(fs.readFileSync(file, 'utf8'));
-            console.log(`=== ${file} ===`);
-            console.log(JSON.stringify(audit.metadata?.vulnerabilities ?? {}, null, 2));
-            for (const [name, vulnerability] of Object.entries(audit.vulnerabilities ?? {})) {
-              if (vulnerability.isDirect || ['critical', 'high'].includes(vulnerability.severity)) {
-                console.log(JSON.stringify({
-                  name,
-                  severity: vulnerability.severity,
-                  isDirect: vulnerability.isDirect,
-                  range: vulnerability.range,
-                  fixAvailable: vulnerability.fixAvailable
-                }));
-              }
-            }
-          }
-          NODE
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json angular.json tsconfig.json src/main.ts \
+            src/app/components/dashboard/dashboard.component.ts \
+            src/app/components/job-form/job-form.component.ts \
+            src/app/components/job-list/job-list.component.ts
           git status --short
-          git diff --stat
-
-      - name: Upload migrated workspace files
-        uses: actions/upload-artifact@v4
-        with:
-          name: angular-security-migration
-          path: |
-            package.json
-            package-lock.json
-            angular.json
-            tsconfig.json
-            src
-            audit-full.json
-            audit-production.json
-          retention-days: 1
+          git diff --cached --stat
+          git commit -m "chore: upgrade Angular dependencies securely"
+          git push origin HEAD:agent/dependency-security-audit
