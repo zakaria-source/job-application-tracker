@@ -1,0 +1,122 @@
+<div class="table-container">
+  <table
+    mat-table
+    [dataSource]="paginatedApplications"
+    matSort
+    [matSortActive]="sortField"
+    [matSortDirection]="sortDirection"
+    (matSortChange)="sortData($event)">
+    <ng-container matColumnDef="company">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Entreprise</th>
+      <td mat-cell *matCellDef="let application">
+        <div class="company-cell">
+          <strong>{{ application.company }}</strong>
+          <span>{{ application.stage }}</span>
+        </div>
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="position">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Poste</th>
+      <td mat-cell *matCellDef="let application">{{ application.position }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="contractType">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Contrat</th>
+      <td mat-cell *matCellDef="let application">{{ application.contractType }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="priority">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Priorité</th>
+      <td mat-cell *matCellDef="let application">
+        <span class="priority-badge" [ngClass]="'priority-' + application.priority.toLowerCase()">
+          {{ application.priority }}
+        </span>
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="followUpDate">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Relance</th>
+      <td mat-cell *matCellDef="let application">
+        @if (application.followUpDate) {
+          <span [class.follow-up-due]="isFollowUpDue(application)">
+            {{ application.followUpDate | date:'dd/MM/yyyy' }}
+          </span>
+        } @else {
+          —
+        }
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="status">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Statut</th>
+      <td mat-cell *matCellDef="let application">
+        <span
+          class="status-badge"
+          [ngClass]="{
+            'status-sent': application.status === 'Envoyé',
+            'status-interview': application.status === 'Entretien',
+            'status-accepted': application.status === 'Accepté',
+            'status-rejected': application.status === 'Refusé'
+          }">
+          {{ application.status }}
+        </span>
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="actions">
+      <th mat-header-cell *matHeaderCellDef>Actions</th>
+      <td mat-cell *matCellDef="let application">
+        @if (application.offerUrl) {
+          <a
+            mat-icon-button
+            [href]="application.offerUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            (click)="$event.stopPropagation()"
+            matTooltip="Ouvrir l'offre"
+            aria-label="Ouvrir l'offre">
+            <mat-icon>open_in_new</mat-icon>
+          </a>
+        }
+        <button
+          mat-icon-button
+          color="primary"
+          (click)="requestEdit($event, application)"
+          matTooltip="Modifier"
+          aria-label="Modifier la candidature">
+          <mat-icon>edit</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          color="warn"
+          (click)="requestDelete($event, application)"
+          matTooltip="Supprimer"
+          aria-label="Supprimer la candidature">
+          <mat-icon>delete</mat-icon>
+        </button>
+      </td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+    <tr
+      mat-row
+      *matRowDef="let row; columns: displayedColumns;"
+      class="application-row"
+      tabindex="0"
+      role="button"
+      [attr.aria-label]="'Ouvrir la candidature ' + row.position + ' chez ' + row.company"
+      (click)="openDetails(row)"
+      (keydown.enter)="openDetails(row)"
+      (keydown.space)="$event.preventDefault(); openDetails(row)">
+    </tr>
+  </table>
+
+  <mat-paginator
+    [length]="sortedApplications.length"
+    [pageIndex]="currentPage"
+    [pageSize]="pageSize"
+    [pageSizeOptions]="[5, 10, 25, 50]"
+    (page)="onPageChange($event)">
+  </mat-paginator>
+</div>

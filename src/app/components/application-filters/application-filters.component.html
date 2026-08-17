@@ -1,0 +1,54 @@
+<div class="filters">
+  <mat-form-field appearance="outline" class="search-field">
+    <mat-label>Rechercher</mat-label>
+    <input
+      matInput
+      [(ngModel)]="searchTerm"
+      (input)="emitFilters()"
+      placeholder="Entreprise, poste, recruteur...">
+    @if (searchTerm) {
+      <button
+        matSuffix
+        mat-icon-button
+        type="button"
+        aria-label="Effacer la recherche"
+        (click)="clearSearch()">
+        <mat-icon>close</mat-icon>
+      </button>
+    }
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Statut</mat-label>
+    <mat-select [(ngModel)]="status" (selectionChange)="emitFilters()">
+      <mat-option value="">Tous</mat-option>
+      <mat-option value="Envoyé">Envoyé</mat-option>
+      <mat-option value="Entretien">Entretien</mat-option>
+      <mat-option value="Accepté">Accepté</mat-option>
+      <mat-option value="Refusé">Refusé</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Contrat</mat-label>
+    <mat-select [(ngModel)]="contractType" (selectionChange)="emitFilters()">
+      <mat-option value="">Tous</mat-option>
+      <mat-option value="CDI">CDI</mat-option>
+      <mat-option value="CDD">CDD</mat-option>
+      <mat-option value="Freelance">Freelance</mat-option>
+      <mat-option value="Stage">Stage</mat-option>
+      <mat-option value="Alternance">Alternance</mat-option>
+      <mat-option value="Autre">Autre</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Priorité</mat-label>
+    <mat-select [(ngModel)]="priority" (selectionChange)="emitFilters()">
+      <mat-option value="">Toutes</mat-option>
+      <mat-option value="Haute">Haute</mat-option>
+      <mat-option value="Moyenne">Moyenne</mat-option>
+      <mat-option value="Basse">Basse</mat-option>
+    </mat-select>
+  </mat-form-field>
+</div>

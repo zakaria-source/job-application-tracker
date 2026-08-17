@@ -1,0 +1,59 @@
+:host {
+  display: block;
+}
+
+mat-card {
+  position: relative;
+}
+
+.close-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.follow-up-due {
+  color: #d84315;
+  font-weight: 700;
+}
+
+.notes-section,
+.interviews-section {
+  margin-top: 24px;
+}
+
+.notes-section p {
+  white-space: pre-wrap;
+}
+
+.interview-item {
+  padding: 12px;
+  border-left: 3px solid #3f51b5;
+  margin-bottom: 12px;
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.interview-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.interview-type {
+  color: #3f51b5;
+}
