@@ -10,7 +10,6 @@ import {MatIconModule} from '@angular/material/icon';
 import {MatInputModule} from '@angular/material/input';
 import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatSelectModule} from '@angular/material/select';
-import {MatMenuModule} from '@angular/material/menu';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {JobApplication} from '../../models/job-application.model';
@@ -32,7 +31,6 @@ import {JobFormComponent} from '../job-form/job-form.component';
         MatInputModule,
         MatFormFieldModule,
         MatSelectModule,
-        MatMenuModule,
         MatTooltipModule,
         JobFormComponent
     ],
@@ -40,9 +38,10 @@ import {JobFormComponent} from '../job-form/job-form.component';
     <mat-card>
       <mat-card-header>
         <mat-card-title>Mes candidatures</mat-card-title>
+        <mat-card-subtitle>Recherchez, filtrez et cliquez sur une colonne pour trier</mat-card-subtitle>
       </mat-card-header>
       <mat-card-content>
-        <div class="filters">
+        <div class="filters" *ngIf="applications.length > 0">
           <mat-form-field appearance="outline">
             <mat-label>Rechercher</mat-label>
             <input matInput [(ngModel)]="searchTerm" (input)="applyFilters()">
@@ -54,49 +53,40 @@ import {JobFormComponent} from '../job-form/job-form.component';
           <mat-form-field appearance="outline">
             <mat-label>Statut</mat-label>
             <mat-select [(ngModel)]="statusFilter" (selectionChange)="applyFilters()">
-              <mat-option value="">Tous</mat-option>
+              <mat-option value="">Tous les statuts</mat-option>
               <mat-option value="Envoyé">Envoyé</mat-option>
               <mat-option value="Entretien">Entretien</mat-option>
               <mat-option value="Accepté">Accepté</mat-option>
               <mat-option value="Refusé">Refusé</mat-option>
             </mat-select>
           </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Trier par</mat-label>
-            <mat-select [(ngModel)]="sortField" (selectionChange)="applySort()">
-              <mat-option value="applicationDate">Date de candidature</mat-option>
-              <mat-option value="company">Entreprise</mat-option>
-              <mat-option value="position">Poste</mat-option>
-              <mat-option value="status">Statut</mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <button mat-icon-button [matMenuTriggerFor]="sortMenu" matTooltip="Ordre de tri">
-            <mat-icon>{{ sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
-          </button>
-          <mat-menu #sortMenu="matMenu">
-            <button mat-menu-item (click)="setSortDirection('asc')">
-              <mat-icon>arrow_upward</mat-icon>
-              <span>Croissant</span>
-            </button>
-            <button mat-menu-item (click)="setSortDirection('desc')">
-              <mat-icon>arrow_downward</mat-icon>
-              <span>Décroissant</span>
-            </button>
-          </mat-menu>
         </div>
 
-        <div *ngIf="filteredApplications.length === 0" class="no-data">
+        <div *ngIf="applications.length === 0" class="no-data">
           <mat-icon>work_outline</mat-icon>
-          <p>Aucune candidature trouvée.</p>
+          <h3>Commencez votre suivi</h3>
+          <p>Ajoutez votre première candidature pour alimenter le tableau de bord.</p>
           <button mat-raised-button color="primary" (click)="showAddForm()">
             <mat-icon>add</mat-icon> Ajouter une candidature
           </button>
         </div>
 
+        <div *ngIf="applications.length > 0 && filteredApplications.length === 0" class="no-data">
+          <mat-icon>search_off</mat-icon>
+          <h3>Aucun résultat</h3>
+          <p>Aucune candidature ne correspond à vos filtres actuels.</p>
+          <button mat-stroked-button (click)="clearFilters()">
+            Réinitialiser les filtres
+          </button>
+        </div>
+
         <div *ngIf="filteredApplications.length > 0" class="table-container">
-          <table mat-table [dataSource]="paginatedApplications" matSort (matSortChange)="sortData($event)">
+          <table mat-table
+                 [dataSource]="paginatedApplications"
+                 matSort
+                 [matSortActive]="sortField"
+                 [matSortDirection]="sortDirection"
+                 (matSortChange)="sortData($event)">
             <ng-container matColumnDef="company">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Entreprise</th>
               <td mat-cell *matCellDef="let application">{{ application.company }}</td>
@@ -132,12 +122,14 @@ import {JobFormComponent} from '../job-form/job-form.component';
               <td mat-cell *matCellDef="let application">
                 <button mat-icon-button color="primary"
                         (click)="$event.stopPropagation(); editApplication(application)"
-                        matTooltip="Modifier">
+                        matTooltip="Modifier"
+                        aria-label="Modifier la candidature">
                   <mat-icon>edit</mat-icon>
                 </button>
                 <button mat-icon-button color="warn"
                         (click)="$event.stopPropagation(); deleteApplication(application)"
-                        matTooltip="Supprimer">
+                        matTooltip="Supprimer"
+                        aria-label="Supprimer la candidature">
                   <mat-icon>delete</mat-icon>
                 </button>
               </td>
@@ -157,8 +149,9 @@ import {JobFormComponent} from '../job-form/job-form.component';
           </mat-paginator>
         </div>
       </mat-card-content>
-      <mat-card-actions>
-        <button mat-raised-button color="primary" (click)="showAddForm()" *ngIf="!showForm">
+
+      <mat-card-actions *ngIf="applications.length > 0 && !showForm">
+        <button mat-raised-button color="primary" (click)="showAddForm()">
           <mat-icon>add</mat-icon> Ajouter une candidature
         </button>
       </mat-card-actions>
@@ -245,15 +238,10 @@ import {JobFormComponent} from '../job-form/job-form.component';
   `,
     styles: [`
     .filters {
-      display: flex;
+      display: grid;
+      grid-template-columns: minmax(260px, 2fr) minmax(180px, 1fr);
       gap: 16px;
-      align-items: center;
-      margin-bottom: 16px;
-      flex-wrap: wrap;
-    }
-    .filters mat-form-field {
-      flex: 1;
-      min-width: 200px;
+      margin: 20px 0 8px;
     }
     .table-container {
       overflow-x: auto;
@@ -272,7 +260,7 @@ import {JobFormComponent} from '../job-form/job-form.component';
       flex-direction: column;
       align-items: center;
       text-align: center;
-      padding: 32px 20px;
+      padding: 40px 20px;
       color: #757575;
     }
     .no-data > mat-icon {
@@ -280,6 +268,13 @@ import {JobFormComponent} from '../job-form/job-form.component';
       height: 48px;
       font-size: 48px;
       margin-bottom: 4px;
+    }
+    .no-data h3 {
+      margin: 8px 0 0;
+      color: #424242;
+    }
+    .no-data p {
+      margin: 8px 0 18px;
     }
     .status-badge {
       padding: 4px 8px;
@@ -326,6 +321,11 @@ import {JobFormComponent} from '../job-form/job-form.component';
     }
     .interview-type {
       color: #3f51b5;
+    }
+    @media (max-width: 700px) {
+      .filters {
+        grid-template-columns: 1fr;
+      }
     }
   `]
 })
@@ -387,6 +387,12 @@ export class JobListComponent implements OnInit {
         this.applySort();
     }
 
+    clearFilters(): void {
+        this.searchTerm = '';
+        this.statusFilter = '';
+        this.applyFilters();
+    }
+
     applySort(): void {
         this.filteredApplications = [...this.filteredApplications].sort((a, b) => {
             let comparison = 0;
@@ -415,11 +421,6 @@ export class JobListComponent implements OnInit {
     sortData(sort: Sort): void {
         this.sortField = sort.active;
         this.sortDirection = (sort.direction || 'asc') as 'asc' | 'desc';
-        this.applySort();
-    }
-
-    setSortDirection(direction: 'asc' | 'desc'): void {
-        this.sortDirection = direction;
         this.applySort();
     }
 
