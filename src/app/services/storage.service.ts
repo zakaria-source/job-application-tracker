@@ -251,25 +251,6 @@ export class StorageService {
             });
         }
 
-        this.applications
-            .flatMap(app =>
-                (app.interviews ?? [])
-                    .filter(interview => {
-                        const interviewTime = interview.date.getTime();
-                        return interviewTime > now.getTime()
-                            && interviewTime < now.getTime() + 48 * 60 * 60 * 1000;
-                    })
-                    .map(interview => ({application: app, interview}))
-            )
-            .forEach(({application, interview}) => {
-                suggestions.push({
-                    id: `interview-${interview.id}`,
-                    type: 'success',
-                    message: `Vous avez un entretien ${interview.type} prévu avec ${application.company} le ${this.formatDate(interview.date)}.`,
-                    relatedApplicationId: application.id
-                });
-            });
-
         return suggestions;
     }
 
@@ -279,15 +260,5 @@ export class StorageService {
 
     private getDaysSince(date: Date): number {
         return Math.floor(this.daysBetween(date, new Date()));
-    }
-
-    private formatDate(date: Date): string {
-        return date.toLocaleDateString('fr-FR', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
     }
 }
