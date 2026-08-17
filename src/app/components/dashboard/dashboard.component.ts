@@ -53,9 +53,9 @@ interface UpcomingInterview {
                 <div class="stat-value">{{ statistics.averageResponseTime | number:'1.0-1' }}</div>
                 <div class="stat-label">Jours avant réponse</div>
               </div>
-              <div class="stat-item">
-                <div class="stat-value">{{ statistics.statusCounts.accepted }}</div>
-                <div class="stat-label">Offres acceptées</div>
+              <div class="stat-item" [class.attention]="followUpCount > 0">
+                <div class="stat-value">{{ followUpCount }}</div>
+                <div class="stat-label">Relances à faire</div>
               </div>
             </div>
 
@@ -76,13 +76,13 @@ interface UpcomingInterview {
 
         <mat-card class="panel">
           <mat-card-header>
-            <mat-card-title>Actions recommandées</mat-card-title>
-            <mat-card-subtitle>Relances et entretiens qui demandent votre attention</mat-card-subtitle>
+            <mat-card-title>Relances et alertes</mat-card-title>
+            <mat-card-subtitle>Les actions qui demandent votre attention</mat-card-subtitle>
           </mat-card-header>
           <mat-card-content>
             <div *ngIf="suggestions.length === 0" class="empty-state">
               <mat-icon>task_alt</mat-icon>
-              <p>Tout est à jour pour le moment.</p>
+              <p>Aucune action urgente pour le moment.</p>
             </div>
 
             <div *ngFor="let suggestion of suggestions" class="suggestion-item">
@@ -102,6 +102,7 @@ interface UpcomingInterview {
         <mat-card class="panel">
           <mat-card-header>
             <mat-card-title>Activité hebdomadaire</mat-card-title>
+            <mat-card-subtitle>Votre rythme de candidatures dans le temps</mat-card-subtitle>
           </mat-card-header>
           <mat-card-content>
             <div class="chart-container">
@@ -117,6 +118,7 @@ interface UpcomingInterview {
         <mat-card class="panel">
           <mat-card-header>
             <mat-card-title>Entreprises les plus réactives</mat-card-title>
+            <mat-card-subtitle>Délai moyen entre candidature et première réponse</mat-card-subtitle>
           </mat-card-header>
           <mat-card-content>
             <div *ngIf="statistics.mostResponsiveCompanies.length === 0" class="empty-state compact">
@@ -135,13 +137,18 @@ interface UpcomingInterview {
         </mat-card>
       </section>
 
-      <mat-card *ngIf="upcomingInterviews.length > 0" class="panel interviews-card">
+      <mat-card class="panel interviews-card">
         <mat-card-header>
           <mat-card-title>Entretiens à venir</mat-card-title>
-          <mat-card-subtitle>Les 14 prochains jours</mat-card-subtitle>
+          <mat-card-subtitle>Votre agenda des 14 prochains jours</mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
-          <div class="interviews-list">
+          <div *ngIf="upcomingInterviews.length === 0" class="empty-state interview-empty">
+            <mat-icon>event_available</mat-icon>
+            <p>Aucun entretien prévu dans les 14 prochains jours.</p>
+          </div>
+
+          <div *ngIf="upcomingInterviews.length > 0" class="interviews-list">
             <div *ngFor="let interview of upcomingInterviews" class="interview-item">
               <div class="interview-date">
                 <div class="date-day">{{ interview.date | date:'dd' }}</div>
@@ -187,11 +194,17 @@ interface UpcomingInterview {
       background: #f6f7fb;
       border-radius: 12px;
     }
+    .stat-item.attention {
+      background: #fff8e1;
+    }
     .stat-value {
       font-size: 28px;
       line-height: 1;
       font-weight: 700;
       color: #3f51b5;
+    }
+    .stat-item.attention .stat-value {
+      color: #f57c00;
     }
     .stat-label {
       margin-top: 8px;
@@ -235,6 +248,9 @@ interface UpcomingInterview {
     }
     .empty-state.compact {
       min-height: 280px;
+    }
+    .empty-state.interview-empty {
+      min-height: 120px;
     }
     .empty-state mat-icon {
       width: 44px;
@@ -332,6 +348,7 @@ export class DashboardComponent implements OnInit {
     };
 
     suggestions: Suggestion[] = [];
+    followUpCount = 0;
     upcomingInterviews: UpcomingInterview[] = [];
 
     statusChartData: ChartData<'doughnut'> = {
@@ -418,6 +435,7 @@ export class DashboardComponent implements OnInit {
     private refreshDashboard(applications: JobApplication[]): void {
         this.statistics = this.storageService.calculateStatistics();
         this.suggestions = this.storageService.generateSuggestions();
+        this.followUpCount = this.suggestions.filter(suggestion => suggestion.type === 'warning').length;
         this.upcomingInterviews = this.getUpcomingInterviews(applications);
         this.updateCharts();
     }
