@@ -41,31 +41,29 @@ jobs:
         run: |
           node - <<'NODE'
           const fs = require('fs');
-
           const dashboardPath = 'src/app/components/dashboard/dashboard.component.ts';
           let dashboard = fs.readFileSync(dashboardPath, 'utf8');
-          dashboard = dashboard.replace(
-            "import {NgChartsModule} from 'ng2-charts';",
-            "import {BaseChartDirective} from 'ng2-charts';"
-          );
+          dashboard = dashboard.replace("import {NgChartsModule} from 'ng2-charts';", "import {BaseChartDirective} from 'ng2-charts';");
           dashboard = dashboard.replace(/\bNgChartsModule\b/g, 'BaseChartDirective');
           fs.writeFileSync(dashboardPath, dashboard);
 
-          const mainPath = 'src/main.ts';
-          fs.writeFileSync(mainPath, `import {provideZoneChangeDetection} from '@angular/core';
-import {bootstrapApplication} from '@angular/platform-browser';
-import {provideAnimations} from '@angular/platform-browser/animations';
-import {provideCharts, withDefaultRegisterables} from 'ng2-charts';
-import {App} from './app/app.component';
-
-bootstrapApplication(App, {
-    providers: [
-        provideCharts(withDefaultRegisterables()),
-        provideZoneChangeDetection(),
-        provideAnimations()
-    ]
-}).catch(err => console.error(err));
-`);
+          const mainLines = [
+            "import {provideZoneChangeDetection} from '@angular/core';",
+            "import {bootstrapApplication} from '@angular/platform-browser';",
+            "import {provideAnimations} from '@angular/platform-browser/animations';",
+            "import {provideCharts, withDefaultRegisterables} from 'ng2-charts';",
+            "import {App} from './app/app.component';",
+            '',
+            'bootstrapApplication(App, {',
+            '    providers: [',
+            '        provideCharts(withDefaultRegisterables()),',
+            '        provideZoneChangeDetection(),',
+            '        provideAnimations()',
+            '    ]',
+            '}).catch(err => console.error(err));',
+            ''
+          ];
+          fs.writeFileSync('src/main.ts', mainLines.join('\n'));
           NODE
 
       - name: Reinstall from migrated lockfile
