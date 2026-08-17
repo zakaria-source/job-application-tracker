@@ -1,35 +1,49 @@
 # JobTrackr
 
-JobTrackr is an Angular application for tracking job applications, follow-ups, responses and interviews from a single dashboard.
+JobTrackr is an Angular application for managing a job-search pipeline: applications, recruiter contacts, compensation targets, follow-ups and interviews from one workspace.
 
 **Live demo:** https://trackmyjob-zakaria.netlify.app/
 
 ## Product scope
 
-The application is intentionally focused on two clear areas:
+The product has two deliberately distinct areas:
 
-- **Dashboard** — understand the current state of the job search, identify follow-ups and see upcoming interviews.
-- **Applications** — create, search, filter, inspect, edit and delete job applications.
-
-Keeping these responsibilities separate avoids duplicated user journeys and makes the interface easier to understand.
+- **Dashboard** — a job-search cockpit showing what needs attention now: due follow-ups, high-priority opportunities and upcoming interviews, followed by analytics.
+- **Applications** — the operational workspace to create, filter, inspect, edit and delete applications.
 
 ## Features
 
-- Create, update and delete job applications
-- Search applications by company, position or notes
-- Filter applications by status
-- Sort directly from table columns
-- Track application status: sent, interview, accepted or rejected
-- Store recruiter/contact information
-- Track interviews and reminders
-- Persist application data in browser local storage
-- Dashboard statistics and application trends
-- Response-rate and average-response-time calculation
+### Application workflow
+
+- Company and position
+- Original job-offer URL
+- Contract type: CDI, CDD, freelance, internship, apprenticeship or other
+- Target annual salary or freelance daily rate (TJM)
+- Application status and current recruitment stage
+- Priority: high, medium or low
+- Explicit next follow-up date
+- Recruiter name, email and phone
+- Free-form notes
+- Interview tracking and browser reminders
+
+### Pipeline management
+
+- Search by company, position, recruiter, stage or notes
+- Filter by status, contract type and priority
+- Sort directly from table headers
+- Highlight follow-ups that are due
+- Open the original offer directly from the pipeline
+- Detailed application view with compensation, recruiter and interview context
+
+### Job-search cockpit
+
+- Total applications
+- Response rate
+- Follow-ups requiring action
+- Interviews scheduled in the next 14 days
+- High-priority active pipeline
+- Application-status distribution
 - Weekly application activity
-- Most responsive companies ranking
-- Follow-up suggestions for applications without a response
-- Upcoming interview agenda
-- Responsive Angular Material interface
 
 ## Tech stack
 
@@ -74,38 +88,19 @@ StorageService
                     └── Dashboard
 ```
 
-`StorageService` owns the application collection and exposes immutable snapshots through RxJS. Stored JSON is hydrated back into typed application objects, including `Date` values, before being published to the UI.
+`StorageService` owns the application collection and exposes immutable snapshots through RxJS. Persisted JSON is hydrated back into typed objects and date fields before publication.
 
-Subscriptions in long-lived components use Angular's `takeUntilDestroyed` lifecycle integration so they are disposed automatically.
+The storage hydration layer also migrates legacy contact fields into the newer recruiter model and supplies safe defaults for contract type, priority, recruitment stage and compensation period, so existing browser data remains usable after product evolution.
 
-## Dashboard responsibilities
+Long-lived subscriptions use Angular's `takeUntilDestroyed` lifecycle integration.
 
-The dashboard deliberately avoids reproducing the full applications page. It focuses on information that helps decide what to do next:
+## Follow-up logic
 
-- total applications
-- response rate
-- average response time
-- follow-ups currently due
-- application status distribution
-- application activity over time
-- company response-time comparison
-- upcoming interviews
+Explicit follow-up dates drive the cockpit. Active applications whose follow-up date is today or overdue are surfaced as actions.
 
-Interview events are shown in the agenda rather than duplicated again as generic suggestions.
+For older records that do not yet have a follow-up date, JobTrackr keeps a compatibility rule: a sent application older than seven days is flagged as needing a follow-up plan.
 
-## Application management
-
-The Applications view is the single workspace for application operations:
-
-- add a new application
-- filter and search
-- sort using table headers
-- inspect application details
-- edit an application
-- delete an application
-- manage associated interviews
-
-The UI distinguishes between an empty tracker and a filter returning no results, so each state presents the appropriate action.
+Derived statistics and action suggestions are recalculated from application state instead of being persisted separately, avoiding synchronization problems.
 
 ## Run locally
 
@@ -140,33 +135,29 @@ GitHub
         └── Netlify production deployment
 ```
 
-This keeps production deployment separate from feature validation: changes can be checked through a Netlify preview before being merged.
-
 ## Engineering decisions
 
 ### Why local storage?
 
-The current version is intentionally frontend-only. This keeps deployment simple while demonstrating Angular component design, reactive state, persistence and data visualization.
+The current version remains intentionally frontend-only. It demonstrates application modeling, reactive state, persistence, migration of stored data and data visualization while keeping deployment lightweight.
 
 ### Why a dedicated storage service?
 
-Components do not manipulate browser storage directly. Persistence and application state are centralized behind `StorageService`, making a future replacement with an HTTP repository considerably easier.
+Components never manipulate browser storage directly. Persistence, hydration, migration, statistics and follow-up derivation are centralized behind `StorageService`, making an eventual HTTP-backed repository easier to introduce.
 
-### Why derived dashboard statistics?
+### Why separate Dashboard and Applications?
 
-Statistics and suggestions are calculated from the application state rather than persisted separately. This avoids synchronization problems between stored applications and derived analytics.
+The Dashboard answers **“what should I do next?”**. The Applications page answers **“what is the complete state of each opportunity?”**. This avoids duplicating the same workflow across multiple pages.
 
 ## Current limitations
 
 - Data is limited to the current browser/device
 - No authentication or user accounts
 - No server-side persistence
-- Browser notifications are limited by browser lifecycle and permissions
+- Browser reminders depend on browser lifecycle and permissions
 - No automated unit or end-to-end test suite yet
 
-## Roadmap
-
-A natural backend evolution would turn the project into a full-stack application:
+## Full-stack roadmap
 
 ```text
 Angular
@@ -180,16 +171,15 @@ Spring Boot
    └── scheduled/event-driven reminders
 ```
 
-Potential additions:
+Next engineering milestones:
 
-1. Spring Boot REST API
-2. PostgreSQL persistence
-3. Authentication with Spring Security and OAuth2/OIDC
-4. Docker Compose development environment
-5. Unit and integration tests with Testcontainers
-6. OpenAPI API documentation
-7. Import/export of application data
-8. Cloud deployment and observability
-9. Optional Kafka-based notification/event workflow
+1. Spring Boot REST API and PostgreSQL persistence
+2. Authentication with Spring Security and OAuth2/OIDC
+3. Docker Compose local environment
+4. Unit/integration testing with Testcontainers
+5. OpenAPI documentation
+6. Import/export and backup of application data
+7. Cloud deployment and observability
+8. Optional Kafka event flow for notifications and follow-up events
 
-The frontend is structured so the browser persistence layer can eventually be replaced by an API-backed repository without redesigning the entire UI.
+The frontend is structured so browser persistence can later be replaced by an API-backed repository without redesigning the product model.
