@@ -47,11 +47,11 @@ The product has two deliberately distinct areas:
 
 ## Tech stack
 
-- Angular 19
-- TypeScript
-- Angular Material
+- Angular 21
+- TypeScript 5.9
+- Angular Material / CDK 21
 - RxJS
-- Chart.js / ng2-charts
+- Chart.js / ng2-charts 10
 - Browser Local Storage
 - GitHub Actions
 - Netlify
@@ -120,15 +120,35 @@ Then open `http://localhost:4200`.
 npm run build -- --configuration production
 ```
 
+## Dependency security
+
+The frontend was migrated from Angular 19 to Angular 21 using Angular's official sequential migrations rather than forcing npm to accept breaking dependency changes.
+
+The remediation deliberately avoids `npm audit fix --force` and `--legacy-peer-deps`. After the migration and compatible lockfile fixes:
+
+- `npm audit --omit=dev` reports **0 production dependency vulnerabilities**.
+- The full development/build dependency audit has **6 remaining findings: 3 high and 3 moderate, with 0 critical**.
+- Those remaining findings are isolated to the Angular development/build toolchain and currently require a breaking Angular 22 build-tool migration, so that upgrade is intentionally kept separate from this remediation.
+
+CI enforces the production boundary on every pull request and push to `master`:
+
+```bash
+npm ci
+npm audit --omit=dev
+npm run build -- --configuration production
+```
+
 ## CI/CD
 
-Pull requests and pushes to the default branch are validated by GitHub Actions with a clean install and production Angular build.
+Pull requests and pushes to the default branch are validated by GitHub Actions with a clean install, a production-dependency security audit and a production Angular build.
 
 ```text
 GitHub
   │
   ├── Pull Request
-  │     ├── GitHub Actions production build
+  │     ├── npm ci
+  │     ├── production dependency audit
+  │     ├── Angular production build
   │     └── Netlify Deploy Preview
   │
   └── master
@@ -156,6 +176,7 @@ The Dashboard answers **“what should I do next?”**. The Applications page an
 - No server-side persistence
 - Browser reminders depend on browser lifecycle and permissions
 - No automated unit or end-to-end test suite yet
+- Development/build tooling still has six npm audit findings that require a separate breaking toolchain migration
 
 ## Full-stack roadmap
 
