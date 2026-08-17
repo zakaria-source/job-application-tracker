@@ -1,9 +1,30 @@
-.data-actions {
+.workspace-toolbar {
   display: flex;
-  justify-content: flex-end;
-  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   margin: 16px 0 4px;
   flex-wrap: wrap;
+}
+
+.view-switcher,
+.data-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.view-switcher button {
+  min-width: 104px;
+  color: var(--jt-text-muted);
+  background: #fff;
+}
+
+.view-switcher button.active {
+  border-color: #c7d2fe !important;
+  color: var(--jt-primary) !important;
+  background: var(--jt-primary-soft) !important;
 }
 
 .no-data {
@@ -35,11 +56,17 @@
   margin-top: 20px;
 }
 
-@media (max-width: 600px) {
-  .data-actions {
-    justify-content: stretch;
+@media (max-width: 700px) {
+  .workspace-toolbar {
+    align-items: stretch;
   }
 
+  .view-switcher,
+  .data-actions {
+    width: 100%;
+  }
+
+  .view-switcher button,
   .data-actions button {
     flex: 1;
   }
