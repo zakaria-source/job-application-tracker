@@ -3,7 +3,7 @@ import {CommonModule} from '@angular/common';
 import {MatButtonModule} from '@angular/material/button';
 import {MatCardModule} from '@angular/material/card';
 import {MatIconModule} from '@angular/material/icon';
-import {NgChartsModule} from 'ng2-charts';
+import {BaseChartDirective} from 'ng2-charts';
 import {ChartConfiguration, ChartData} from 'chart.js';
 import {combineLatest, timer} from 'rxjs';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
@@ -22,7 +22,7 @@ interface UpcomingInterview {
 @Component({
     selector: 'app-dashboard',
     standalone: true,
-    imports: [CommonModule, MatButtonModule, MatCardModule, MatIconModule, NgChartsModule],
+    imports: [CommonModule, MatButtonModule, MatCardModule, MatIconModule, BaseChartDirective],
     template: `
     <div class="dashboard-container">
       <section class="kpi-grid">
@@ -33,7 +33,7 @@ interface UpcomingInterview {
             <span>Candidatures suivies</span>
           </div>
         </mat-card>
-
+    
         <mat-card class="kpi-card">
           <mat-icon>reply_all</mat-icon>
           <div>
@@ -41,7 +41,7 @@ interface UpcomingInterview {
             <span>Taux de réponse</span>
           </div>
         </mat-card>
-
+    
         <mat-card class="kpi-card" [class.attention]="followUpActions.length > 0">
           <mat-icon>notification_important</mat-icon>
           <div>
@@ -49,7 +49,7 @@ interface UpcomingInterview {
             <span>Relances à traiter</span>
           </div>
         </mat-card>
-
+    
         <mat-card class="kpi-card" [class.highlight]="upcomingInterviews.length > 0">
           <mat-icon>event</mat-icon>
           <div>
@@ -58,7 +58,7 @@ interface UpcomingInterview {
           </div>
         </mat-card>
       </section>
-
+    
       <section class="dashboard-grid">
         <mat-card class="panel action-panel">
           <mat-card-header>
@@ -66,82 +66,102 @@ interface UpcomingInterview {
             <mat-card-subtitle>Relances en retard, à faire aujourd'hui ou candidatures sans suivi.</mat-card-subtitle>
           </mat-card-header>
           <mat-card-content>
-            <div *ngIf="followUpActions.length === 0" class="empty-state small">
-              <mat-icon>task_alt</mat-icon>
-              <p>Aucune relance urgente.</p>
-            </div>
-
-            <div *ngFor="let action of followUpActions" class="action-item">
-              <mat-icon>schedule</mat-icon>
-              <div>
-                <strong>{{ getApplicationLabel(action.relatedApplicationId) }}</strong>
-                <p>{{ action.message }}</p>
+            @if (followUpActions.length === 0) {
+              <div class="empty-state small">
+                <mat-icon>task_alt</mat-icon>
+                <p>Aucune relance urgente.</p>
               </div>
-            </div>
+            }
+    
+            @for (action of followUpActions; track action) {
+              <div class="action-item">
+                <mat-icon>schedule</mat-icon>
+                <div>
+                  <strong>{{ getApplicationLabel(action.relatedApplicationId) }}</strong>
+                  <p>{{ action.message }}</p>
+                </div>
+              </div>
+            }
           </mat-card-content>
         </mat-card>
-
+    
         <mat-card class="panel priority-panel">
           <mat-card-header>
             <mat-card-title>Pipeline haute priorité</mat-card-title>
             <mat-card-subtitle>Les opportunités actives à ne pas laisser refroidir.</mat-card-subtitle>
           </mat-card-header>
           <mat-card-content>
-            <div *ngIf="highPriorityApplications.length === 0" class="empty-state small">
-              <mat-icon>flag</mat-icon>
-              <p>Aucune candidature active en priorité haute.</p>
-            </div>
-
-            <div *ngFor="let application of highPriorityApplications" class="priority-item">
-              <div class="priority-main">
-                <strong>{{ application.company }}</strong>
-                <span>{{ application.position }}</span>
+            @if (highPriorityApplications.length === 0) {
+              <div class="empty-state small">
+                <mat-icon>flag</mat-icon>
+                <p>Aucune candidature active en priorité haute.</p>
               </div>
-              <div class="priority-meta">
-                <span>{{ application.stage }}</span>
-                <span *ngIf="application.followUpDate">Relance {{ application.followUpDate | date:'dd/MM' }}</span>
-                <span *ngIf="application.salaryTarget">{{ formatTargetSalary(application) }}</span>
+            }
+    
+            @for (application of highPriorityApplications; track application) {
+              <div class="priority-item">
+                <div class="priority-main">
+                  <strong>{{ application.company }}</strong>
+                  <span>{{ application.position }}</span>
+                </div>
+                <div class="priority-meta">
+                  <span>{{ application.stage }}</span>
+                  @if (application.followUpDate) {
+                    <span>Relance {{ application.followUpDate | date:'dd/MM' }}</span>
+                  }
+                  @if (application.salaryTarget) {
+                    <span>{{ formatTargetSalary(application) }}</span>
+                  }
+                </div>
+                @if (application.offerUrl) {
+                  <a
+                    mat-icon-button
+                    [href]="application.offerUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Ouvrir l'offre">
+                    <mat-icon>open_in_new</mat-icon>
+                  </a>
+                }
               </div>
-              <a *ngIf="application.offerUrl"
-                 mat-icon-button
-                 [href]="application.offerUrl"
-                 target="_blank"
-                 rel="noopener noreferrer"
-                 aria-label="Ouvrir l'offre">
-                <mat-icon>open_in_new</mat-icon>
-              </a>
-            </div>
+            }
           </mat-card-content>
         </mat-card>
       </section>
-
+    
       <mat-card class="panel interviews-card">
         <mat-card-header>
           <mat-card-title>Agenda des entretiens</mat-card-title>
           <mat-card-subtitle>Les rendez-vous prévus dans les 14 prochains jours.</mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
-          <div *ngIf="upcomingInterviews.length === 0" class="empty-state interview-empty">
-            <mat-icon>event_available</mat-icon>
-            <p>Aucun entretien prévu.</p>
-          </div>
-
-          <div *ngIf="upcomingInterviews.length > 0" class="interviews-list">
-            <div *ngFor="let interview of upcomingInterviews" class="interview-item">
-              <div class="interview-date">
-                <div class="date-day">{{ interview.date | date:'dd' }}</div>
-                <div class="date-month">{{ interview.date | date:'MMM' }}</div>
-              </div>
-              <div class="interview-details">
-                <strong>{{ interview.company }}</strong>
-                <span>{{ interview.position }}</span>
-                <small><mat-icon>schedule</mat-icon>{{ interview.date | date:'HH:mm' }} · {{ interview.type }}</small>
-              </div>
+          @if (upcomingInterviews.length === 0) {
+            <div class="empty-state interview-empty">
+              <mat-icon>event_available</mat-icon>
+              <p>Aucun entretien prévu.</p>
             </div>
-          </div>
+          }
+    
+          @if (upcomingInterviews.length > 0) {
+            <div class="interviews-list">
+              @for (interview of upcomingInterviews; track interview) {
+                <div class="interview-item">
+                  <div class="interview-date">
+                    <div class="date-day">{{ interview.date | date:'dd' }}</div>
+                    <div class="date-month">{{ interview.date | date:'MMM' }}</div>
+                  </div>
+                  <div class="interview-details">
+                    <strong>{{ interview.company }}</strong>
+                    <span>{{ interview.position }}</span>
+                    <small><mat-icon>schedule</mat-icon>{{ interview.date | date:'HH:mm' }} · {{ interview.type }}</small>
+                  </div>
+                </div>
+              }
+            </div>
+          }
         </mat-card-content>
       </mat-card>
-
+    
       <section class="dashboard-grid analytics-grid">
         <mat-card class="panel">
           <mat-card-header>
@@ -154,7 +174,7 @@ interface UpcomingInterview {
             </div>
           </mat-card-content>
         </mat-card>
-
+    
         <mat-card class="panel">
           <mat-card-header>
             <mat-card-title>Rythme de candidatures</mat-card-title>
@@ -168,7 +188,7 @@ interface UpcomingInterview {
         </mat-card>
       </section>
     </div>
-  `,
+    `,
     styles: [`
     .dashboard-container {
       display: flex;

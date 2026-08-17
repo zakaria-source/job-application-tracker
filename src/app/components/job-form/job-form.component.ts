@@ -1,5 +1,5 @@
 import {Component, EventEmitter, Input, OnInit, Output} from '@angular/core';
-import {CommonModule} from '@angular/common';
+
 import {FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
 import {MatCardModule} from '@angular/material/card';
@@ -18,19 +18,18 @@ import {NotificationService} from '../../services/notification.service';
     selector: 'app-job-form',
     standalone: true,
     imports: [
-        CommonModule,
-        ReactiveFormsModule,
-        MatButtonModule,
-        MatCardModule,
-        MatCheckboxModule,
-        MatDatepickerModule,
-        MatDividerModule,
-        MatFormFieldModule,
-        MatIconModule,
-        MatInputModule,
-        MatNativeDateModule,
-        MatSelectModule
-    ],
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatCardModule,
+    MatCheckboxModule,
+    MatDatepickerModule,
+    MatDividerModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatNativeDateModule,
+    MatSelectModule
+],
     template: `
     <mat-card>
       <mat-card-header>
@@ -40,28 +39,34 @@ import {NotificationService} from '../../services/notification.service';
       <mat-card-content>
         <form [formGroup]="jobForm" (ngSubmit)="onSubmit()">
           <h3>Poste et offre</h3>
-
+    
           <div class="form-grid two-columns">
             <mat-form-field>
               <mat-label>Entreprise</mat-label>
               <input matInput formControlName="company" required>
-              <mat-error *ngIf="jobForm.get('company')?.hasError('required')">L'entreprise est requise</mat-error>
+              @if (jobForm.get('company')?.hasError('required')) {
+                <mat-error>L'entreprise est requise</mat-error>
+              }
             </mat-form-field>
-
+    
             <mat-form-field>
               <mat-label>Poste</mat-label>
               <input matInput formControlName="position" required>
-              <mat-error *ngIf="jobForm.get('position')?.hasError('required')">Le poste est requis</mat-error>
+              @if (jobForm.get('position')?.hasError('required')) {
+                <mat-error>Le poste est requis</mat-error>
+              }
             </mat-form-field>
           </div>
-
+    
           <mat-form-field class="full-width">
             <mat-label>Lien de l'offre</mat-label>
             <input matInput formControlName="offerUrl" type="url" placeholder="https://...">
             <mat-icon matSuffix>link</mat-icon>
-            <mat-error *ngIf="jobForm.get('offerUrl')?.hasError('pattern')">Utilisez une URL commençant par http:// ou https://</mat-error>
+            @if (jobForm.get('offerUrl')?.hasError('pattern')) {
+              <mat-error>Utilisez une URL commençant par http:// ou https://</mat-error>
+            }
           </mat-form-field>
-
+    
           <div class="form-grid three-columns">
             <mat-form-field>
               <mat-label>Type de contrat</mat-label>
@@ -74,13 +79,15 @@ import {NotificationService} from '../../services/notification.service';
                 <mat-option value="Autre">Autre</mat-option>
               </mat-select>
             </mat-form-field>
-
+    
             <mat-form-field>
               <mat-label>Salaire / TJM cible</mat-label>
               <input matInput formControlName="salaryTarget" type="number" min="0">
-              <mat-error *ngIf="jobForm.get('salaryTarget')?.hasError('min')">La valeur doit être positive</mat-error>
+              @if (jobForm.get('salaryTarget')?.hasError('min')) {
+                <mat-error>La valeur doit être positive</mat-error>
+              }
             </mat-form-field>
-
+    
             <mat-form-field>
               <mat-label>Période</mat-label>
               <mat-select formControlName="salaryPeriod">
@@ -89,10 +96,10 @@ import {NotificationService} from '../../services/notification.service';
               </mat-select>
             </mat-form-field>
           </div>
-
+    
           <mat-divider></mat-divider>
           <h3>Suivi de candidature</h3>
-
+    
           <div class="form-grid three-columns">
             <mat-form-field>
               <mat-label>Date de candidature</mat-label>
@@ -100,7 +107,7 @@ import {NotificationService} from '../../services/notification.service';
               <mat-datepicker-toggle matIconSuffix [for]="applicationPicker"></mat-datepicker-toggle>
               <mat-datepicker #applicationPicker></mat-datepicker>
             </mat-form-field>
-
+    
             <mat-form-field>
               <mat-label>Statut</mat-label>
               <mat-select formControlName="status" required>
@@ -110,7 +117,7 @@ import {NotificationService} from '../../services/notification.service';
                 <mat-option value="Refusé">Refusé</mat-option>
               </mat-select>
             </mat-form-field>
-
+    
             <mat-form-field>
               <mat-label>Priorité</mat-label>
               <mat-select formControlName="priority">
@@ -120,7 +127,7 @@ import {NotificationService} from '../../services/notification.service';
               </mat-select>
             </mat-form-field>
           </div>
-
+    
           <div class="form-grid two-columns">
             <mat-form-field>
               <mat-label>Étape de recrutement</mat-label>
@@ -134,7 +141,7 @@ import {NotificationService} from '../../services/notification.service';
                 <mat-option value="Clôturé">Clôturé</mat-option>
               </mat-select>
             </mat-form-field>
-
+    
             <mat-form-field>
               <mat-label>Prochaine relance</mat-label>
               <input matInput [matDatepicker]="followUpPicker" formControlName="followUpDate">
@@ -143,33 +150,35 @@ import {NotificationService} from '../../services/notification.service';
               <mat-hint>Laissez vide si aucune relance n'est prévue.</mat-hint>
             </mat-form-field>
           </div>
-
+    
           <mat-divider></mat-divider>
           <h3>Recruteur / contact</h3>
-
+    
           <div class="form-grid three-columns">
             <mat-form-field>
               <mat-label>Nom du recruteur</mat-label>
               <input matInput formControlName="recruiterName">
             </mat-form-field>
-
+    
             <mat-form-field>
               <mat-label>Email</mat-label>
               <input matInput formControlName="recruiterEmail" type="email">
-              <mat-error *ngIf="jobForm.get('recruiterEmail')?.hasError('email')">Veuillez entrer un email valide</mat-error>
+              @if (jobForm.get('recruiterEmail')?.hasError('email')) {
+                <mat-error>Veuillez entrer un email valide</mat-error>
+              }
             </mat-form-field>
-
+    
             <mat-form-field>
               <mat-label>Téléphone</mat-label>
               <input matInput formControlName="recruiterPhone">
             </mat-form-field>
           </div>
-
+    
           <mat-form-field class="full-width">
             <mat-label>Notes</mat-label>
             <textarea matInput formControlName="notes" rows="4" placeholder="Contexte, process, éléments à préparer, feedback..."></textarea>
           </mat-form-field>
-
+    
           <mat-divider></mat-divider>
           <div class="section-heading">
             <div>
@@ -180,41 +189,40 @@ import {NotificationService} from '../../services/notification.service';
               <mat-icon>add</mat-icon> Ajouter
             </button>
           </div>
-
+    
           <div formArrayName="interviews">
-            <div *ngFor="let interview of interviews.controls; let i = index" [formGroupName]="i" class="interview-item">
-              <div class="form-grid two-columns">
-                <mat-form-field>
-                  <mat-label>Date de l'entretien</mat-label>
-                  <input matInput [matDatepicker]="interviewPicker" formControlName="date" required>
-                  <mat-datepicker-toggle matIconSuffix [for]="interviewPicker"></mat-datepicker-toggle>
-                  <mat-datepicker #interviewPicker></mat-datepicker>
+            @for (interview of interviews.controls; track interview; let i = $index) {
+              <div [formGroupName]="i" class="interview-item">
+                <div class="form-grid two-columns">
+                  <mat-form-field>
+                    <mat-label>Date de l'entretien</mat-label>
+                    <input matInput [matDatepicker]="interviewPicker" formControlName="date" required>
+                    <mat-datepicker-toggle matIconSuffix [for]="interviewPicker"></mat-datepicker-toggle>
+                    <mat-datepicker #interviewPicker></mat-datepicker>
+                  </mat-form-field>
+                  <mat-form-field>
+                    <mat-label>Type</mat-label>
+                    <mat-select formControlName="type" required>
+                      <mat-option value="Téléphone">Téléphone</mat-option>
+                      <mat-option value="Visioconférence">Visioconférence</mat-option>
+                      <mat-option value="En personne">En personne</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                </div>
+                <mat-form-field class="full-width">
+                  <mat-label>Notes de l'entretien</mat-label>
+                  <textarea matInput formControlName="notes" rows="2"></textarea>
                 </mat-form-field>
-
-                <mat-form-field>
-                  <mat-label>Type</mat-label>
-                  <mat-select formControlName="type" required>
-                    <mat-option value="Téléphone">Téléphone</mat-option>
-                    <mat-option value="Visioconférence">Visioconférence</mat-option>
-                    <mat-option value="En personne">En personne</mat-option>
-                  </mat-select>
-                </mat-form-field>
+                <div class="interview-actions">
+                  <mat-checkbox formControlName="reminderSet">Rappel 1 h avant</mat-checkbox>
+                  <button type="button" mat-icon-button color="warn" (click)="removeInterview(i)" aria-label="Supprimer l'entretien">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </div>
               </div>
-
-              <mat-form-field class="full-width">
-                <mat-label>Notes de l'entretien</mat-label>
-                <textarea matInput formControlName="notes" rows="2"></textarea>
-              </mat-form-field>
-
-              <div class="interview-actions">
-                <mat-checkbox formControlName="reminderSet">Rappel 1 h avant</mat-checkbox>
-                <button type="button" mat-icon-button color="warn" (click)="removeInterview(i)" aria-label="Supprimer l'entretien">
-                  <mat-icon>delete</mat-icon>
-                </button>
-              </div>
-            </div>
+            }
           </div>
-
+    
           <div class="form-actions">
             <button type="button" mat-stroked-button (click)="onCancel()">Annuler</button>
             <button type="submit" mat-raised-button color="primary" [disabled]="jobForm.invalid">
@@ -224,7 +232,7 @@ import {NotificationService} from '../../services/notification.service';
         </form>
       </mat-card-content>
     </mat-card>
-  `,
+    `,
     styles: [`
     h3 {
       margin: 24px 0 14px;
