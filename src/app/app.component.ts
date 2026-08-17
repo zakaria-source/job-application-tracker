@@ -9,6 +9,8 @@ import {MatTabsModule} from '@angular/material/tabs';
 import {JobFormComponent} from './components/job-form/job-form.component';
 import {JobListComponent} from './components/job-list/job-list.component';
 import {DashboardComponent} from './components/dashboard/dashboard.component';
+import {JobApplication} from './models/job-application.model';
+import {StorageService} from './services/storage.service';
 
 @Component({
     selector: 'app-root',
@@ -28,15 +30,13 @@ import {DashboardComponent} from './components/dashboard/dashboard.component';
     template: `
     <div class="app-container">
       <mat-toolbar color="primary" class="app-toolbar">
-        <span>Suivi des Candidatures</span>
+        <span>JobTrackr</span>
         <span class="toolbar-spacer"></span>
-        <button mat-icon-button aria-label="Aide">
-          <mat-icon>help_outline</mat-icon>
-        </button>
+        <span class="toolbar-subtitle">Suivi de candidatures</span>
       </mat-toolbar>
 
       <div class="app-content">
-        <mat-tab-group animationDuration="0ms">
+        <mat-tab-group [(selectedIndex)]="activeTabIndex" animationDuration="0ms">
           <mat-tab label="Tableau de bord">
             <div class="tab-content">
               <app-dashboard></app-dashboard>
@@ -60,7 +60,7 @@ import {DashboardComponent} from './components/dashboard/dashboard.component';
     .app-container {
       display: flex;
       flex-direction: column;
-      height: 100vh;
+      min-height: 100vh;
     }
     .app-toolbar {
       position: sticky;
@@ -70,25 +70,41 @@ import {DashboardComponent} from './components/dashboard/dashboard.component';
     .toolbar-spacer {
       flex: 1 1 auto;
     }
+    .toolbar-subtitle {
+      font-size: 14px;
+      font-weight: 400;
+      opacity: 0.85;
+    }
     .app-content {
       flex: 1;
-      overflow: auto;
     }
     .tab-content {
       padding: 20px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    @media (max-width: 600px) {
+      .toolbar-subtitle {
+        display: none;
+      }
+      .tab-content {
+        padding: 12px;
+      }
     }
   `]
 })
 export class App {
     activeTabIndex = 0;
 
-    onFormSubmit(event: any): void {
-        // Redirect to the job list tab after form submission
+    constructor(private readonly storageService: StorageService) {
+    }
+
+    onFormSubmit(application: JobApplication): void {
+        this.storageService.addApplication(application);
         this.activeTabIndex = 1;
     }
 
     onCancel(): void {
-        // Redirect to the job list tab after cancellation
         this.activeTabIndex = 1;
     }
 }
