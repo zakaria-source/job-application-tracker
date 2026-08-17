@@ -1,4 +1,36 @@
 <div class="dashboard-container">
+  <mat-card class="profile-card">
+    <mat-card-content>
+      <div class="profile-main">
+        <div>
+          <span class="profile-eyebrow">PROFIL CIBLE</span>
+          <h2>{{ profile.name }}</h2>
+          <strong>{{ profile.title }}</strong>
+          <p>{{ profile.summary }}</p>
+        </div>
+        <div class="profile-facts">
+          <span><mat-icon>schedule</mat-icon>{{ profile.experienceLabel }}</span>
+          <span><mat-icon>location_on</mat-icon>{{ profile.mobility }}</span>
+          <span><mat-icon>school</mat-icon>{{ profile.education }}</span>
+          <span><mat-icon>payments</mat-icon>{{ profile.targetCompensation }}</span>
+        </div>
+      </div>
+
+      <div class="profile-tags" aria-label="Compétences principales">
+        @for (skill of profile.coreSkills; track skill) {
+          <span>{{ skill }}</span>
+        }
+      </div>
+
+      <div class="profile-certifications">
+        <strong>Certifications</strong>
+        @for (certification of profile.certifications; track certification) {
+          <span>{{ certification }}</span>
+        }
+      </div>
+    </mat-card-content>
+  </mat-card>
+
   <section class="kpi-grid">
     <mat-card class="kpi-card">
       <mat-icon>work</mat-icon>
