@@ -1,4 +1,4 @@
-name: Dependency security remediation
+name: Angular security migration rehearsal
 
 on:
   push:
@@ -9,9 +9,9 @@ permissions:
   contents: read
 
 jobs:
-  audit:
+  migrate:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout repository
@@ -26,29 +26,32 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
-      - name: Capture audit before remediation
-        run: npm audit --json > audit-before.json || true
+      - name: Upgrade Angular 19 to Angular 20
+        run: npx ng update @angular/core@20 @angular/cli@20 @angular/material@20 --allow-dirty
 
-      - name: Apply non-breaking npm audit fixes to lockfile
-        run: npm audit fix --package-lock-only || true
+      - name: Upgrade Angular 20 to Angular 21
+        run: npx ng update @angular/core@21 @angular/cli@21 @angular/material@21 --allow-dirty
 
-      - name: Reinstall remediated dependency tree
+      - name: Refresh chart dependencies
+        run: npm install ng2-charts@latest chart.js@latest
+
+      - name: Reinstall from migrated lockfile
         run: npm ci
-
-      - name: Capture audit after remediation
-        run: npm audit --json > audit-after.json || true
-
-      - name: Capture production-only audit
-        run: npm audit --omit=dev --json > audit-production.json || true
 
       - name: Validate production build
         run: npm run build -- --configuration production
 
-      - name: Summarize vulnerability counts
+      - name: Capture full audit
+        run: npm audit --json > audit-full.json || true
+
+      - name: Capture production audit
+        run: npm audit --omit=dev --json > audit-production.json || true
+
+      - name: Summarize audit and migration diff
         run: |
           node - <<'NODE'
           const fs = require('fs');
-          for (const file of ['audit-before.json', 'audit-after.json', 'audit-production.json']) {
+          for (const file of ['audit-full.json', 'audit-production.json']) {
             const audit = JSON.parse(fs.readFileSync(file, 'utf8'));
             console.log(`=== ${file} ===`);
             console.log(JSON.stringify(audit.metadata?.vulnerabilities ?? {}, null, 2));
@@ -65,14 +68,18 @@ jobs:
             }
           }
           NODE
+          git status --short
+          git diff --stat
 
-      - name: Upload remediation artifacts
+      - name: Upload migrated workspace files
         uses: actions/upload-artifact@v4
         with:
-          name: dependency-security-remediation
+          name: angular-security-migration
           path: |
+            package.json
             package-lock.json
-            audit-before.json
-            audit-after.json
+            angular.json
+            src
+            audit-full.json
             audit-production.json
           retention-days: 1
