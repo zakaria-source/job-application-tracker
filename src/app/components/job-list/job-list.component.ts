@@ -1,15 +1,15 @@
 import {Component, DestroyRef, OnInit, inject} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
-import {MatCardModule} from '@angular/material/card';
-import {MatTableModule} from '@angular/material/table';
-import {MatSortModule, Sort} from '@angular/material/sort';
-import {MatPaginatorModule, PageEvent} from '@angular/material/paginator';
 import {MatButtonModule} from '@angular/material/button';
+import {MatCardModule} from '@angular/material/card';
+import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatIconModule} from '@angular/material/icon';
 import {MatInputModule} from '@angular/material/input';
-import {MatFormFieldModule} from '@angular/material/form-field';
+import {MatPaginatorModule, PageEvent} from '@angular/material/paginator';
 import {MatSelectModule} from '@angular/material/select';
+import {MatSortModule, Sort} from '@angular/material/sort';
+import {MatTableModule} from '@angular/material/table';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {JobApplication} from '../../models/job-application.model';
@@ -22,15 +22,15 @@ import {JobFormComponent} from '../job-form/job-form.component';
     imports: [
         CommonModule,
         FormsModule,
-        MatCardModule,
-        MatTableModule,
-        MatSortModule,
-        MatPaginatorModule,
         MatButtonModule,
+        MatCardModule,
+        MatFormFieldModule,
         MatIconModule,
         MatInputModule,
-        MatFormFieldModule,
+        MatPaginatorModule,
         MatSelectModule,
+        MatSortModule,
+        MatTableModule,
         MatTooltipModule,
         JobFormComponent
     ],
@@ -38,13 +38,13 @@ import {JobFormComponent} from '../job-form/job-form.component';
     <mat-card>
       <mat-card-header>
         <mat-card-title>Mes candidatures</mat-card-title>
-        <mat-card-subtitle>Recherchez, filtrez et cliquez sur une colonne pour trier</mat-card-subtitle>
+        <mat-card-subtitle>Votre pipeline : priorités, relances, étapes et contacts.</mat-card-subtitle>
       </mat-card-header>
       <mat-card-content>
         <div class="filters" *ngIf="applications.length > 0">
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" class="search-field">
             <mat-label>Rechercher</mat-label>
-            <input matInput [(ngModel)]="searchTerm" (input)="applyFilters()">
+            <input matInput [(ngModel)]="searchTerm" (input)="applyFilters()" placeholder="Entreprise, poste, recruteur...">
             <button *ngIf="searchTerm" matSuffix mat-icon-button aria-label="Effacer la recherche" (click)="searchTerm=''; applyFilters()">
               <mat-icon>close</mat-icon>
             </button>
@@ -53,11 +53,34 @@ import {JobFormComponent} from '../job-form/job-form.component';
           <mat-form-field appearance="outline">
             <mat-label>Statut</mat-label>
             <mat-select [(ngModel)]="statusFilter" (selectionChange)="applyFilters()">
-              <mat-option value="">Tous les statuts</mat-option>
+              <mat-option value="">Tous</mat-option>
               <mat-option value="Envoyé">Envoyé</mat-option>
               <mat-option value="Entretien">Entretien</mat-option>
               <mat-option value="Accepté">Accepté</mat-option>
               <mat-option value="Refusé">Refusé</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Contrat</mat-label>
+            <mat-select [(ngModel)]="contractFilter" (selectionChange)="applyFilters()">
+              <mat-option value="">Tous</mat-option>
+              <mat-option value="CDI">CDI</mat-option>
+              <mat-option value="CDD">CDD</mat-option>
+              <mat-option value="Freelance">Freelance</mat-option>
+              <mat-option value="Stage">Stage</mat-option>
+              <mat-option value="Alternance">Alternance</mat-option>
+              <mat-option value="Autre">Autre</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Priorité</mat-label>
+            <mat-select [(ngModel)]="priorityFilter" (selectionChange)="applyFilters()">
+              <mat-option value="">Toutes</mat-option>
+              <mat-option value="Haute">Haute</mat-option>
+              <mat-option value="Moyenne">Moyenne</mat-option>
+              <mat-option value="Basse">Basse</mat-option>
             </mat-select>
           </mat-form-field>
         </div>
@@ -65,7 +88,7 @@ import {JobFormComponent} from '../job-form/job-form.component';
         <div *ngIf="applications.length === 0" class="no-data">
           <mat-icon>work_outline</mat-icon>
           <h3>Commencez votre suivi</h3>
-          <p>Ajoutez votre première candidature pour alimenter le tableau de bord.</p>
+          <p>Ajoutez votre première candidature pour alimenter votre cockpit.</p>
           <button mat-raised-button color="primary" (click)="showAddForm()">
             <mat-icon>add</mat-icon> Ajouter une candidature
           </button>
@@ -74,10 +97,8 @@ import {JobFormComponent} from '../job-form/job-form.component';
         <div *ngIf="applications.length > 0 && filteredApplications.length === 0" class="no-data">
           <mat-icon>search_off</mat-icon>
           <h3>Aucun résultat</h3>
-          <p>Aucune candidature ne correspond à vos filtres actuels.</p>
-          <button mat-stroked-button (click)="clearFilters()">
-            Réinitialiser les filtres
-          </button>
+          <p>Aucune candidature ne correspond à vos filtres.</p>
+          <button mat-stroked-button (click)="clearFilters()">Réinitialiser les filtres</button>
         </div>
 
         <div *ngIf="filteredApplications.length > 0" class="table-container">
@@ -89,7 +110,12 @@ import {JobFormComponent} from '../job-form/job-form.component';
                  (matSortChange)="sortData($event)">
             <ng-container matColumnDef="company">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Entreprise</th>
-              <td mat-cell *matCellDef="let application">{{ application.company }}</td>
+              <td mat-cell *matCellDef="let application">
+                <div class="company-cell">
+                  <strong>{{ application.company }}</strong>
+                  <span>{{ application.stage }}</span>
+                </div>
+              </td>
             </ng-container>
 
             <ng-container matColumnDef="position">
@@ -97,9 +123,28 @@ import {JobFormComponent} from '../job-form/job-form.component';
               <td mat-cell *matCellDef="let application">{{ application.position }}</td>
             </ng-container>
 
-            <ng-container matColumnDef="applicationDate">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>Date</th>
-              <td mat-cell *matCellDef="let application">{{ application.applicationDate | date:'dd/MM/yyyy' }}</td>
+            <ng-container matColumnDef="contractType">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Contrat</th>
+              <td mat-cell *matCellDef="let application">{{ application.contractType }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="priority">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Priorité</th>
+              <td mat-cell *matCellDef="let application">
+                <span class="priority-badge" [ngClass]="'priority-' + application.priority.toLowerCase()">
+                  {{ application.priority }}
+                </span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="followUpDate">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Relance</th>
+              <td mat-cell *matCellDef="let application">
+                <span *ngIf="application.followUpDate; else noFollowUp" [class.follow-up-due]="isFollowUpDue(application)">
+                  {{ application.followUpDate | date:'dd/MM/yyyy' }}
+                </span>
+                <ng-template #noFollowUp>—</ng-template>
+              </td>
             </ng-container>
 
             <ng-container matColumnDef="status">
@@ -120,6 +165,16 @@ import {JobFormComponent} from '../job-form/job-form.component';
             <ng-container matColumnDef="actions">
               <th mat-header-cell *matHeaderCellDef>Actions</th>
               <td mat-cell *matCellDef="let application">
+                <a *ngIf="application.offerUrl"
+                   mat-icon-button
+                   [href]="application.offerUrl"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   (click)="$event.stopPropagation()"
+                   matTooltip="Ouvrir l'offre"
+                   aria-label="Ouvrir l'offre">
+                  <mat-icon>open_in_new</mat-icon>
+                </a>
                 <button mat-icon-button color="primary"
                         (click)="$event.stopPropagation(); editApplication(application)"
                         matTooltip="Modifier"
@@ -169,17 +224,9 @@ import {JobFormComponent} from '../job-form/job-form.component';
     <div *ngIf="selectedApplication && showDetails" class="details-card">
       <mat-card>
         <mat-card-header>
-          <mat-card-title>{{ selectedApplication.position }} - {{ selectedApplication.company }}</mat-card-title>
+          <mat-card-title>{{ selectedApplication.position }} — {{ selectedApplication.company }}</mat-card-title>
           <mat-card-subtitle>
-            <span class="status-badge"
-                  [ngClass]="{
-                    'status-sent': selectedApplication.status === 'Envoyé',
-                    'status-interview': selectedApplication.status === 'Entretien',
-                    'status-accepted': selectedApplication.status === 'Accepté',
-                    'status-rejected': selectedApplication.status === 'Refusé'
-                  }">
-              {{ selectedApplication.status }}
-            </span>
+            {{ selectedApplication.contractType }} · {{ selectedApplication.stage }} · Priorité {{ selectedApplication.priority.toLowerCase() }}
           </mat-card-subtitle>
           <button mat-icon-button (click)="closeDetails()" class="close-button" aria-label="Fermer les détails">
             <mat-icon>close</mat-icon>
@@ -188,37 +235,58 @@ import {JobFormComponent} from '../job-form/job-form.component';
         <mat-card-content>
           <div class="details-grid">
             <div class="detail-item">
+              <strong>Statut</strong>
+              <span>{{ selectedApplication.status }}</span>
+            </div>
+            <div class="detail-item">
               <strong>Date de candidature</strong>
               <span>{{ selectedApplication.applicationDate | date:'dd/MM/yyyy' }}</span>
             </div>
+            <div class="detail-item" *ngIf="selectedApplication.followUpDate">
+              <strong>Prochaine relance</strong>
+              <span [class.follow-up-due]="isFollowUpDue(selectedApplication)">{{ selectedApplication.followUpDate | date:'dd/MM/yyyy' }}</span>
+            </div>
+            <div class="detail-item" *ngIf="selectedApplication.salaryTarget">
+              <strong>{{ selectedApplication.salaryPeriod === 'Journalier' ? 'TJM cible' : 'Salaire cible' }}</strong>
+              <span>{{ formatTargetSalary(selectedApplication) }}</span>
+            </div>
+            <div class="detail-item" *ngIf="selectedApplication.recruiterName">
+              <strong>Recruteur</strong>
+              <span>{{ selectedApplication.recruiterName }}</span>
+            </div>
+            <div class="detail-item" *ngIf="selectedApplication.recruiterEmail">
+              <strong>Email</strong>
+              <a [href]="'mailto:' + selectedApplication.recruiterEmail">{{ selectedApplication.recruiterEmail }}</a>
+            </div>
+            <div class="detail-item" *ngIf="selectedApplication.recruiterPhone">
+              <strong>Téléphone</strong>
+              <span>{{ selectedApplication.recruiterPhone }}</span>
+            </div>
             <div class="detail-item" *ngIf="selectedApplication.responseDate">
-              <strong>Date de réponse</strong>
+              <strong>Première réponse</strong>
               <span>{{ selectedApplication.responseDate | date:'dd/MM/yyyy' }}</span>
             </div>
-            <div class="detail-item" *ngIf="selectedApplication.contactPerson">
-              <strong>Contact</strong>
-              <span>{{ selectedApplication.contactPerson }}</span>
-            </div>
-            <div class="detail-item" *ngIf="selectedApplication.contactEmail">
-              <strong>Email</strong>
-              <a [href]="'mailto:' + selectedApplication.contactEmail">{{ selectedApplication.contactEmail }}</a>
-            </div>
-            <div class="detail-item" *ngIf="selectedApplication.contactPhone">
-              <strong>Téléphone</strong>
-              <span>{{ selectedApplication.contactPhone }}</span>
-            </div>
           </div>
+
+          <a *ngIf="selectedApplication.offerUrl"
+             mat-stroked-button
+             color="primary"
+             [href]="selectedApplication.offerUrl"
+             target="_blank"
+             rel="noopener noreferrer">
+            <mat-icon>open_in_new</mat-icon> Voir l'offre
+          </a>
 
           <div *ngIf="selectedApplication.notes" class="notes-section">
             <h3>Notes</h3>
             <p>{{ selectedApplication.notes }}</p>
           </div>
 
-          <div *ngIf="selectedApplication.interviews && selectedApplication.interviews.length > 0" class="interviews-section">
+          <div *ngIf="selectedApplication.interviews?.length" class="interviews-section">
             <h3>Entretiens</h3>
             <div *ngFor="let interview of selectedApplication.interviews" class="interview-item">
               <div class="interview-header">
-                <span class="interview-date">{{ interview.date | date:'dd/MM/yyyy HH:mm' }}</span>
+                <span>{{ interview.date | date:'dd/MM/yyyy HH:mm' }}</span>
                 <span class="interview-type">{{ interview.type }}</span>
               </div>
               <p *ngIf="interview.notes">{{ interview.notes }}</p>
@@ -239,8 +307,8 @@ import {JobFormComponent} from '../job-form/job-form.component';
     styles: [`
     .filters {
       display: grid;
-      grid-template-columns: minmax(260px, 2fr) minmax(180px, 1fr);
-      gap: 16px;
+      grid-template-columns: minmax(260px, 2fr) repeat(3, minmax(145px, 1fr));
+      gap: 12px;
       margin: 20px 0 8px;
     }
     .table-container {
@@ -248,12 +316,22 @@ import {JobFormComponent} from '../job-form/job-form.component';
     }
     table {
       width: 100%;
+      min-width: 980px;
     }
     .application-row {
       cursor: pointer;
     }
     .application-row:hover {
       background-color: rgba(0, 0, 0, 0.04);
+    }
+    .company-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .company-cell span {
+      font-size: 12px;
+      color: #757575;
     }
     .no-data {
       display: flex;
@@ -267,7 +345,6 @@ import {JobFormComponent} from '../job-form/job-form.component';
       width: 48px;
       height: 48px;
       font-size: 48px;
-      margin-bottom: 4px;
     }
     .no-data h3 {
       margin: 8px 0 0;
@@ -276,11 +353,29 @@ import {JobFormComponent} from '../job-form/job-form.component';
     .no-data p {
       margin: 8px 0 18px;
     }
-    .status-badge {
+    .status-badge,
+    .priority-badge {
+      display: inline-flex;
       padding: 4px 8px;
-      border-radius: 4px;
+      border-radius: 999px;
       font-size: 12px;
-      font-weight: 500;
+      font-weight: 600;
+    }
+    .priority-haute {
+      background: #ffebee;
+      color: #c62828;
+    }
+    .priority-moyenne {
+      background: #fff8e1;
+      color: #ef6c00;
+    }
+    .priority-basse {
+      background: #f1f8e9;
+      color: #558b2f;
+    }
+    .follow-up-due {
+      color: #d84315;
+      font-weight: 700;
     }
     .secondary-panel,
     .details-card {
@@ -293,7 +388,7 @@ import {JobFormComponent} from '../job-form/job-form.component';
     }
     .details-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
       gap: 16px;
       margin: 20px 0;
     }
@@ -304,12 +399,15 @@ import {JobFormComponent} from '../job-form/job-form.component';
     }
     .notes-section,
     .interviews-section {
-      margin-top: 20px;
+      margin-top: 24px;
+    }
+    .notes-section p {
+      white-space: pre-wrap;
     }
     .interview-item {
       padding: 12px;
       border-left: 3px solid #3f51b5;
-      background-color: rgba(0, 0, 0, 0.02);
+      background: rgba(0, 0, 0, 0.02);
       margin-bottom: 12px;
     }
     .interview-header {
@@ -322,9 +420,20 @@ import {JobFormComponent} from '../job-form/job-form.component';
     .interview-type {
       color: #3f51b5;
     }
-    @media (max-width: 700px) {
+    @media (max-width: 950px) {
+      .filters {
+        grid-template-columns: 1fr 1fr;
+      }
+      .search-field {
+        grid-column: 1 / -1;
+      }
+    }
+    @media (max-width: 600px) {
       .filters {
         grid-template-columns: 1fr;
+      }
+      .search-field {
+        grid-column: auto;
       }
     }
   `]
@@ -336,12 +445,14 @@ export class JobListComponent implements OnInit {
     filteredApplications: JobApplication[] = [];
     paginatedApplications: JobApplication[] = [];
 
-    displayedColumns: string[] = ['company', 'position', 'applicationDate', 'status', 'actions'];
+    displayedColumns: string[] = ['company', 'position', 'contractType', 'priority', 'followUpDate', 'status', 'actions'];
 
     searchTerm = '';
     statusFilter = '';
-    sortField = 'applicationDate';
-    sortDirection: 'asc' | 'desc' = 'desc';
+    contractFilter = '';
+    priorityFilter = '';
+    sortField = 'followUpDate';
+    sortDirection: 'asc' | 'desc' = 'asc';
 
     pageSize = 10;
     currentPage = 0;
@@ -365,18 +476,26 @@ export class JobListComponent implements OnInit {
 
     applyFilters(resetPage = true): void {
         let filtered = [...this.applications];
+        const search = this.searchTerm.trim().toLowerCase();
 
-        if (this.searchTerm.trim()) {
-            const searchLower = this.searchTerm.trim().toLowerCase();
+        if (search) {
             filtered = filtered.filter(app =>
-                app.company.toLowerCase().includes(searchLower) ||
-                app.position.toLowerCase().includes(searchLower) ||
-                app.notes.toLowerCase().includes(searchLower)
+                app.company.toLowerCase().includes(search)
+                || app.position.toLowerCase().includes(search)
+                || app.notes.toLowerCase().includes(search)
+                || app.stage.toLowerCase().includes(search)
+                || (app.recruiterName ?? '').toLowerCase().includes(search)
             );
         }
 
         if (this.statusFilter) {
             filtered = filtered.filter(app => app.status === this.statusFilter);
+        }
+        if (this.contractFilter) {
+            filtered = filtered.filter(app => app.contractType === this.contractFilter);
+        }
+        if (this.priorityFilter) {
+            filtered = filtered.filter(app => app.priority === this.priorityFilter);
         }
 
         if (resetPage) {
@@ -390,26 +509,39 @@ export class JobListComponent implements OnInit {
     clearFilters(): void {
         this.searchTerm = '';
         this.statusFilter = '';
+        this.contractFilter = '';
+        this.priorityFilter = '';
         this.applyFilters();
     }
 
     applySort(): void {
+        const priorityOrder: Record<JobApplication['priority'], number> = {Haute: 3, Moyenne: 2, Basse: 1};
+
         this.filteredApplications = [...this.filteredApplications].sort((a, b) => {
             let comparison = 0;
 
             switch (this.sortField) {
-                case 'applicationDate':
-                    comparison = a.applicationDate.getTime() - b.applicationDate.getTime();
-                    break;
                 case 'company':
                     comparison = a.company.localeCompare(b.company);
                     break;
                 case 'position':
                     comparison = a.position.localeCompare(b.position);
                     break;
+                case 'contractType':
+                    comparison = a.contractType.localeCompare(b.contractType);
+                    break;
+                case 'priority':
+                    comparison = priorityOrder[a.priority] - priorityOrder[b.priority];
+                    break;
+                case 'followUpDate':
+                    comparison = (a.followUpDate?.getTime() ?? Number.MAX_SAFE_INTEGER)
+                        - (b.followUpDate?.getTime() ?? Number.MAX_SAFE_INTEGER);
+                    break;
                 case 'status':
                     comparison = a.status.localeCompare(b.status);
                     break;
+                default:
+                    comparison = a.applicationDate.getTime() - b.applicationDate.getTime();
             }
 
             return this.sortDirection === 'asc' ? comparison : -comparison;
@@ -461,11 +593,13 @@ export class JobListComponent implements OnInit {
     }
 
     deleteApplication(application: JobApplication): void {
-        if (confirm(`Êtes-vous sûr de vouloir supprimer la candidature pour ${application.position} chez ${application.company} ?`)) {
-            this.storageService.deleteApplication(application.id);
-            if (this.showDetails && this.selectedApplication?.id === application.id) {
-                this.closeDetails();
-            }
+        if (!confirm(`Supprimer la candidature ${application.position} chez ${application.company} ?`)) {
+            return;
+        }
+
+        this.storageService.deleteApplication(application.id);
+        if (this.selectedApplication?.id === application.id) {
+            this.closeDetails();
         }
     }
 
@@ -482,5 +616,22 @@ export class JobListComponent implements OnInit {
         this.showForm = false;
         this.editMode = false;
         this.selectedApplication = null;
+    }
+
+    isFollowUpDue(application: JobApplication): boolean {
+        if (!application.followUpDate || application.status === 'Accepté' || application.status === 'Refusé') {
+            return false;
+        }
+        const tomorrow = new Date();
+        tomorrow.setHours(24, 0, 0, 0);
+        return application.followUpDate < tomorrow;
+    }
+
+    formatTargetSalary(application: JobApplication): string {
+        if (!application.salaryTarget) {
+            return '—';
+        }
+        const formatted = new Intl.NumberFormat('fr-FR').format(application.salaryTarget);
+        return application.salaryPeriod === 'Journalier' ? `${formatted} €/j` : `${formatted} € brut/an`;
     }
 }
