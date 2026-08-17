@@ -8,7 +8,7 @@ import {JobApplication, JobStatistics, Suggestion} from '../models/job-applicati
 export class StorageService {
     private readonly STORAGE_KEY = 'job-applications';
     private applications: JobApplication[] = [];
-    private applicationsSubject = new BehaviorSubject<JobApplication[]>([]);
+    private readonly applicationsSubject = new BehaviorSubject<JobApplication[]>([]);
 
     constructor() {
         this.loadFromLocalStorage();
@@ -16,30 +16,55 @@ export class StorageService {
 
     private loadFromLocalStorage(): void {
         const storedData = localStorage.getItem(this.STORAGE_KEY);
-        if (storedData) {
-            try {
-                const parsedData = JSON.parse(storedData);
-                // Convert string dates back to Date objects
-                this.applications = parsedData.map((app: any) => ({
-                    ...app,
-                    applicationDate: new Date(app.applicationDate),
-                    lastUpdated: new Date(app.lastUpdated),
-                    responseDate: app.responseDate ? new Date(app.responseDate) : undefined,
-                    interviews: app.interviews ? app.interviews.map((interview: any) => ({
-                        ...interview,
-                        date: new Date(interview.date)
-                    })) : []
-                }));
-                this.applicationsSubject.next([...this.applications]);
-            } catch (error) {
-                console.error('Error parsing stored applications', error);
-                this.applications = [];
+        if (!storedData) {
+            return;
+        }
+
+        try {
+            const parsedData: unknown = JSON.parse(storedData);
+            if (!Array.isArray(parsedData)) {
+                throw new Error('Stored applications must be an array');
             }
+
+            this.applications = parsedData.map(app => this.hydrateApplication(app));
+            this.publishApplications();
+        } catch (error) {
+            console.error('Unable to restore stored applications', error);
+            this.applications = [];
+            this.publishApplications();
         }
     }
 
+    private hydrateApplication(rawApplication: unknown): JobApplication {
+        const app = rawApplication as JobApplication;
+
+        return {
+            ...app,
+            applicationDate: new Date(app.applicationDate),
+            lastUpdated: new Date(app.lastUpdated),
+            responseDate: app.responseDate ? new Date(app.responseDate) : undefined,
+            interviews: (app.interviews ?? []).map(interview => ({
+                ...interview,
+                date: new Date(interview.date)
+            }))
+        };
+    }
+
     private saveToLocalStorage(): void {
-        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.applications));
+        try {
+            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.applications));
+        } catch (error) {
+            console.error('Unable to persist applications', error);
+        }
+    }
+
+    private publishApplications(): void {
+        this.applicationsSubject.next([...this.applications]);
+    }
+
+    private persistAndPublish(): void {
+        this.saveToLocalStorage();
+        this.publishApplications();
     }
 
     getApplications(): Observable<JobApplication[]> {
@@ -51,28 +76,33 @@ export class StorageService {
     }
 
     addApplication(application: JobApplication): void {
-        this.applications.push(application);
-        this.saveToLocalStorage();
-        this.applicationsSubject.next([...this.applications]);
+        this.applications = [...this.applications, application];
+        this.persistAndPublish();
     }
 
     updateApplication(updatedApplication: JobApplication): void {
-        const index = this.applications.findIndex(app => app.id === updatedApplication.id);
-        if (index !== -1) {
-            this.applications[index] = {...updatedApplication};
-            this.saveToLocalStorage();
-            this.applicationsSubject.next([...this.applications]);
+        const applicationExists = this.applications.some(app => app.id === updatedApplication.id);
+        if (!applicationExists) {
+            return;
         }
+
+        this.applications = this.applications.map(app =>
+            app.id === updatedApplication.id ? {...updatedApplication} : app
+        );
+        this.persistAndPublish();
     }
 
     deleteApplication(id: string): void {
-        this.applications = this.applications.filter(app => app.id !== id);
-        this.saveToLocalStorage();
-        this.applicationsSubject.next([...this.applications]);
+        const nextApplications = this.applications.filter(app => app.id !== id);
+        if (nextApplications.length === this.applications.length) {
+            return;
+        }
+
+        this.applications = nextApplications;
+        this.persistAndPublish();
     }
 
     calculateStatistics(): JobStatistics {
-        const now = new Date();
         const statusCounts = {
             sent: 0,
             interview: 0,
@@ -81,9 +111,8 @@ export class StorageService {
         };
 
         let responsesCount = 0;
-        let totalResponseTime = 0;
+        const responseTimes: number[] = [];
 
-        // Count applications by status
         this.applications.forEach(app => {
             switch (app.status) {
                 case 'Envoyé':
@@ -92,72 +121,53 @@ export class StorageService {
                 case 'Entretien':
                     statusCounts.interview++;
                     responsesCount++;
-                    if (app.responseDate) {
-                        totalResponseTime += (app.responseDate.getTime() - app.applicationDate.getTime()) / (1000 * 60 * 60 * 24);
-                    }
                     break;
                 case 'Accepté':
                     statusCounts.accepted++;
                     responsesCount++;
-                    if (app.responseDate) {
-                        totalResponseTime += (app.responseDate.getTime() - app.applicationDate.getTime()) / (1000 * 60 * 60 * 24);
-                    }
                     break;
                 case 'Refusé':
                     statusCounts.rejected++;
                     responsesCount++;
-                    if (app.responseDate) {
-                        totalResponseTime += (app.responseDate.getTime() - app.applicationDate.getTime()) / (1000 * 60 * 60 * 24);
-                    }
                     break;
+            }
+
+            if (app.status !== 'Envoyé' && app.responseDate) {
+                responseTimes.push(this.daysBetween(app.applicationDate, app.responseDate));
             }
         });
 
-        // Calculate response rate
         const responseRate = this.applications.length > 0
             ? (responsesCount / this.applications.length) * 100
             : 0;
 
-        // Calculate average response time in days
-        const averageResponseTime = responsesCount > 0
-            ? totalResponseTime / responsesCount
+        const averageResponseTime = responseTimes.length > 0
+            ? responseTimes.reduce((sum, responseTime) => sum + responseTime, 0) / responseTimes.length
             : 0;
-
-        // Group applications by week
-        const applicationsByWeek = this.getApplicationsByWeek();
-
-        // Find most responsive companies
-        const mostResponsiveCompanies = this.getMostResponsiveCompanies();
 
         return {
             totalApplications: this.applications.length,
             responseRate,
             averageResponseTime,
             statusCounts,
-            applicationsByWeek,
-            mostResponsiveCompanies
+            applicationsByWeek: this.getApplicationsByWeek(),
+            mostResponsiveCompanies: this.getMostResponsiveCompanies()
         };
     }
 
     private getApplicationsByWeek(): { week: string; count: number }[] {
-        const weeks: { [key: string]: number } = {};
+        const weeks = new Map<string, number>();
 
         this.applications.forEach(app => {
             const date = new Date(app.applicationDate);
-            const year = date.getFullYear();
-            const weekNumber = this.getWeekNumber(date);
-            const weekKey = `${year}-W${weekNumber}`;
-
-            if (!weeks[weekKey]) {
-                weeks[weekKey] = 0;
-            }
-            weeks[weekKey]++;
+            const weekNumber = this.getWeekNumber(date).toString().padStart(2, '0');
+            const weekKey = `${date.getFullYear()}-W${weekNumber}`;
+            weeks.set(weekKey, (weeks.get(weekKey) ?? 0) + 1);
         });
 
-        return Object.keys(weeks).map(week => ({
-            week,
-            count: weeks[week]
-        })).sort((a, b) => a.week.localeCompare(b.week));
+        return Array.from(weeks.entries())
+            .map(([week, count]) => ({week, count}))
+            .sort((a, b) => a.week.localeCompare(b.week));
     }
 
     private getWeekNumber(date: Date): number {
@@ -167,26 +177,25 @@ export class StorageService {
     }
 
     private getMostResponsiveCompanies(): { company: string; responseTime: number }[] {
-        const companies: { [key: string]: { count: number; totalTime: number } } = {};
+        const companies = new Map<string, { count: number; totalTime: number }>();
 
         this.applications.forEach(app => {
-            if (app.responseDate && app.status !== 'Envoyé') {
-                const responseTime = (app.responseDate.getTime() - app.applicationDate.getTime()) / (1000 * 60 * 60 * 24);
-
-                if (!companies[app.company]) {
-                    companies[app.company] = {count: 0, totalTime: 0};
-                }
-
-                companies[app.company].count++;
-                companies[app.company].totalTime += responseTime;
+            if (!app.responseDate || app.status === 'Envoyé') {
+                return;
             }
+
+            const responseTime = this.daysBetween(app.applicationDate, app.responseDate);
+            const current = companies.get(app.company) ?? {count: 0, totalTime: 0};
+            companies.set(app.company, {
+                count: current.count + 1,
+                totalTime: current.totalTime + responseTime
+            });
         });
 
-        return Object.keys(companies)
-            .filter(company => companies[company].count > 0)
-            .map(company => ({
+        return Array.from(companies.entries())
+            .map(([company, stats]) => ({
                 company,
-                responseTime: companies[company].totalTime / companies[company].count
+                responseTime: stats.totalTime / stats.count
             }))
             .sort((a, b) => a.responseTime - b.responseTime)
             .slice(0, 5);
@@ -198,23 +207,26 @@ export class StorageService {
         const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
-        // Check for applications without response for more than 7 days
-        const pendingApplications = this.applications.filter(
-            app => app.status === 'Envoyé' && new Date(app.applicationDate) < oneWeekAgo
-        );
-
-        pendingApplications.forEach(app => {
-            suggestions.push({
-                id: `pending-${app.id}`,
-                type: 'warning',
-                message: `Pensez à relancer ${app.company} pour votre candidature au poste de ${app.position}. Aucune réponse depuis ${this.getDaysSince(app.applicationDate)} jours.`,
-                relatedApplicationId: app.id
+        this.applications
+            .filter(app => app.status === 'Envoyé' && new Date(app.applicationDate) < oneWeekAgo)
+            .forEach(app => {
+                suggestions.push({
+                    id: `pending-${app.id}`,
+                    type: 'warning',
+                    message: `Pensez à relancer ${app.company} pour votre candidature au poste de ${app.position}. Aucune réponse depuis ${this.getDaysSince(app.applicationDate)} jours.`,
+                    relatedApplicationId: app.id
+                });
             });
-        });
 
-        // Check if user hasn't applied in the last 2 weeks
-        const latestApplication = this.applications
-            .sort((a, b) => new Date(b.applicationDate).getTime() - new Date(a.applicationDate).getTime())[0];
+        const latestApplication = this.applications.reduce<JobApplication | undefined>((latest, application) => {
+            if (!latest) {
+                return application;
+            }
+
+            return new Date(application.applicationDate) > new Date(latest.applicationDate)
+                ? application
+                : latest;
+        }, undefined);
 
         if (latestApplication && new Date(latestApplication.applicationDate) < twoWeeksAgo) {
             suggestions.push({
@@ -224,7 +236,6 @@ export class StorageService {
             });
         }
 
-        // Check for multiple rejections
         const rejectedApplications = this.applications.filter(app => app.status === 'Refusé');
         if (rejectedApplications.length >= 3) {
             suggestions.push({
@@ -234,28 +245,33 @@ export class StorageService {
             });
         }
 
-        // Check for upcoming interviews
-        const upcomingInterviews = this.applications.flatMap(app =>
-            (app.interviews || [])
-                .filter(interview => new Date(interview.date) > now && new Date(interview.date) < new Date(now.getTime() + 48 * 60 * 60 * 1000))
-                .map(interview => ({application: app, interview}))
-        );
-
-        upcomingInterviews.forEach(({application, interview}) => {
-            suggestions.push({
-                id: `interview-${interview.id}`,
-                type: 'success',
-                message: `Vous avez un entretien ${interview.type} prévu avec ${application.company} le ${this.formatDate(interview.date)}.`,
-                relatedApplicationId: application.id
+        this.applications
+            .flatMap(app =>
+                (app.interviews ?? [])
+                    .filter(interview => {
+                        const interviewDate = new Date(interview.date);
+                        return interviewDate > now && interviewDate < new Date(now.getTime() + 48 * 60 * 60 * 1000);
+                    })
+                    .map(interview => ({application: app, interview}))
+            )
+            .forEach(({application, interview}) => {
+                suggestions.push({
+                    id: `interview-${interview.id}`,
+                    type: 'success',
+                    message: `Vous avez un entretien ${interview.type} prévu avec ${application.company} le ${this.formatDate(interview.date)}.`,
+                    relatedApplicationId: application.id
+                });
             });
-        });
 
         return suggestions;
     }
 
+    private daysBetween(start: Date, end: Date): number {
+        return Math.max(0, (new Date(end).getTime() - new Date(start).getTime()) / (1000 * 60 * 60 * 24));
+    }
+
     private getDaysSince(date: Date): number {
-        const now = new Date();
-        return Math.floor((now.getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24));
+        return Math.floor(this.daysBetween(date, new Date()));
     }
 
     private formatDate(date: Date): string {
