@@ -10,6 +10,10 @@ import {
     ApplicationFiltersComponent
 } from '../application-filters/application-filters.component';
 import {ApplicationListComponent} from '../application-list/application-list.component';
+import {
+    ApplicationKanbanComponent,
+    ApplicationStageChange
+} from '../application-kanban/application-kanban.component';
 import {ApplicationDetailsComponent} from '../application-details/application-details.component';
 import {JobFormComponent} from '../job-form/job-form.component';
 
@@ -29,6 +33,7 @@ const EMPTY_FILTERS: ApplicationFilterCriteria = {
         MatIconModule,
         ApplicationFiltersComponent,
         ApplicationListComponent,
+        ApplicationKanbanComponent,
         ApplicationDetailsComponent,
         JobFormComponent
     ],
@@ -47,6 +52,7 @@ export class JobListComponent implements OnInit {
     showForm = false;
     showDetails = false;
     editMode = false;
+    viewMode: 'list' | 'kanban' = 'list';
 
     private activeFilters: ApplicationFilterCriteria = EMPTY_FILTERS;
 
@@ -73,6 +79,10 @@ export class JobListComponent implements OnInit {
         }
 
         this.onFiltersChange(EMPTY_FILTERS);
+    }
+
+    onStageChange(change: ApplicationStageChange): void {
+        this.storageService.updateApplicationStage(change.applicationId, change.stage);
     }
 
     showAddForm(): void {
