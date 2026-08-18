@@ -114,7 +114,6 @@ public class JobApplicationEntity {
     public void update(String company,
                        String position,
                        LocalDate applicationDate,
-                       ApplicationStatus status,
                        String notes,
                        LocalDate responseDate,
                        String offerUrl,
@@ -132,7 +131,7 @@ public class JobApplicationEntity {
         this.position = position.trim();
         this.applicationDate = applicationDate;
         this.stage = stage;
-        this.status = stage != null ? stage.impliedStatus() : status;
+        this.status = stage.impliedStatus();
         this.notes = notes == null ? "" : notes;
         this.responseDate = responseDate;
         this.offerUrl = blankToNull(offerUrl);
@@ -161,12 +160,7 @@ public class JobApplicationEntity {
         this.lastUpdated = now;
     }
 
-    public void touch(Instant now) {
-        this.lastUpdated = now;
-    }
-
     public UUID getId() { return id; }
-    public UserAccountEntity getOwner() { return owner; }
     public String getCompany() { return company; }
     public String getPosition() { return position; }
     public LocalDate getApplicationDate() { return applicationDate; }
