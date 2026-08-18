@@ -1,0 +1,53 @@
+services:
+  - type: web
+    name: jobtrackr-api
+    runtime: docker
+    region: frankfurt
+    plan: starter
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /actuator/health
+    autoDeployTrigger: checksPass
+    buildFilter:
+      paths:
+        - backend/**
+        - render.yaml
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: production
+      - key: DATABASE_HOST
+        fromDatabase:
+          name: jobtrackr-postgres
+          property: host
+      - key: DATABASE_PORT
+        fromDatabase:
+          name: jobtrackr-postgres
+          property: port
+      - key: DATABASE_NAME
+        fromDatabase:
+          name: jobtrackr-postgres
+          property: database
+      - key: DATABASE_USERNAME
+        fromDatabase:
+          name: jobtrackr-postgres
+          property: user
+      - key: DATABASE_PASSWORD
+        fromDatabase:
+          name: jobtrackr-postgres
+          property: password
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_TTL
+        value: PT12H
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://trackmyjob-zakaria.netlify.app
+
+databases:
+  - name: jobtrackr-postgres
+    region: frankfurt
+    plan: basic-256mb
+    postgresMajorVersion: "17"
+    databaseName: jobtrackr
+    user: jobtrackr
+    ipAllowList: []
