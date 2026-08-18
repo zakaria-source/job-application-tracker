@@ -16,11 +16,12 @@ public interface JobApplicationRepository extends JpaRepository<JobApplicationEn
     @EntityGraph(attributePaths = "interviews")
     Optional<JobApplicationEntity> findByIdAndOwner_Id(UUID id, UUID ownerId);
 
-    @EntityGraph(attributePaths = "interviews")
-    List<JobApplicationEntity> findAllByOwner_IdAndFollowUpDateLessThanEqualOrderByFollowUpDateAsc(UUID ownerId, LocalDate date);
-
     boolean existsByOwner_IdAndOfferUrlIgnoreCase(UUID ownerId, String offerUrl);
 
     boolean existsByOwner_IdAndCompanyIgnoreCaseAndPositionIgnoreCaseAndApplicationDate(
-        UUID ownerId, String company, String position, LocalDate applicationDate);
+        UUID ownerId,
+        String company,
+        String position,
+        LocalDate applicationDate
+    );
 }
