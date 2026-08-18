@@ -1,211 +1,101 @@
 <div class="dashboard-container">
   @if (applications.length === 0) {
-    <section class="getting-started" aria-label="Premiers pas">
-      <div class="getting-started-icon"><mat-icon>add_task</mat-icon></div>
-      <div class="getting-started-copy">
-        <h2>Ajoutez votre première candidature</h2>
-        <p>JobTrackr suivra ensuite vos relances, entretiens et prochaines actions.</p>
-      </div>
-      <div class="getting-started-actions">
-        <a mat-flat-button color="primary" routerLink="/applications">
-          <mat-icon>add</mat-icon>
-          Ajouter une candidature
-        </a>
-      </div>
+    <section class="empty-dashboard" aria-label="Premiers pas">
+      <div class="empty-icon"><mat-icon>work_outline</mat-icon></div>
+      <h2>Aucune candidature pour le moment</h2>
+      <p>Ajoutez votre première candidature pour commencer à suivre vos relances et entretiens.</p>
+      <a mat-flat-button color="primary" routerLink="/applications">
+        <mat-icon>add</mat-icon>
+        Ajouter une candidature
+      </a>
+    </section>
+  } @else {
+    <section class="kpi-grid" aria-label="Résumé de la recherche">
+      <mat-card class="kpi-card">
+        <span class="kpi-label">Actives</span>
+        <strong>{{ activeApplications }}</strong>
+        <small>candidatures en cours</small>
+      </mat-card>
+
+      <mat-card class="kpi-card" [class.attention]="followUpActions.length > 0">
+        <span class="kpi-label">Relances</span>
+        <strong>{{ followUpActions.length }}</strong>
+        <small>à traiter</small>
+      </mat-card>
+
+      <mat-card class="kpi-card" [class.highlight]="upcomingInterviews.length > 0">
+        <span class="kpi-label">Entretiens</span>
+        <strong>{{ upcomingInterviews.length }}</strong>
+        <small>dans les 14 jours</small>
+      </mat-card>
+    </section>
+
+    <section class="dashboard-grid">
+      <mat-card class="panel actions-panel">
+        <mat-card-header>
+          <mat-card-title>Prochaines actions</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          @if (followUpActions.length === 0 && upcomingInterviews.length === 0) {
+            <div class="empty-state compact">
+              <mat-icon>task_alt</mat-icon>
+              <div>
+                <strong>Rien d’urgent</strong>
+                <p>Vos relances et entretiens à venir apparaîtront ici.</p>
+              </div>
+            </div>
+          }
+
+          @for (action of followUpActions; track action) {
+            <div class="action-item">
+              <div class="action-icon warning"><mat-icon>schedule</mat-icon></div>
+              <div class="action-copy">
+                <strong>{{ getApplicationLabel(action.relatedApplicationId) }}</strong>
+                <span>{{ action.message }}</span>
+              </div>
+            </div>
+          }
+
+          @for (interview of upcomingInterviews; track interview.id) {
+            <div class="action-item">
+              <div class="action-date">
+                <strong>{{ interview.date | date:'dd' }}</strong>
+                <span>{{ interview.date | date:'MMM' }}</span>
+              </div>
+              <div class="action-copy">
+                <strong>{{ interview.company }} — {{ interview.position }}</strong>
+                <span>{{ interview.date | date:'HH:mm' }} · {{ interview.type }}</span>
+              </div>
+            </div>
+          }
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="panel pipeline-panel">
+        <mat-card-header>
+          <mat-card-title>Pipeline</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="pipeline-row">
+            <div><span>Envoyées</span><strong>{{ statistics.statusCounts.sent }}</strong></div>
+            <div class="pipeline-track"><span [style.width.%]="statusPercentage(statistics.statusCounts.sent)"></span></div>
+          </div>
+          <div class="pipeline-row">
+            <div><span>Entretiens</span><strong>{{ statistics.statusCounts.interview }}</strong></div>
+            <div class="pipeline-track"><span [style.width.%]="statusPercentage(statistics.statusCounts.interview)"></span></div>
+          </div>
+          <div class="pipeline-row">
+            <div><span>Acceptées</span><strong>{{ statistics.statusCounts.accepted }}</strong></div>
+            <div class="pipeline-track success"><span [style.width.%]="statusPercentage(statistics.statusCounts.accepted)"></span></div>
+          </div>
+          <div class="pipeline-row">
+            <div><span>Refusées</span><strong>{{ statistics.statusCounts.rejected }}</strong></div>
+            <div class="pipeline-track muted"><span [style.width.%]="statusPercentage(statistics.statusCounts.rejected)"></span></div>
+          </div>
+
+          <a class="pipeline-link" routerLink="/applications">Voir toutes les candidatures <mat-icon>arrow_forward</mat-icon></a>
+        </mat-card-content>
+      </mat-card>
     </section>
   }
-
-  <section class="kpi-grid" aria-label="Résumé de la recherche">
-    <mat-card class="kpi-card">
-      <mat-icon>work_outline</mat-icon>
-      <div>
-        <strong>{{ statistics.totalApplications }}</strong>
-        <span>Candidatures</span>
-      </div>
-    </mat-card>
-
-    <mat-card class="kpi-card">
-      <mat-icon>forum</mat-icon>
-      <div>
-        <strong>{{ statistics.responseRate | number:'1.0-0' }}%</strong>
-        <span>Taux de réponse</span>
-      </div>
-    </mat-card>
-
-    <mat-card class="kpi-card" [class.attention]="followUpActions.length > 0">
-      <mat-icon>schedule</mat-icon>
-      <div>
-        <strong>{{ followUpActions.length }}</strong>
-        <span>Relances</span>
-      </div>
-    </mat-card>
-
-    <mat-card class="kpi-card" [class.highlight]="upcomingInterviews.length > 0">
-      <mat-icon>event</mat-icon>
-      <div>
-        <strong>{{ upcomingInterviews.length }}</strong>
-        <span>Entretiens à venir</span>
-      </div>
-    </mat-card>
-  </section>
-
-  <section class="dashboard-grid">
-    <mat-card class="panel action-panel">
-      <mat-card-header>
-        <mat-card-title>À relancer</mat-card-title>
-        <mat-card-subtitle>Ce qui demande votre attention maintenant.</mat-card-subtitle>
-      </mat-card-header>
-      <mat-card-content>
-        @if (followUpActions.length === 0) {
-          <div class="empty-state small">
-            <mat-icon>task_alt</mat-icon>
-            <strong>Tout est à jour</strong>
-            <p>Aucune relance urgente.</p>
-          </div>
-        }
-
-        @for (action of followUpActions; track action) {
-          <div class="action-item">
-            <mat-icon>schedule</mat-icon>
-            <div>
-              <strong>{{ getApplicationLabel(action.relatedApplicationId) }}</strong>
-              <p>{{ action.message }}</p>
-            </div>
-          </div>
-        }
-      </mat-card-content>
-    </mat-card>
-
-    <mat-card class="panel priority-panel">
-      <mat-card-header>
-        <mat-card-title>Priorités</mat-card-title>
-        <mat-card-subtitle>Vos candidatures actives les plus importantes.</mat-card-subtitle>
-      </mat-card-header>
-      <mat-card-content>
-        @if (highPriorityApplications.length === 0) {
-          <div class="empty-state small">
-            <mat-icon>flag</mat-icon>
-            <strong>Aucune priorité haute</strong>
-            <p>Votre pipeline ne demande pas d’attention particulière.</p>
-          </div>
-        }
-
-        @for (application of highPriorityApplications; track application) {
-          <div class="priority-item">
-            <div class="priority-main">
-              <strong>{{ application.company }}</strong>
-              <span>{{ application.position }}</span>
-            </div>
-            <div class="priority-meta">
-              <span>{{ application.stage }}</span>
-              @if (application.followUpDate) {
-                <span>Relance {{ application.followUpDate | date:'dd/MM' }}</span>
-              }
-            </div>
-            @if (application.offerUrl) {
-              <a
-                mat-icon-button
-                [href]="application.offerUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Ouvrir l'offre">
-                <mat-icon>open_in_new</mat-icon>
-              </a>
-            }
-          </div>
-        }
-      </mat-card-content>
-    </mat-card>
-  </section>
-
-  <mat-card class="panel interviews-card">
-    <mat-card-header>
-      <mat-card-title>Prochains entretiens</mat-card-title>
-      <mat-card-subtitle>Les rendez-vous prévus dans les 14 prochains jours.</mat-card-subtitle>
-    </mat-card-header>
-    <mat-card-content>
-      @if (upcomingInterviews.length === 0) {
-        <div class="empty-state interview-empty">
-          <mat-icon>event_available</mat-icon>
-          <strong>Aucun entretien prévu</strong>
-        </div>
-      }
-
-      @if (upcomingInterviews.length > 0) {
-        <div class="interviews-list">
-          @for (interview of upcomingInterviews; track interview) {
-            <div class="interview-item">
-              <div class="interview-date">
-                <div class="date-day">{{ interview.date | date:'dd' }}</div>
-                <div class="date-month">{{ interview.date | date:'MMM' }}</div>
-              </div>
-              <div class="interview-details">
-                <strong>{{ interview.company }}</strong>
-                <span>{{ interview.position }}</span>
-                <small><mat-icon>schedule</mat-icon>{{ interview.date | date:'HH:mm' }} · {{ interview.type }}</small>
-              </div>
-            </div>
-          }
-        </div>
-      }
-    </mat-card-content>
-  </mat-card>
-
-  <section class="dashboard-grid analytics-grid">
-    <mat-card class="panel">
-      <mat-card-header>
-        <mat-card-title>Pipeline</mat-card-title>
-        <mat-card-subtitle>Répartition actuelle de vos candidatures.</mat-card-subtitle>
-      </mat-card-header>
-      <mat-card-content>
-        <div class="chart-container">
-          <canvas baseChart [data]="statusChartData" [type]="'doughnut'" [options]="statusChartOptions"></canvas>
-        </div>
-      </mat-card-content>
-    </mat-card>
-
-    <mat-card class="panel">
-      <mat-card-header>
-        <mat-card-title>Activité</mat-card-title>
-        <mat-card-subtitle>Candidatures envoyées par semaine.</mat-card-subtitle>
-      </mat-card-header>
-      <mat-card-content>
-        <div class="chart-container">
-          <canvas baseChart [data]="weeklyChartData" [options]="weeklyChartOptions" [type]="'line'"></canvas>
-        </div>
-      </mat-card-content>
-    </mat-card>
-  </section>
-
-  <mat-card class="profile-card">
-    <mat-card-content>
-      <div class="profile-main">
-        <div class="profile-copy">
-          <span class="profile-label">Votre profil</span>
-          <h2>{{ profile.name }}</h2>
-          <strong>{{ profile.headline }}</strong>
-          <div class="profile-facts">
-            @if (profile.experienceLabel) {
-              <span><mat-icon>schedule</mat-icon>{{ profile.experienceLabel }}</span>
-            }
-            @if (profile.location) {
-              <span><mat-icon>location_on</mat-icon>{{ profile.location }}</span>
-            }
-          </div>
-        </div>
-        <a mat-stroked-button routerLink="/settings/profile">
-          <mat-icon>edit</mat-icon>
-          Modifier
-        </a>
-      </div>
-
-      @if (profile.coreSkills.length > 0) {
-        <div class="profile-tags" aria-label="Compétences principales">
-          @for (skill of profile.coreSkills; track skill) {
-            <span>{{ skill }}</span>
-          }
-        </div>
-      }
-    </mat-card-content>
-  </mat-card>
 </div>
