@@ -17,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -149,6 +150,26 @@ class CloudApiIntegrationTest {
             .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void returnsAndPreservesRequestCorrelationId() throws Exception {
+        mockMvc.perform(post("/api/v1/auth/register")
+                .header("X-Request-Id", "integration-request-123")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "email": "correlation@example.com",
+                      "password": "long-enough-password",
+                      "displayName": "Correlation User"
+                    }
+                    """))
+            .andExpect(status().isCreated())
+            .andExpect(header().string("X-Request-Id", "integration-request-123"));
+
+        mockMvc.perform(get("/api/v1/applications"))
+            .andExpect(status().isUnauthorized())
+            .andExpect(header().exists("X-Request-Id"));
+    }
+
     private String register(String email, String displayName) throws Exception {
         String response = mockMvc.perform(post("/api/v1/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -160,6 +181,7 @@ class CloudApiIntegrationTest {
                     }
                     """.formatted(email, displayName)))
             .andExpect(status().isCreated())
+            .andExpect(header().exists("X-Request-Id"))
             .andReturn()
             .getResponse()
             .getContentAsString();

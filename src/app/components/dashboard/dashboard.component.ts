@@ -1,17 +1,14 @@
-import {Component, DestroyRef, OnInit, inject} from '@angular/core';
 import {CommonModule} from '@angular/common';
+import {Component, DestroyRef, OnInit, inject} from '@angular/core';
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {MatButtonModule} from '@angular/material/button';
 import {MatCardModule} from '@angular/material/card';
 import {MatIconModule} from '@angular/material/icon';
 import {RouterLink} from '@angular/router';
-import {BaseChartDirective} from 'ng2-charts';
-import {ChartConfiguration, ChartData} from 'chart.js';
 import {combineLatest, timer} from 'rxjs';
-import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
-import {EMPTY_USER_PROFILE, UserProfile} from '../../models/user-profile.model';
-import {JobApplication, JobStatistics, Suggestion} from '../../models/job-application.model';
+import {CloudWorkspaceService, CloudWorkspaceState} from '../../cloud/cloud-workspace.service';
+import {JobApplication, JobStatistics, RecruitmentStage} from '../../models/job-application.model';
 import {StorageService} from '../../services/storage.service';
-import {UserProfileService} from '../../services/user-profile.service';
 
 interface UpcomingInterview {
   id: string;
@@ -22,18 +19,52 @@ interface UpcomingInterview {
   applicationId: string;
 }
 
+type FollowUpState = 'overdue' | 'today' | 'upcoming';
+
+interface FollowUpItem {
+  application: JobApplication;
+  date: Date;
+  state: FollowUpState;
+}
+
+interface NextAction {
+  id: string;
+  applicationId: string;
+  company: string;
+  position: string;
+  label: string;
+  detail: string;
+  kind: 'follow-up' | 'interview' | 'stale';
+  due?: Date;
+}
+
+interface StageSummary {
+  stage: RecruitmentStage;
+  shortLabel: string;
+  count: number;
+}
+
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatCardModule, MatIconModule, RouterLink, BaseChartDirective],
+  imports: [CommonModule, MatButtonModule, MatCardModule, MatIconModule, RouterLink],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })
 export class DashboardComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
+  private readonly activeStages: readonly {stage: RecruitmentStage; label: string}[] = [
+    {stage: 'Candidature', label: 'Candidature'},
+    {stage: 'Screening RH', label: 'Screening'},
+    {stage: 'Entretien technique', label: 'Technique'},
+    {stage: 'Hiring Manager', label: 'Manager'},
+    {stage: 'Entretien final', label: 'Final'},
+    {stage: 'Offre', label: 'Offre'}
+  ];
 
-  profile: UserProfile = EMPTY_USER_PROFILE;
   applications: JobApplication[] = [];
+  activeApplications = 0;
+  workspaceState: CloudWorkspaceState;
   statistics: JobStatistics = {
     totalApplications: 0,
     responseRate: 0,
@@ -42,47 +73,27 @@ export class DashboardComponent implements OnInit {
     applicationsByWeek: [],
     mostResponsiveCompanies: []
   };
-  followUpActions: Suggestion[] = [];
-  highPriorityApplications: JobApplication[] = [];
+  followUps: FollowUpItem[] = [];
+  overdueFollowUps: FollowUpItem[] = [];
+  todayFollowUps: FollowUpItem[] = [];
+  upcomingFollowUps: FollowUpItem[] = [];
   upcomingInterviews: UpcomingInterview[] = [];
-
-  statusChartData: ChartData<'doughnut'> = {
-    labels: ['Envoyé', 'Entretien', 'Accepté', 'Refusé'],
-    datasets: [{data: [0, 0, 0, 0], backgroundColor: ['#e0e0e0', '#bbdefb', '#c8e6c9', '#ffcdd2']}]
-  };
-  statusChartOptions: ChartConfiguration['options'] = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {legend: {position: 'right'}}
-  };
-  weeklyChartData: ChartData<'line'> = {
-    labels: [],
-    datasets: [{
-      label: 'Candidatures',
-      data: [],
-      borderColor: '#3f51b5',
-      backgroundColor: 'rgba(63, 81, 181, 0.1)',
-      tension: 0.35,
-      fill: true
-    }]
-  };
-  weeklyChartOptions: ChartConfiguration['options'] = {
-    responsive: true,
-    maintainAspectRatio: false,
-    scales: {y: {beginAtZero: true, ticks: {precision: 0}}},
-    plugins: {legend: {display: false}}
-  };
+  staleApplications: JobApplication[] = [];
+  nextActions: NextAction[] = [];
+  stageSummary: StageSummary[] = [];
+  interviewRate = 0;
 
   constructor(
     private readonly storageService: StorageService,
-    private readonly profileService: UserProfileService
-  ) {}
+    private readonly workspace: CloudWorkspaceService
+  ) {
+    this.workspaceState = workspace.state;
+    workspace.state$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(state => this.workspaceState = state);
+  }
 
   ngOnInit(): void {
-    this.profileService.profileChanges()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(profile => this.profile = profile ?? EMPTY_USER_PROFILE);
-
     combineLatest([
       this.storageService.getApplications(),
       timer(0, 60_000)
@@ -91,61 +102,65 @@ export class DashboardComponent implements OnInit {
       .subscribe(([applications]) => this.refreshDashboard(applications));
   }
 
-  getApplicationLabel(applicationId?: string): string {
-    const app = this.applications.find(application => application.id === applicationId);
-    return app ? `${app.company} — ${app.position}` : 'Candidature';
+  retryWorkspace(): void {
+    this.workspace.connect().subscribe({error: () => undefined});
   }
 
-  formatTargetSalary(application: JobApplication): string {
-    if (!application.salaryTarget) {
-      return '';
-    }
-    const formatted = new Intl.NumberFormat('fr-FR').format(application.salaryTarget);
-    return application.salaryPeriod === 'Journalier' ? `${formatted} €/j` : `${formatted} €/an`;
+  completeFollowUp(applicationId: string): void {
+    this.storageService.completeFollowUp(applicationId);
+  }
+
+  stageShare(count: number): number {
+    return this.activeApplications > 0 ? Math.round((count / this.activeApplications) * 100) : 0;
   }
 
   private refreshDashboard(applications: JobApplication[]): void {
-    this.applications = applications;
-    this.statistics = this.storageService.calculateStatistics();
-    this.followUpActions = this.storageService.generateSuggestions()
-      .filter(suggestion => suggestion.type === 'warning');
-    this.highPriorityApplications = applications
-      .filter(app => app.priority === 'Haute' && app.status !== 'Accepté' && app.status !== 'Refusé')
-      .sort((a, b) => {
-        const aDate = a.followUpDate?.getTime() ?? Number.MAX_SAFE_INTEGER;
-        const bDate = b.followUpDate?.getTime() ?? Number.MAX_SAFE_INTEGER;
-        return aDate - bDate || b.applicationDate.getTime() - a.applicationDate.getTime();
-      })
-      .slice(0, 6);
-    this.upcomingInterviews = this.getUpcomingInterviews(applications);
-    this.updateCharts();
-  }
-
-  private updateCharts(): void {
-    this.statusChartData = {
-      ...this.statusChartData,
-      datasets: [{
-        ...this.statusChartData.datasets[0],
-        data: [
-          this.statistics.statusCounts.sent,
-          this.statistics.statusCounts.interview,
-          this.statistics.statusCounts.accepted,
-          this.statistics.statusCounts.rejected
-        ]
-      }]
-    };
-
-    this.weeklyChartData = {
-      labels: this.statistics.applicationsByWeek.map(item => item.week),
-      datasets: [{
-        ...this.weeklyChartData.datasets[0],
-        data: this.statistics.applicationsByWeek.map(item => item.count)
-      }]
-    };
-  }
-
-  private getUpcomingInterviews(applications: JobApplication[]): UpcomingInterview[] {
     const now = new Date();
+    this.applications = [...applications].sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
+    this.activeApplications = applications.filter(app => app.status !== 'Accepté' && app.status !== 'Refusé').length;
+    this.statistics = this.storageService.calculateStatistics();
+    this.interviewRate = this.statistics.totalApplications > 0
+      ? Math.round((this.statistics.statusCounts.interview / this.statistics.totalApplications) * 100)
+      : 0;
+
+    this.followUps = this.getFollowUps(applications, now);
+    this.overdueFollowUps = this.followUps.filter(item => item.state === 'overdue');
+    this.todayFollowUps = this.followUps.filter(item => item.state === 'today');
+    this.upcomingFollowUps = this.followUps.filter(item => item.state === 'upcoming').slice(0, 5);
+    this.upcomingInterviews = this.getUpcomingInterviews(applications, now).slice(0, 5);
+    this.staleApplications = this.getStaleApplications(applications, now).slice(0, 5);
+    this.nextActions = this.buildNextActions().slice(0, 6);
+    this.stageSummary = this.activeStages.map(({stage, label}) => ({
+      stage,
+      shortLabel: label,
+      count: applications.filter(application => application.stage === stage).length
+    }));
+  }
+
+  private getFollowUps(applications: JobApplication[], now: Date): FollowUpItem[] {
+    const startToday = new Date(now);
+    startToday.setHours(0, 0, 0, 0);
+    const startTomorrow = new Date(startToday);
+    startTomorrow.setDate(startTomorrow.getDate() + 1);
+    const horizon = new Date(startToday);
+    horizon.setDate(horizon.getDate() + 14);
+
+    return applications
+      .filter(application => application.followUpDate && application.status !== 'Accepté' && application.status !== 'Refusé')
+      .map(application => {
+        const date = new Date(application.followUpDate!);
+        const state: FollowUpState = date < startToday
+          ? 'overdue'
+          : date < startTomorrow
+            ? 'today'
+            : 'upcoming';
+        return {application, date, state};
+      })
+      .filter(item => item.state !== 'upcoming' || item.date <= horizon)
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+  }
+
+  private getUpcomingInterviews(applications: JobApplication[], now: Date): UpcomingInterview[] {
     const twoWeeksLater = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
 
     return applications
@@ -162,5 +177,64 @@ export class DashboardComponent implements OnInit {
           }))
       )
       .sort((a, b) => a.date.getTime() - b.date.getTime());
+  }
+
+  private getStaleApplications(applications: JobApplication[], now: Date): JobApplication[] {
+    const staleBefore = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000);
+    return applications
+      .filter(application =>
+        application.status !== 'Accepté'
+        && application.status !== 'Refusé'
+        && !application.followUpDate
+        && application.lastUpdated < staleBefore
+      )
+      .sort((a, b) => a.lastUpdated.getTime() - b.lastUpdated.getTime());
+  }
+
+  private buildNextActions(): NextAction[] {
+    const actions: NextAction[] = [];
+
+    for (const item of [...this.overdueFollowUps, ...this.todayFollowUps]) {
+      actions.push({
+        id: `follow-up-${item.application.id}`,
+        applicationId: item.application.id,
+        company: item.application.company,
+        position: item.application.position,
+        label: item.state === 'overdue' ? 'Relance en retard' : 'Relancer aujourd’hui',
+        detail: item.state === 'overdue'
+          ? `Prévue le ${new Intl.DateTimeFormat('fr-FR', {day: '2-digit', month: 'short'}).format(item.date)}`
+          : 'Action prévue pour aujourd’hui',
+        kind: 'follow-up',
+        due: item.date
+      });
+    }
+
+    for (const interview of this.upcomingInterviews.filter(item => item.date.getTime() - Date.now() <= 3 * 24 * 60 * 60 * 1000)) {
+      actions.push({
+        id: `interview-${interview.id}`,
+        applicationId: interview.applicationId,
+        company: interview.company,
+        position: interview.position,
+        label: 'Préparer l’entretien',
+        detail: `${new Intl.DateTimeFormat('fr-FR', {weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'}).format(interview.date)} · ${interview.type}`,
+        kind: 'interview',
+        due: interview.date
+      });
+    }
+
+    for (const application of this.staleApplications) {
+      actions.push({
+        id: `stale-${application.id}`,
+        applicationId: application.id,
+        company: application.company,
+        position: application.position,
+        label: 'Mettre à jour la candidature',
+        detail: 'Aucune activité récente ni relance planifiée',
+        kind: 'stale'
+      });
+    }
+
+    const priority = {'follow-up': 0, interview: 1, stale: 2} as const;
+    return actions.sort((a, b) => priority[a.kind] - priority[b.kind] || (a.due?.getTime() ?? Infinity) - (b.due?.getTime() ?? Infinity));
   }
 }

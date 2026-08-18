@@ -1,0 +1,49 @@
+:host { display: block; }
+.profile-editor { max-width: 800px; margin: 0 auto; }
+.editor-card { overflow: hidden; border: 1px solid var(--jt-border); border-radius: 14px; background: #fff; box-shadow: var(--jt-shadow-xs); }
+.editor-heading { min-height: 142px; display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding: 28px 30px 25px; border-bottom: 1px solid var(--jt-border); background: #fbfbfc; }
+.eyebrow { display: block; margin-bottom: 8px; color: var(--jt-text-soft); font-size: 8px; font-weight: 720; letter-spacing: .14em; }
+.editor-heading h1 { margin: 0; font-size: clamp(25px, 3vw, 31px); font-weight: 650; letter-spacing: -.045em; line-height: 1.08; }
+.editor-heading p { max-width: 570px; margin: 8px 0 0; color: var(--jt-text-muted); font-size: 11px; line-height: 1.65; }
+.profile-state { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; margin-top: 2px; padding: 5px 7px; border: 1px solid var(--jt-border); border-radius: 6px; color: var(--jt-text-muted); background: #fff; font-size: 8px; font-weight: 620; }
+.profile-state > span { width: 5px; height: 5px; border-radius: 50%; background: var(--jt-success); }
+
+form { padding: 27px 30px 26px; }
+.form-section-label { display: flex; align-items: center; gap: 7px; margin-bottom: 16px; }
+.form-section-label span { color: var(--jt-accent); font-size: 8px; font-weight: 750; letter-spacing: .06em; }
+.form-section-label strong { color: var(--jt-text-secondary); font-size: 10px; font-weight: 680; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+label { display: flex; flex-direction: column; gap: 7px; color: var(--jt-text-secondary); font-size: 10px; font-weight: 620; }
+label.wide { grid-column: 1 / -1; }
+input { width: 100%; min-height: 43px; box-sizing: border-box; border: 1px solid var(--jt-border-strong); border-radius: 8px; padding: 0 12px; color: var(--jt-text); background: #fff; font: inherit; font-size: 12px; font-weight: 480; transition: border-color var(--jt-motion-fast), box-shadow var(--jt-motion-fast); }
+input:focus { outline: none; border-color: var(--jt-accent); box-shadow: 0 0 0 3px rgba(101,92,244,.1); }
+input::placeholder { color: #adafb7; }
+small { color: var(--jt-text-soft); font-size: 9px; font-weight: 500; line-height: 1.4; }
+.field-error { color: var(--jt-danger); font-weight: 620; }
+
+.save-feedback { display: flex; align-items: center; gap: 8px; margin-top: 18px; padding: 10px 11px; border: 1px solid var(--jt-border); border-radius: 8px; font-size: 10px; }
+.save-feedback.error { border-color: #efcaca; color: #a82d2d; background: var(--jt-danger-soft); }
+.feedback-dot { width: 6px; height: 6px; flex: 0 0 6px; border-radius: 50%; background: currentColor; }
+
+.form-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--jt-border); }
+.save-hint { color: var(--jt-text-soft); font-size: 9px; }
+.form-actions > div { display: flex; align-items: center; gap: 8px; }
+button { min-height: 40px; border-radius: 8px; padding: 0 16px; font: inherit; font-size: 11px; font-weight: 650; cursor: pointer; transition: background var(--jt-motion-fast), border-color var(--jt-motion-fast), transform var(--jt-motion-fast); }
+button.primary { min-width: 116px; border: 1px solid #202126; color: #fff; background: var(--jt-primary); }
+button.primary:hover { background: var(--jt-primary-hover); }
+button.primary:active { transform: translateY(1px); }
+button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+button.secondary { border: 1px solid var(--jt-border-strong); color: var(--jt-text-muted); background: #fff; }
+button.secondary:hover { border-color: var(--jt-border-dark); color: var(--jt-text); background: #fafafa; }
+
+@media (max-width: 620px) {
+  .editor-heading { min-height: auto; padding: 22px; }
+  .profile-state { display: none; }
+  form { padding: 22px; }
+  .form-grid { grid-template-columns: 1fr; }
+  label.wide { grid-column: auto; }
+  .form-actions { align-items: stretch; flex-direction: column; }
+  .save-hint { order: 2; }
+  .form-actions > div { width: 100%; flex-direction: column-reverse; }
+  .form-actions button { width: 100%; }
+}

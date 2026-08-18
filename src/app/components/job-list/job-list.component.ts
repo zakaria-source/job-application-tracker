@@ -1,62 +1,59 @@
-import {Component, DestroyRef, OnInit, ViewChild, inject} from '@angular/core';
+import {Component, DestroyRef, HostListener, OnInit, ViewChild, inject} from '@angular/core';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {MatButtonModule} from '@angular/material/button';
 import {MatCardModule} from '@angular/material/card';
 import {MatIconModule} from '@angular/material/icon';
-import {JobApplication} from '../../models/job-application.model';
-import {StorageService} from '../../services/storage.service';
-import {
-    ApplicationFilterCriteria,
-    ApplicationFiltersComponent
-} from '../application-filters/application-filters.component';
+import {CloudWorkspaceService, CloudWorkspaceState} from '../../cloud/cloud-workspace.service';
+import {JobApplication, RecruitmentStage} from '../../models/job-application.model';
+import {ImportPreview, StorageService} from '../../services/storage.service';
+import {ApplicationFilterCriteria, ApplicationFiltersComponent} from '../application-filters/application-filters.component';
 import {ApplicationListComponent} from '../application-list/application-list.component';
-import {
-    ApplicationKanbanComponent,
-    ApplicationStageChange
-} from '../application-kanban/application-kanban.component';
+import {ApplicationKanbanComponent, ApplicationStageChange} from '../application-kanban/application-kanban.component';
 import {ApplicationDetailsComponent} from '../application-details/application-details.component';
 import {JobFormComponent} from '../job-form/job-form.component';
 
-const EMPTY_FILTERS: ApplicationFilterCriteria = {
-    searchTerm: '',
-    status: '',
-    contractType: '',
-    priority: ''
-};
+const EMPTY_FILTERS: ApplicationFilterCriteria = {searchTerm: '', status: '', contractType: '', priority: ''};
 
 @Component({
     selector: 'app-job-list',
     standalone: true,
-    imports: [
-        MatButtonModule,
-        MatCardModule,
-        MatIconModule,
-        ApplicationFiltersComponent,
-        ApplicationListComponent,
-        ApplicationKanbanComponent,
-        ApplicationDetailsComponent,
-        JobFormComponent
-    ],
+    imports: [MatButtonModule, MatCardModule, MatIconModule, ApplicationFiltersComponent, ApplicationListComponent, ApplicationKanbanComponent, ApplicationDetailsComponent, JobFormComponent],
     templateUrl: './job-list.component.html',
     styleUrl: './job-list.component.css'
 })
 export class JobListComponent implements OnInit {
     private readonly destroyRef = inject(DestroyRef);
+    private feedbackTimer?: ReturnType<typeof setTimeout>;
 
-    @ViewChild(ApplicationFiltersComponent)
-    private filtersComponent?: ApplicationFiltersComponent;
+    @ViewChild(ApplicationFiltersComponent) private filtersComponent?: ApplicationFiltersComponent;
 
     applications: JobApplication[] = [];
     filteredApplications: JobApplication[] = [];
     selectedApplication: JobApplication | null = null;
+    pendingDelete: JobApplication | null = null;
+    importPreview: ImportPreview | null = null;
+    importFileName = '';
+    importError = '';
+    feedbackMessage = '';
     showForm = false;
     showDetails = false;
     editMode = false;
     viewMode: 'list' | 'kanban' = 'list';
+    workspaceState: CloudWorkspaceState;
 
     private activeFilters: ApplicationFilterCriteria = EMPTY_FILTERS;
 
-    constructor(private readonly storageService: StorageService) {}
+    constructor(
+        private readonly storageService: StorageService,
+        private readonly workspace: CloudWorkspaceService
+    ) {
+        this.workspaceState = workspace.state;
+        workspace.state$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(state => this.workspaceState = state);
+    }
+
+    get hasActiveFilters(): boolean {
+        return Object.values(this.activeFilters).some(Boolean);
+    }
 
     ngOnInit(): void {
         this.storageService.getApplications()
@@ -64,7 +61,38 @@ export class JobListComponent implements OnInit {
             .subscribe(applications => {
                 this.applications = applications;
                 this.applyFilters(this.activeFilters);
+                if (this.selectedApplication) {
+                    this.selectedApplication = applications.find(item => item.id === this.selectedApplication?.id) ?? this.selectedApplication;
+                }
             });
+    }
+
+    @HostListener('document:keydown', ['$event'])
+    handleKeyboardShortcut(event: KeyboardEvent): void {
+        const target = event.target as HTMLElement | null;
+        const typing = target?.matches('input, textarea, select, [contenteditable="true"]') ?? false;
+
+        if (event.key === 'Escape') {
+            if (this.importPreview || this.importError) this.closeImportPreview();
+            else if (this.pendingDelete) this.pendingDelete = null;
+            else if (this.showDetails) this.closeDetails();
+            else if (this.showForm) this.cancelForm();
+            return;
+        }
+
+        if (typing || event.metaKey || event.ctrlKey || event.altKey) return;
+        if (event.key.toLowerCase() === 'n') {
+            event.preventDefault();
+            this.showAddForm();
+        }
+        if (event.key === '/') {
+            event.preventDefault();
+            this.filtersComponent?.focusSearch();
+        }
+    }
+
+    retryWorkspace(): void {
+        this.workspace.connect().subscribe({error: () => undefined});
     }
 
     onFiltersChange(criteria: ApplicationFilterCriteria): void {
@@ -77,12 +105,23 @@ export class JobListComponent implements OnInit {
             this.filtersComponent.resetFilters();
             return;
         }
-
         this.onFiltersChange(EMPTY_FILTERS);
     }
 
     onStageChange(change: ApplicationStageChange): void {
         this.storageService.updateApplicationStage(change.applicationId, change.stage);
+        this.showFeedback(`Étape mise à jour · ${change.stage}`);
+    }
+
+    advanceSelectedStage(stage: RecruitmentStage): void {
+        if (!this.selectedApplication) return;
+        this.storageService.updateApplicationStage(this.selectedApplication.id, stage);
+        this.showFeedback(`Candidature avancée vers ${stage}`);
+    }
+
+    completeFollowUp(application: JobApplication): void {
+        this.storageService.completeFollowUp(application.id);
+        this.showFeedback(`Relance marquée comme effectuée · ${application.company}`);
     }
 
     showAddForm(): void {
@@ -111,21 +150,25 @@ export class JobListComponent implements OnInit {
     }
 
     deleteApplication(application: JobApplication): void {
-        if (!confirm(`Supprimer la candidature ${application.position} chez ${application.company} ?`)) {
-            return;
-        }
+        this.pendingDelete = application;
+    }
 
+    confirmDelete(): void {
+        const application = this.pendingDelete;
+        if (!application) return;
         this.storageService.deleteApplication(application.id);
-        if (this.selectedApplication?.id === application.id) {
-            this.closeDetails();
-        }
+        this.pendingDelete = null;
+        if (this.selectedApplication?.id === application.id) this.closeDetails();
+        this.showFeedback(`Candidature supprimée · ${application.company}`);
     }
 
     onFormSubmit(application: JobApplication): void {
         if (this.editMode) {
             this.storageService.updateApplication(application);
+            this.showFeedback(`Candidature mise à jour · ${application.company}`);
         } else {
             this.storageService.addApplication(application);
+            this.showFeedback(`Candidature ajoutée · ${application.company}`);
         }
         this.cancelForm();
     }
@@ -140,30 +183,28 @@ export class JobListComponent implements OnInit {
         const blob = new Blob([this.storageService.exportData()], {type: 'application/json'});
         const url = URL.createObjectURL(blob);
         const anchor = document.createElement('a');
-
         anchor.href = url;
         anchor.download = `jobtrackr-backup-${new Date().toISOString().slice(0, 10)}.json`;
         anchor.click();
         URL.revokeObjectURL(url);
+        this.showFeedback('Backup exporté');
     }
 
     importApplications(event: Event): void {
         const input = event.target as HTMLInputElement;
         const file = input.files?.[0];
-        if (!file) {
-            return;
-        }
+        if (!file) return;
 
+        this.importFileName = file.name;
+        this.importError = '';
         const reader = new FileReader();
         reader.onload = () => {
             try {
-                if (!confirm('Importer ce fichier remplacera les candidatures actuellement stockées. Continuer ?')) {
-                    return;
-                }
-                this.storageService.importData(String(reader.result ?? ''));
+                this.importPreview = this.storageService.previewImport(String(reader.result ?? ''));
             } catch (error) {
                 console.error(error);
-                alert('Le fichier sélectionné n’est pas un export JobTrackr valide.');
+                this.importPreview = null;
+                this.importError = 'Ce fichier ne correspond pas à un export JobTrackr valide.';
             } finally {
                 input.value = '';
             }
@@ -171,9 +212,27 @@ export class JobListComponent implements OnInit {
         reader.readAsText(file);
     }
 
+    confirmImport(): void {
+        if (!this.importPreview) return;
+        const count = this.storageService.importPreview(this.importPreview);
+        this.closeImportPreview();
+        this.showFeedback(count > 0 ? `${count} candidature${count > 1 ? 's' : ''} importée${count > 1 ? 's' : ''}` : 'Aucune nouvelle candidature à importer');
+    }
+
+    closeImportPreview(): void {
+        this.importPreview = null;
+        this.importError = '';
+        this.importFileName = '';
+    }
+
+    private showFeedback(message: string): void {
+        this.feedbackMessage = message;
+        if (this.feedbackTimer) clearTimeout(this.feedbackTimer);
+        this.feedbackTimer = setTimeout(() => this.feedbackMessage = '', 3200);
+    }
+
     private applyFilters(criteria: ApplicationFilterCriteria): void {
         const search = criteria.searchTerm.trim().toLowerCase();
-
         this.filteredApplications = this.applications.filter(application => {
             const matchesSearch = !search
                 || application.company.toLowerCase().includes(search)

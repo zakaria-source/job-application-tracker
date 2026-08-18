@@ -1,0 +1,221 @@
+@if (!session) {
+  <div class="public-page">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <span class="hero-eyebrow"><span class="eyebrow-dot"></span> Suivi de candidatures, sans bruit</span>
+        <h1 id="hero-title">Votre recherche d’emploi.<br><span>Enfin lisible.</span></h1>
+        <p class="hero-lead">Centralisez vos candidatures, entretiens et relances dans un espace privé pensé pour savoir exactement quoi faire ensuite.</p>
+
+        <div class="hero-actions">
+          <button type="button" class="hero-primary" (click)="openAuth('register')">
+            Créer mon espace
+            <mat-icon>arrow_forward</mat-icon>
+          </button>
+          <a class="hero-secondary" href="#product">
+            Voir le produit
+            <mat-icon>south</mat-icon>
+          </a>
+        </div>
+
+        <div class="hero-trust" aria-label="Garanties produit">
+          <span><mat-icon>lock</mat-icon>Espace privé</span>
+          <span><mat-icon>cloud_done</mat-icon>Synchronisé</span>
+          <span><mat-icon>devices</mat-icon>Multi-appareils</span>
+        </div>
+      </div>
+
+      <div class="hero-product" id="product" aria-label="Aperçu de JobTrackr">
+        <div class="preview-window">
+          <div class="preview-chrome">
+            <div class="preview-brand"><app-brand-mark [compact]="true"/><strong>JobTrackr</strong></div>
+            <div class="preview-nav"><span class="active">Vue d’ensemble</span><span>Candidatures</span></div>
+            <div class="preview-avatar">AM</div>
+          </div>
+
+          <div class="preview-body">
+            <div class="preview-heading">
+              <div><small>ESPACE PERSONNEL</small><h2>Vue d’ensemble</h2></div>
+              <span class="preview-add"><mat-icon>add</mat-icon> Ajouter</span>
+            </div>
+
+            <div class="preview-metrics">
+              <div><span>Actives</span><strong>12</strong><small>opportunités en cours</small></div>
+              <div><span>Relances</span><strong>3</strong><small>à traiter</small></div>
+              <div><span>Entretiens</span><strong>2</strong><small>à venir</small></div>
+              <div><span>Réponses</span><strong>38%</strong><small>taux de retour</small></div>
+            </div>
+
+            <div class="preview-grid">
+              <div class="preview-panel">
+                <div class="preview-panel-title"><span>PROCHAINES ACTIONS</span><strong>Cette semaine</strong></div>
+                <div class="preview-action"><span class="action-dot warning"></span><div><strong>Mirakl · Software Engineer</strong><small>Relancer demain</small></div><span>19 août</span></div>
+                <div class="preview-action"><span class="action-date"><b>21</b><small>AOÛ</small></span><div><strong>Doctolib · Backend Engineer</strong><small>Entretien technique · 14:00</small></div><mat-icon>chevron_right</mat-icon></div>
+                <div class="preview-action"><span class="action-dot"></span><div><strong>Airbus · Java Engineer</strong><small>Préparer les points d’entretien</small></div><span>22 août</span></div>
+              </div>
+
+              <div class="preview-panel pipeline">
+                <div class="preview-panel-title"><span>PIPELINE</span><strong>Progression</strong></div>
+                <div class="preview-pipeline-row"><div><span>Envoyées</span><b>7</b></div><i><em style="width:58%"></em></i></div>
+                <div class="preview-pipeline-row"><div><span>Entretiens</span><b>3</b></div><i class="accent"><em style="width:30%"></em></i></div>
+                <div class="preview-pipeline-row"><div><span>Offres</span><b>1</b></div><i class="success"><em style="width:12%"></em></i></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="trust-strip" aria-label="Principes JobTrackr">
+      <div><mat-icon>visibility</mat-icon><span><strong>Clarté d’abord</strong>Une vue nette sur ce qui avance.</span></div>
+      <div><mat-icon>bolt</mat-icon><span><strong>Actions visibles</strong>Relances et entretiens au bon moment.</span></div>
+      <div><mat-icon>shield</mat-icon><span><strong>Données privées</strong>Votre recherche reste dans votre espace.</span></div>
+    </section>
+
+    <section class="capabilities section-wrap" aria-labelledby="capabilities-title">
+      <div class="section-heading">
+        <span class="section-kicker">UN SEUL ESPACE</span>
+        <h2 id="capabilities-title">Moins de suivi manuel.<br>Plus de visibilité.</h2>
+        <p>JobTrackr rassemble uniquement les informations qui vous aident à faire avancer votre recherche.</p>
+      </div>
+
+      <div class="capability-grid">
+        <article>
+          <span class="capability-icon"><mat-icon>view_kanban</mat-icon></span>
+          <h3>Pipeline clair</h3>
+          <p>Liste ou Kanban, chaque candidature garde sa place et son prochain statut.</p>
+        </article>
+        <article>
+          <span class="capability-icon"><mat-icon>event_upcoming</mat-icon></span>
+          <h3>Entretiens visibles</h3>
+          <p>Les rendez-vous importants remontent directement dans votre vue d’ensemble.</p>
+        </article>
+        <article>
+          <span class="capability-icon"><mat-icon>notification_important</mat-icon></span>
+          <h3>Relances utiles</h3>
+          <p>Les opportunités à reprendre apparaissent avant de disparaître dans votre historique.</p>
+        </article>
+        <article>
+          <span class="capability-icon"><mat-icon>sync</mat-icon></span>
+          <h3>Workspace cloud</h3>
+          <p>Votre suivi reste disponible depuis vos appareils avec un compte unique.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="workflow section-wrap" id="workflow" aria-labelledby="workflow-title">
+      <div class="workflow-copy">
+        <span class="section-kicker">WORKFLOW</span>
+        <h2 id="workflow-title">Chaque opportunité suit une trajectoire simple.</h2>
+        <p>Pas de statuts obscurs. JobTrackr met l’accent sur les étapes qui comptent réellement dans une recherche.</p>
+      </div>
+      <div class="workflow-track" aria-label="Étapes d’une candidature">
+        <div><span>01</span><strong>Candidature</strong><small>Centraliser l’opportunité</small></div>
+        <mat-icon>arrow_forward</mat-icon>
+        <div><span>02</span><strong>Entretien</strong><small>Préparer et suivre</small></div>
+        <mat-icon>arrow_forward</mat-icon>
+        <div><span>03</span><strong>Relance</strong><small>Reprendre au bon moment</small></div>
+        <mat-icon>arrow_forward</mat-icon>
+        <div><span>04</span><strong>Décision</strong><small>Clôturer proprement</small></div>
+      </div>
+    </section>
+
+    <section class="auth-section section-wrap" id="auth" aria-labelledby="auth-title">
+      <div class="auth-copy">
+        <span class="section-kicker">VOTRE ESPACE</span>
+        <h2 id="auth-title">Commencez avec une vue claire.</h2>
+        <p>Créez un compte ou reconnectez-vous. Aucune configuration compliquée, aucun tableau à construire.</p>
+        <ul>
+          <li><mat-icon>check</mat-icon>Suivi cloud privé</li>
+          <li><mat-icon>check</mat-icon>Liste et Kanban</li>
+          <li><mat-icon>check</mat-icon>Relances et entretiens</li>
+        </ul>
+      </div>
+
+      <article class="auth-card">
+        <div class="auth-heading">
+          <app-brand-mark />
+          <div>
+            <h3>{{ mode === 'login' ? 'Bon retour.' : 'Créer votre espace.' }}</h3>
+            <p>{{ mode === 'login' ? 'Retrouvez votre pipeline et vos prochaines actions.' : 'Votre suivi sera prêt en quelques secondes.' }}</p>
+          </div>
+        </div>
+
+        <div class="mode-switch" role="tablist" aria-label="Authentification">
+          <button type="button" role="tab" [attr.aria-selected]="mode === 'login'" [class.active]="mode === 'login'" (click)="setMode('login')">Connexion</button>
+          <button type="button" role="tab" [attr.aria-selected]="mode === 'register'" [class.active]="mode === 'register'" (click)="setMode('register')">Créer un compte</button>
+        </div>
+
+        <form [formGroup]="form" (ngSubmit)="submit()">
+          @if (mode === 'register') {
+            <label>
+              <span>Nom</span>
+              <input formControlName="displayName" autocomplete="name" placeholder="Alex Martin">
+            </label>
+          }
+          <label>
+            <span>Email</span>
+            <input formControlName="email" type="email" autocomplete="email" placeholder="alex@example.com">
+          </label>
+          <label>
+            <span>Mot de passe</span>
+            <input formControlName="password" type="password" [attr.autocomplete]="mode === 'login' ? 'current-password' : 'new-password'" placeholder="10 caractères minimum">
+          </label>
+
+          @if (errorMessage) {
+            <div class="feedback error" role="alert"><mat-icon>error</mat-icon><span>{{ errorMessage }}</span></div>
+          }
+
+          <button class="primary" type="submit" [disabled]="submitting || form.invalid || (mode === 'register' && !form.controls.displayName.value.trim())">
+            @if (submitting) { <mat-icon class="spin">progress_activity</mat-icon> }
+            <span>{{ submitting ? 'Connexion au workspace…' : mode === 'login' ? 'Se connecter' : 'Créer mon espace' }}</span>
+            @if (!submitting) { <mat-icon>arrow_forward</mat-icon> }
+          </button>
+        </form>
+      </article>
+    </section>
+
+    <footer class="public-footer section-wrap">
+      <a class="footer-brand" href="#top" aria-label="JobTrackr"><app-brand-mark [compact]="true"/><strong>JobTrackr</strong></a>
+      <p>Un espace simple pour piloter votre recherche d’emploi.</p>
+      <span>Produit personnel · Données privées</span>
+    </footer>
+  </div>
+} @else {
+  <section class="account-layout">
+    <article class="account-card connected-card">
+      <div class="connected-heading">
+        <div class="avatar">{{ initials(session.user.displayName) }}</div>
+        <div>
+          <span class="eyebrow">COMPTE</span>
+          <h2>{{ session.user.displayName }}</h2>
+          <p>{{ session.user.email }}</p>
+        </div>
+      </div>
+
+      @if (workspaceState === 'loading') {
+        <div class="feedback neutral"><mat-icon class="spin">progress_activity</mat-icon><span>Synchronisation du workspace…</span></div>
+      }
+
+      @if (workspaceState === 'error' || errorMessage) {
+        <div class="feedback error" role="alert">
+          <mat-icon>error</mat-icon>
+          <span>{{ errorMessage || 'Impossible de synchroniser vos données.' }}</span>
+        </div>
+      }
+
+      <div class="settings-list">
+        <a routerLink="/settings/profile">
+          <span><mat-icon>person</mat-icon><strong>Profil professionnel</strong></span>
+          <mat-icon>arrow_forward</mat-icon>
+        </a>
+      </div>
+
+      <div class="account-actions">
+        @if (workspaceState === 'error') {
+          <button type="button" class="secondary" (click)="retry()"><mat-icon>refresh</mat-icon>Réessayer</button>
+        }
+        <button type="button" class="secondary danger" (click)="logout()"><mat-icon>logout</mat-icon>Se déconnecter</button>
+      </div>
+    </article>
+  </section>
+}

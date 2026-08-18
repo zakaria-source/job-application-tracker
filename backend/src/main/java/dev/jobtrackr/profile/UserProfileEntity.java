@@ -86,7 +86,6 @@ public class UserProfileEntity implements Persistable<UUID> {
         this.newEntity = false;
     }
 
-    public UUID getUserId() { return userId; }
     public String getHeadline() { return headline; }
     public String getExperienceLabel() { return experienceLabel; }
     public String getLocation() { return location; }
@@ -95,7 +94,6 @@ public class UserProfileEntity implements Persistable<UUID> {
     public List<String> getCertifications() { return List.copyOf(certifications); }
     public String getEducation() { return education; }
     public String getTargetCompensation() { return targetCompensation; }
-    public Instant getUpdatedAt() { return updatedAt; }
 
     public void update(String headline,
                        String experienceLabel,
@@ -106,20 +104,20 @@ public class UserProfileEntity implements Persistable<UUID> {
                        String education,
                        String targetCompensation,
                        Instant now) {
-        this.headline = safe(headline);
-        this.experienceLabel = safe(experienceLabel);
-        this.location = safe(location);
-        this.summary = safe(summary);
+        this.headline = normalize(headline);
+        this.experienceLabel = normalize(experienceLabel);
+        this.location = normalize(location);
+        this.summary = normalize(summary);
         this.coreSkills.clear();
         this.coreSkills.addAll(coreSkills == null ? List.of() : coreSkills);
         this.certifications.clear();
         this.certifications.addAll(certifications == null ? List.of() : certifications);
-        this.education = safe(education);
-        this.targetCompensation = safe(targetCompensation);
+        this.education = normalize(education);
+        this.targetCompensation = normalize(targetCompensation);
         this.updatedAt = now;
     }
 
-    private static String safe(String value) {
+    private static String normalize(String value) {
         return value == null ? "" : value.trim();
     }
 }

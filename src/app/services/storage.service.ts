@@ -21,6 +21,13 @@ interface ExportEnvelope {
   applications: JobApplication[];
 }
 
+export interface ImportPreview {
+  detected: number;
+  ready: number;
+  duplicates: number;
+  applications: JobApplication[];
+}
+
 @Injectable({providedIn: 'root'})
 export class StorageService {
   private applications: JobApplication[] = [];
@@ -130,6 +137,15 @@ export class StorageService {
     });
   }
 
+  completeFollowUp(id: string, now = new Date()): void {
+    const application = this.getApplicationById(id);
+    if (!application?.followUpDate) {
+      return;
+    }
+
+    this.updateApplication({...application, followUpDate: undefined, lastUpdated: now});
+  }
+
   deleteApplication(id: string): void {
     const previous = this.getApplicationById(id);
     if (!previous) {
@@ -169,17 +185,34 @@ export class StorageService {
     return JSON.stringify(envelope, null, 2);
   }
 
-  importData(serialized: string): number {
-    const imported = this.parseApplications(serialized);
-    if (imported.length === 0) {
+  previewImport(serialized: string): ImportPreview {
+    const detected = this.parseApplications(serialized);
+    const ready = detected.filter(candidate =>
+      !this.applications.some(existing => this.isSameApplication(existing, candidate))
+    );
+
+    return {
+      detected: detected.length,
+      ready: ready.length,
+      duplicates: detected.length - ready.length,
+      applications: ready
+    };
+  }
+
+  importPreview(preview: ImportPreview): number {
+    if (preview.applications.length === 0) {
       return 0;
     }
 
-    this.cloudApi.importApplications(imported).subscribe({
+    this.cloudApi.importApplications(preview.applications).subscribe({
       next: () => this.refresh(),
       error: error => console.error('Unable to import backup', error)
     });
-    return imported.length;
+    return preview.applications.length;
+  }
+
+  importData(serialized: string): number {
+    return this.importPreview(this.previewImport(serialized));
   }
 
   private replaceApplication(application: JobApplication): void {
