@@ -40,17 +40,26 @@ GET /actuator/health
 
 ## Environment variables
 
-| Variable | Default | Purpose |
+Development defaults are defined in `application.yml`. Production uses the `production` Spring profile and requires explicit database credentials.
+
+| Variable | Development default | Production purpose |
 | --- | --- | --- |
-| `DATABASE_URL` | `jdbc:postgresql://localhost:5432/jobtrackr` | JDBC URL |
-| `DATABASE_USERNAME` | `jobtrackr` | Database user |
-| `DATABASE_PASSWORD` | `jobtrackr` | Database password |
+| `DATABASE_URL` | `jdbc:postgresql://localhost:5432/jobtrackr` | Generic local/default JDBC URL outside the production profile |
+| `DATABASE_HOST` | — | Production PostgreSQL hostname (Neon endpoint) |
+| `DATABASE_PORT` | `5432` | Production PostgreSQL port |
+| `DATABASE_NAME` | — | Production database name |
+| `DATABASE_USERNAME` | `jobtrackr` locally | Production database role |
+| `DATABASE_PASSWORD` | `jobtrackr` locally | Production database password |
 | `JWT_SECRET` | development-only value | HMAC signing secret; replace in every deployed environment |
 | `JWT_TTL` | `PT12H` | Access-token lifetime |
 | `CORS_ALLOWED_ORIGINS` | localhost Angular/Vite origins | Comma-separated SPA origins |
 | `PORT` | `8080` | HTTP port |
 
 `JWT_SECRET` must be at least 32 bytes and must be supplied through a secret manager in production.
+
+For the free portfolio deployment, Render runs the Docker image and Neon hosts PostgreSQL. `application-production.yml` assembles the Neon JDBC URL with `sslmode=require` and uses a small Hikari pool (`maximumPoolSize=5`, `minimumIdle=0`) suitable for an intermittent, scale-to-zero database workload.
+
+See the repository-root `DEPLOYMENT.md` for the Render + Neon + Netlify setup.
 
 ## API
 
@@ -110,7 +119,7 @@ This prevents a user from accessing another user's application by guessing a UUI
 
 ## Workflow invariant
 
-Recruitment stage remains the source of truth, matching the existing Angular frontend:
+Recruitment stage remains the source of truth, matching the Angular frontend:
 
 ```text
 Candidature -> Envoyé
@@ -138,4 +147,4 @@ cd backend
 mvn verify
 ```
 
-Integration tests use a real PostgreSQL container and verify authentication plus cross-user data isolation.
+Integration tests use a real PostgreSQL Testcontainer and verify authentication, profile persistence, application behavior, interview replacement and cross-user data isolation.
