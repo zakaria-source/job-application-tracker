@@ -1,14 +1,20 @@
 <mat-card class="application-form-card">
   <mat-card-header>
-    <mat-card-title>{{ editMode ? 'Modifier la candidature' : 'Nouvelle candidature' }}</mat-card-title>
+    <div class="form-heading">
+      <span class="form-kicker">{{ editMode ? 'MISE À JOUR' : 'NOUVELLE OPPORTUNITÉ' }}</span>
+      <mat-card-title>{{ editMode ? 'Modifier la candidature' : 'Ajouter une candidature' }}</mat-card-title>
+      <p>{{ editMode ? 'Mettez à jour uniquement les informations qui ont évolué.' : 'Commencez avec l’essentiel. Les détails restent optionnels.' }}</p>
+    </div>
   </mat-card-header>
   <mat-card-content>
     <form [formGroup]="jobForm" (ngSubmit)="onSubmit()">
-      <section class="form-section primary-fields">
+      <section class="form-section primary-fields" aria-labelledby="essential-fields">
+        <div class="section-label" id="essential-fields"><span>01</span><strong>Essentiel</strong></div>
+
         <div class="form-grid two-columns">
           <mat-form-field appearance="outline">
             <mat-label>Entreprise</mat-label>
-            <input matInput formControlName="company" required>
+            <input matInput formControlName="company" autocomplete="organization" required>
             @if (jobForm.get('company')?.hasError('required')) {
               <mat-error>L'entreprise est requise</mat-error>
             }
@@ -16,7 +22,7 @@
 
           <mat-form-field appearance="outline">
             <mat-label>Poste</mat-label>
-            <input matInput formControlName="position" required>
+            <input matInput formControlName="position" autocomplete="organization-title" required>
             @if (jobForm.get('position')?.hasError('required')) {
               <mat-error>Le poste est requis</mat-error>
             }
@@ -25,7 +31,7 @@
 
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Lien de l'offre</mat-label>
-          <input matInput formControlName="offerUrl" type="url" placeholder="https://...">
+          <input matInput formControlName="offerUrl" type="url" placeholder="https://..." autocomplete="url">
           <mat-icon matSuffix>link</mat-icon>
           @if (jobForm.get('offerUrl')?.hasError('pattern')) {
             <mat-error>Utilisez une URL commençant par http:// ou https://</mat-error>
@@ -57,7 +63,7 @@
 
       <details class="advanced-section" [open]="editMode">
         <summary>
-          <span><mat-icon>tune</mat-icon> Plus de détails</span>
+          <span><span class="summary-number">02</span><strong>Contexte et suivi</strong><small>Salaire, contact, relance, notes et entretiens</small></span>
           <mat-icon class="chevron">expand_more</mat-icon>
         </summary>
 
@@ -108,18 +114,19 @@
           </div>
 
           <div class="subsection-heading">
-            <h3>Contact</h3>
+            <span>CONTACT</span>
+            <h3>Recruteur ou interlocuteur</h3>
           </div>
 
           <div class="form-grid three-columns">
             <mat-form-field appearance="outline">
-              <mat-label>Recruteur</mat-label>
-              <input matInput formControlName="recruiterName">
+              <mat-label>Nom</mat-label>
+              <input matInput formControlName="recruiterName" autocomplete="name">
             </mat-form-field>
 
             <mat-form-field appearance="outline">
               <mat-label>Email</mat-label>
-              <input matInput formControlName="recruiterEmail" type="email">
+              <input matInput formControlName="recruiterEmail" type="email" autocomplete="email">
               @if (jobForm.get('recruiterEmail')?.hasError('email')) {
                 <mat-error>Email invalide</mat-error>
               }
@@ -127,7 +134,7 @@
 
             <mat-form-field appearance="outline">
               <mat-label>Téléphone</mat-label>
-              <input matInput formControlName="recruiterPhone">
+              <input matInput formControlName="recruiterPhone" autocomplete="tel">
             </mat-form-field>
           </div>
 
@@ -138,8 +145,9 @@
 
           <div class="subsection-heading interview-heading">
             <div>
-              <h3>Entretiens</h3>
-              <p>Ajoutez uniquement les rendez-vous déjà planifiés.</p>
+              <span>ENTRETIENS</span>
+              <h3>Rendez-vous planifiés</h3>
+              <p>Ajoutez uniquement les rendez-vous déjà confirmés.</p>
             </div>
             <button type="button" mat-stroked-button (click)="addInterview()">
               <mat-icon>add</mat-icon> Ajouter
@@ -149,6 +157,7 @@
           <div formArrayName="interviews">
             @for (interview of interviews.controls; track interview; let i = $index) {
               <div [formGroupName]="i" class="interview-item">
+                <div class="interview-number">Entretien {{ i + 1 }}</div>
                 <div class="form-grid two-columns">
                   <mat-form-field appearance="outline">
                     <mat-label>Date</mat-label>
@@ -184,7 +193,7 @@
       <div class="form-actions">
         <button type="button" mat-stroked-button (click)="onCancel()">Annuler</button>
         <button type="submit" mat-flat-button color="primary" [disabled]="jobForm.invalid">
-          {{ editMode ? 'Enregistrer' : 'Ajouter' }}
+          {{ editMode ? 'Enregistrer les modifications' : 'Ajouter la candidature' }}
         </button>
       </div>
     </form>

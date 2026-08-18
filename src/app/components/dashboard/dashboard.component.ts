@@ -1,11 +1,12 @@
-import {Component, DestroyRef, OnInit, inject} from '@angular/core';
 import {CommonModule} from '@angular/common';
+import {Component, DestroyRef, OnInit, inject} from '@angular/core';
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {MatButtonModule} from '@angular/material/button';
 import {MatCardModule} from '@angular/material/card';
 import {MatIconModule} from '@angular/material/icon';
 import {RouterLink} from '@angular/router';
 import {combineLatest, timer} from 'rxjs';
-import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
+import {CloudWorkspaceService, CloudWorkspaceState} from '../../cloud/cloud-workspace.service';
 import {JobApplication, JobStatistics, Suggestion} from '../../models/job-application.model';
 import {StorageService} from '../../services/storage.service';
 
@@ -30,6 +31,7 @@ export class DashboardComponent implements OnInit {
 
   applications: JobApplication[] = [];
   activeApplications = 0;
+  workspaceState: CloudWorkspaceState;
   statistics: JobStatistics = {
     totalApplications: 0,
     responseRate: 0,
@@ -41,7 +43,15 @@ export class DashboardComponent implements OnInit {
   followUpActions: Suggestion[] = [];
   upcomingInterviews: UpcomingInterview[] = [];
 
-  constructor(private readonly storageService: StorageService) {}
+  constructor(
+    private readonly storageService: StorageService,
+    private readonly workspace: CloudWorkspaceService
+  ) {
+    this.workspaceState = workspace.state;
+    workspace.state$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(state => this.workspaceState = state);
+  }
 
   ngOnInit(): void {
     combineLatest([
@@ -50,6 +60,10 @@ export class DashboardComponent implements OnInit {
     ])
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(([applications]) => this.refreshDashboard(applications));
+  }
+
+  retryWorkspace(): void {
+    this.workspace.connect().subscribe({error: () => undefined});
   }
 
   getApplicationLabel(applicationId?: string): string {

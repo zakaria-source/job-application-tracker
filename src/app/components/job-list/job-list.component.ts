@@ -3,6 +3,7 @@ import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {MatButtonModule} from '@angular/material/button';
 import {MatCardModule} from '@angular/material/card';
 import {MatIconModule} from '@angular/material/icon';
+import {CloudWorkspaceService, CloudWorkspaceState} from '../../cloud/cloud-workspace.service';
 import {JobApplication} from '../../models/job-application.model';
 import {StorageService} from '../../services/storage.service';
 import {
@@ -53,10 +54,19 @@ export class JobListComponent implements OnInit {
     showDetails = false;
     editMode = false;
     viewMode: 'list' | 'kanban' = 'list';
+    workspaceState: CloudWorkspaceState;
 
     private activeFilters: ApplicationFilterCriteria = EMPTY_FILTERS;
 
-    constructor(private readonly storageService: StorageService) {}
+    constructor(
+        private readonly storageService: StorageService,
+        private readonly workspace: CloudWorkspaceService
+    ) {
+        this.workspaceState = workspace.state;
+        workspace.state$
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe(state => this.workspaceState = state);
+    }
 
     get hasActiveFilters(): boolean {
         return Object.values(this.activeFilters).some(Boolean);
@@ -69,6 +79,10 @@ export class JobListComponent implements OnInit {
                 this.applications = applications;
                 this.applyFilters(this.activeFilters);
             });
+    }
+
+    retryWorkspace(): void {
+        this.workspace.connect().subscribe({error: () => undefined});
     }
 
     onFiltersChange(criteria: ApplicationFilterCriteria): void {
