@@ -17,7 +17,7 @@ interface InterviewDto extends Omit<Interview, 'date'> {
   date: string;
 }
 
-export interface CloudImportSummary {
+export interface ApplicationImportSummary {
   imported: number;
   skipped: number;
 }
@@ -57,8 +57,8 @@ export class JobTrackrApiService {
     return this.http.delete<void>(`${this.applicationsUrl}/${encodeURIComponent(id)}`);
   }
 
-  importApplications(applications: readonly JobApplication[]): Observable<CloudImportSummary> {
-    return this.http.post<CloudImportSummary>(
+  importApplications(applications: readonly JobApplication[]): Observable<ApplicationImportSummary> {
+    return this.http.post<ApplicationImportSummary>(
       `${this.applicationsUrl}/import`,
       applications.map(application => this.toApplicationRequest(application))
     );
