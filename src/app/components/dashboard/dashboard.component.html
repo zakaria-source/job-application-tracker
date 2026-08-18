@@ -1,54 +1,54 @@
 <div class="dashboard-container">
   @if (applications.length === 0) {
     <section class="empty-dashboard" aria-label="Premiers pas">
-      <div class="empty-icon"><mat-icon>work_outline</mat-icon></div>
-      <h2>Aucune candidature pour le moment</h2>
-      <p>Ajoutez votre première candidature pour commencer à suivre vos relances et entretiens.</p>
-      <a mat-flat-button color="primary" routerLink="/applications">
-        <mat-icon>add</mat-icon>
-        Ajouter une candidature
-      </a>
+      <span class="empty-kicker">PREMIÈRE ÉTAPE</span>
+      <h2>Commencez votre suivi</h2>
+      <p>Ajoutez une candidature. JobTrackr organisera ensuite les relances, les entretiens et la progression de votre recherche.</p>
+      <a mat-flat-button color="primary" routerLink="/applications">Ajouter une candidature</a>
     </section>
   } @else {
-    <section class="kpi-grid" aria-label="Résumé de la recherche">
-      <mat-card class="kpi-card">
-        <span class="kpi-label">Actives</span>
+    <section class="metrics-strip" aria-label="Résumé de la recherche">
+      <div class="metric">
+        <span>Actives</span>
         <strong>{{ activeApplications }}</strong>
-        <small>candidatures en cours</small>
-      </mat-card>
-
-      <mat-card class="kpi-card" [class.attention]="followUpActions.length > 0">
-        <span class="kpi-label">Relances</span>
+        <small>Candidatures en cours</small>
+      </div>
+      <div class="metric">
+        <span>Relances</span>
         <strong>{{ followUpActions.length }}</strong>
-        <small>à traiter</small>
-      </mat-card>
-
-      <mat-card class="kpi-card" [class.highlight]="upcomingInterviews.length > 0">
-        <span class="kpi-label">Entretiens</span>
+        <small>Actions à traiter</small>
+      </div>
+      <div class="metric">
+        <span>Entretiens</span>
         <strong>{{ upcomingInterviews.length }}</strong>
-        <small>dans les 14 jours</small>
-      </mat-card>
+        <small>Dans les 14 prochains jours</small>
+      </div>
     </section>
 
     <section class="dashboard-grid">
       <mat-card class="panel actions-panel">
         <mat-card-header>
-          <mat-card-title>Prochaines actions</mat-card-title>
+          <div class="panel-heading">
+            <div>
+              <span class="panel-kicker">À FAIRE</span>
+              <mat-card-title>Prochaines actions</mat-card-title>
+            </div>
+          </div>
         </mat-card-header>
         <mat-card-content>
           @if (followUpActions.length === 0 && upcomingInterviews.length === 0) {
             <div class="empty-state compact">
-              <mat-icon>task_alt</mat-icon>
+              <span class="status-dot success"></span>
               <div>
                 <strong>Rien d’urgent</strong>
-                <p>Vos relances et entretiens à venir apparaîtront ici.</p>
+                <p>Vos prochaines relances et vos entretiens apparaîtront ici.</p>
               </div>
             </div>
           }
 
           @for (action of followUpActions; track action) {
             <div class="action-item">
-              <div class="action-icon warning"><mat-icon>schedule</mat-icon></div>
+              <span class="action-marker warning"></span>
               <div class="action-copy">
                 <strong>{{ getApplicationLabel(action.relatedApplicationId) }}</strong>
                 <span>{{ action.message }}</span>
@@ -73,7 +73,10 @@
 
       <mat-card class="panel pipeline-panel">
         <mat-card-header>
-          <mat-card-title>Pipeline</mat-card-title>
+          <div>
+            <span class="panel-kicker">PIPELINE</span>
+            <mat-card-title>Progression</mat-card-title>
+          </div>
         </mat-card-header>
         <mat-card-content>
           <div class="pipeline-row">
@@ -82,7 +85,7 @@
           </div>
           <div class="pipeline-row">
             <div><span>Entretiens</span><strong>{{ statistics.statusCounts.interview }}</strong></div>
-            <div class="pipeline-track"><span [style.width.%]="statusPercentage(statistics.statusCounts.interview)"></span></div>
+            <div class="pipeline-track accent"><span [style.width.%]="statusPercentage(statistics.statusCounts.interview)"></span></div>
           </div>
           <div class="pipeline-row">
             <div><span>Acceptées</span><strong>{{ statistics.statusCounts.accepted }}</strong></div>
@@ -93,7 +96,7 @@
             <div class="pipeline-track muted"><span [style.width.%]="statusPercentage(statistics.statusCounts.rejected)"></span></div>
           </div>
 
-          <a class="pipeline-link" routerLink="/applications">Voir toutes les candidatures <mat-icon>arrow_forward</mat-icon></a>
+          <a class="pipeline-link" routerLink="/applications">Toutes les candidatures <mat-icon>arrow_forward</mat-icon></a>
         </mat-card-content>
       </mat-card>
     </section>
