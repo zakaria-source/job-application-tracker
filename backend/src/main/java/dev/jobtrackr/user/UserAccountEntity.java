@@ -46,8 +46,6 @@ public class UserAccountEntity {
     public String getEmail() { return email; }
     public String getPasswordHash() { return passwordHash; }
     public String getDisplayName() { return displayName; }
-    public Instant getCreatedAt() { return createdAt; }
-    public Instant getUpdatedAt() { return updatedAt; }
 
     public void updateDisplayName(String displayName, Instant now) {
         this.displayName = displayName;
