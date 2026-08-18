@@ -8,6 +8,11 @@ import {JobStatistics, Suggestion} from '@app/features/applications/models/appli
 import {JobApplication, RecruitmentStage} from '@app/features/applications/models/application.model';
 import {ApplicationImportService} from './application-import.service';
 
+export interface ApplicationCreateCallbacks {
+  onSuccess?: (application: JobApplication) => void;
+  onError?: (error: unknown) => void;
+}
+
 @Injectable({providedIn: 'root'})
 export class ApplicationStore {
   private applications: JobApplication[] = [];
@@ -19,7 +24,7 @@ export class ApplicationStore {
   clear(): void { this.applications = []; this.publish(); }
   refresh(): void { this.api.listApplications().subscribe({next: applications => this.connect(applications), error: error => console.error('Unable to refresh applications', error)}); }
   getApplicationById(id: string): JobApplication | undefined { return this.applications.find(application => application.id === id); }
-  addApplication(application: JobApplication): void { this.api.createApplication(application).subscribe({next: saved => { this.applications = [...this.applications, this.cloneApplication(saved)]; this.publish(); }, error: error => console.error('Unable to create application', error)}); }
+  addApplication(application: JobApplication, callbacks: ApplicationCreateCallbacks = {}): void { this.api.createApplication(application).subscribe({next: saved => { this.applications = [...this.applications, this.cloneApplication(saved)]; this.publish(); callbacks.onSuccess?.(saved); }, error: error => { console.error('Unable to create application', error); callbacks.onError?.(error); }}); }
   mergeApplications(candidates: readonly JobApplication[]): number { const missing = this.imports.findMissing(candidates, this.applications); if (!missing.length) return 0; this.api.importApplications(missing).subscribe({next: () => this.refresh(), error: error => console.error('Unable to import applications', error)}); return missing.length; }
   updateApplication(updatedApplication: JobApplication): void { const previous = this.getApplicationById(updatedApplication.id); if (!previous) return; this.replaceApplication(updatedApplication); this.api.updateApplication(updatedApplication).subscribe({next: saved => this.replaceApplication(saved), error: error => { this.replaceApplication(previous); console.error('Unable to update application', error); }}); }
   updateApplicationStage(id: string, stage: RecruitmentStage, now = new Date()): void { const application = this.getApplicationById(id); if (!application || application.stage === stage) return; const status = this.workflow.statusForStage(stage); const responseDate = application.responseDate ?? (status === 'Envoyé' ? undefined : now); const optimistic: JobApplication = {...application, stage, status, responseDate, lastUpdated: now}; this.replaceApplication(optimistic); this.api.moveApplication(id, stage).subscribe({next: saved => this.replaceApplication(saved), error: error => { this.replaceApplication(application); console.error('Unable to move application', error); }}); }
