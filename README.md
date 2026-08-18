@@ -1,30 +1,22 @@
 # JobTrackr
 
-JobTrackr is a simple workspace for tracking job applications, follow-ups and interviews.
+JobTrackr is a simple cloud workspace for tracking job applications, follow-ups and interviews.
 
 **Live app:** https://trackmyjob-zakaria.netlify.app/
 
 ## Features
 
+- account-based workspace
 - application tracking with list and Kanban views
 - recruitment stages, priorities and follow-up dates
 - recruiter and interview tracking
 - dashboard with upcoming actions and pipeline metrics
 - JSON import/export
-- local mode without an account
-- optional cloud account with synchronized data
+- synchronized data across devices
 
-## How it works
+## Architecture
 
 ```text
-Local mode
-Browser
-  ↓
-Angular
-  ↓
-LocalStorage
-
-Cloud mode
 Browser
   ↓
 Netlify · Angular
@@ -34,7 +26,7 @@ Render · Spring Boot
 Neon · PostgreSQL
 ```
 
-Signing in does not automatically upload data already stored in the browser. Local data is imported into a cloud account only when the user explicitly chooses to do so.
+JobTrackr requires an account. Profile and application data are stored through the backend API and PostgreSQL; there is no LocalStorage data mode.
 
 ## Stack
 
@@ -89,7 +81,7 @@ npm ci
 npm start
 ```
 
-Open `http://localhost:4200`.
+Open `http://localhost:4200`, create an account, then use the application through the local backend.
 
 ## Tests
 
@@ -112,10 +104,10 @@ Backend integration tests use PostgreSQL Testcontainers.
 
 - passwords are hashed with BCrypt
 - API access uses bearer JWT authentication
-- application data is scoped to the authenticated user
+- profile and application data are scoped to the authenticated user
 - production database connections use TLS
 - production secrets stay outside the repository
-- local browser data is never silently uploaded
+- business data is persisted in PostgreSQL, not browser LocalStorage
 
 ## Deployment
 
