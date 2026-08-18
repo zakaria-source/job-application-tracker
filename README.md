@@ -115,6 +115,7 @@ mvn spring-boot:run
 Start Angular from the repository root:
 
 ```bash
+cd frontend
 npm ci
 npm start
 ```
