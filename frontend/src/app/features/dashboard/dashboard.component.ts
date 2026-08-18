@@ -7,8 +7,9 @@ import {MatIconModule} from '@angular/material/icon';
 import {RouterLink} from '@angular/router';
 import {combineLatest, timer} from 'rxjs';
 import {WorkspaceService, WorkspaceState} from '@app/core/workspace/workspace.service';
-import {JobApplication, JobStatistics, RecruitmentStage} from '@app/features/applications/models/application.model';
 import {ApplicationStore} from '@app/features/applications/data-access/application.store';
+import {JobStatistics} from '@app/features/applications/models/application-analytics.model';
+import {JobApplication, RecruitmentStage} from '@app/features/applications/models/application.model';
 
 interface UpcomingInterview {
   id: string;
@@ -84,7 +85,7 @@ export class DashboardComponent implements OnInit {
   interviewRate = 0;
 
   constructor(
-    private readonly storageService: ApplicationStore,
+    private readonly applicationStore: ApplicationStore,
     private readonly workspace: WorkspaceService
   ) {
     this.workspaceState = workspace.state;
@@ -95,7 +96,7 @@ export class DashboardComponent implements OnInit {
 
   ngOnInit(): void {
     combineLatest([
-      this.storageService.getApplications(),
+      this.applicationStore.getApplications(),
       timer(0, 60_000)
     ])
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -107,7 +108,7 @@ export class DashboardComponent implements OnInit {
   }
 
   completeFollowUp(applicationId: string): void {
-    this.storageService.completeFollowUp(applicationId);
+    this.applicationStore.completeFollowUp(applicationId);
   }
 
   stageShare(count: number): number {
@@ -118,7 +119,7 @@ export class DashboardComponent implements OnInit {
     const now = new Date();
     this.applications = [...applications].sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
     this.activeApplications = applications.filter(app => app.status !== 'Accepté' && app.status !== 'Refusé').length;
-    this.statistics = this.storageService.calculateStatistics();
+    this.statistics = this.applicationStore.calculateStatistics();
     this.interviewRate = this.statistics.totalApplications > 0
       ? Math.round((this.statistics.statusCounts.interview / this.statistics.totalApplications) * 100)
       : 0;
