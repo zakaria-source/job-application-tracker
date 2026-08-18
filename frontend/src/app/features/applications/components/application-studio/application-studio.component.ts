@@ -101,11 +101,17 @@ export class ApplicationStudioComponent implements OnChanges {
     ].filter(Boolean).length;
   }
 
+  onJobUrlInput(value: string): void {
+    this.jobUrl = value;
+    this.formComponent?.setOfferUrl(value);
+  }
+
   onJobUrlPaste(event: ClipboardEvent): void {
     const pasted = event.clipboardData?.getData('text')?.trim();
     if (!pasted?.startsWith('https://')) return;
     event.preventDefault();
     this.jobUrl = pasted;
+    this.formComponent?.setOfferUrl(pasted);
     this.analyzeJobUrl();
   }
 
