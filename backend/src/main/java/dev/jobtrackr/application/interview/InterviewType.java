@@ -1,6 +1,8 @@
 package dev.jobtrackr.application.interview;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import dev.jobtrackr.common.domain.EnumSupport;
+import dev.jobtrackr.common.domain.LabelledEnum;
 
 public enum InterviewType implements LabelledEnum {
     TELEPHONE("Téléphone"),
