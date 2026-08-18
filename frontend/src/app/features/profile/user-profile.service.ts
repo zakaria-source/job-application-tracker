@@ -7,7 +7,7 @@ import {UserProfile} from '@app/features/profile/user-profile.model';
 export class UserProfileService {
   private readonly profileSubject = new BehaviorSubject<UserProfile | null>(null);
 
-  constructor(private readonly cloudApi: JobTrackrApiService) {}
+  constructor(private readonly api: JobTrackrApiService) {}
 
   profileChanges(): Observable<UserProfile | null> {
     return this.profileSubject.asObservable();
@@ -35,7 +35,7 @@ export class UserProfileService {
     const previous = this.profileSubject.value;
     this.profileSubject.next(normalized);
 
-    return this.cloudApi.updateProfile(normalized).pipe(
+    return this.api.updateProfile(normalized).pipe(
       map(saved => this.normalize(saved)),
       tap(saved => this.profileSubject.next(saved)),
       catchError(error => {
