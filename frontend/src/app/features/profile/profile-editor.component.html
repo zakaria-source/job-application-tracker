@@ -3,18 +3,25 @@
     <div class="editor-heading">
       <div>
         <span class="eyebrow">{{ isEditing ? 'PROFIL PROFESSIONNEL' : 'CONFIGURATION INITIALE' }}</span>
-        <h1>{{ isEditing ? 'Votre contexte de recherche' : 'Personnalisez votre workspace' }}</h1>
-        <p>{{ isEditing ? 'Gardez uniquement les informations qui aident JobTrackr à contextualiser votre suivi.' : 'Quelques informations suffisent pour rendre votre espace immédiatement utile.' }}</p>
+        <h1>{{ isEditing ? 'Votre contexte de recherche' : 'Préparons votre espace' }}</h1>
+        <p>{{ isEditing ? 'Gardez uniquement les informations qui aident JobTrackr à contextualiser votre suivi.' : 'Deux informations sont obligatoires. Le reste peut être complété maintenant ou plus tard.' }}</p>
       </div>
-      <span class="profile-state"><span></span>{{ isEditing ? 'Profil actif' : '1 minute' }}</span>
+      <span class="profile-state">
+        <mat-icon>{{ isEditing ? 'verified' : 'looks_one' }}</mat-icon>
+        {{ isEditing ? 'Profil actif' : 'Étape unique' }}
+      </span>
     </div>
 
-    <form [formGroup]="form" (ngSubmit)="save()">
-      <div class="form-section-label"><span>01</span><strong>Identité professionnelle</strong></div>
+    <form [formGroup]="form" (ngSubmit)="save()" novalidate [attr.aria-busy]="saving">
+      <div class="section-intro">
+        <div class="form-section-label"><span>01</span><strong>Identité professionnelle</strong></div>
+        <span class="required-note">* Obligatoire</span>
+      </div>
+
       <div class="form-grid">
         <label>
           <span>Nom *</span>
-          <input formControlName="name" autocomplete="name" placeholder="Alex Martin" />
+          <input formControlName="name" autocomplete="name" placeholder="Alex Martin" maxlength="100" />
           @if (form.controls.name.touched && form.controls.name.invalid) {
             <small class="field-error">Indiquez votre nom.</small>
           }
@@ -22,7 +29,7 @@
 
         <label>
           <span>Poste recherché *</span>
-          <input formControlName="headline" autocomplete="organization-title" placeholder="Backend Engineer" />
+          <input formControlName="headline" autocomplete="organization-title" placeholder="Backend Engineer" maxlength="140" />
           @if (form.controls.headline.touched && form.controls.headline.invalid) {
             <small class="field-error">Indiquez le poste recherché.</small>
           }
@@ -30,36 +37,45 @@
 
         <label>
           <span>Expérience</span>
-          <input formControlName="experienceLabel" placeholder="4 ans d’expérience" />
+          <input formControlName="experienceLabel" placeholder="4 ans d’expérience" maxlength="80" />
         </label>
 
         <label>
           <span>Localisation</span>
-          <input formControlName="location" autocomplete="address-level2" placeholder="Paris · Remote Europe" />
+          <input formControlName="location" autocomplete="address-level2" placeholder="Paris · Remote Europe" maxlength="100" />
         </label>
 
         <label class="wide">
           <span>Compétences principales</span>
-          <input formControlName="skills" placeholder="Java, Spring Boot, Kafka, Kubernetes" />
-          <small>Quelques compétences structurantes, séparées par des virgules.</small>
+          <input formControlName="skills" placeholder="Java, Spring Boot, Kafka, Kubernetes" maxlength="500" />
+          <small>Ajoutez quelques compétences structurantes, séparées par des virgules.</small>
         </label>
       </div>
 
       @if (errorMessage) {
         <div class="save-feedback error" role="alert">
-          <span class="feedback-dot"></span>
+          <mat-icon>error</mat-icon>
           <span>{{ errorMessage }}</span>
         </div>
       }
 
       <div class="form-actions">
-        <span class="save-hint">Les modifications sont enregistrées dans votre espace cloud.</span>
-        <div>
+        <div class="save-hint">
+          <mat-icon>cloud_done</mat-icon>
+          <span>Enregistrement sécurisé dans votre espace cloud.</span>
+        </div>
+        <div class="action-buttons">
           @if (isEditing) {
             <button type="button" class="secondary" [disabled]="saving" (click)="cancel()">Annuler</button>
           }
-          <button type="submit" class="primary" [disabled]="form.invalid || saving">
-            {{ saving ? 'Enregistrement…' : isEditing ? 'Enregistrer' : 'Continuer' }}
+          <button type="submit" class="primary" [disabled]="saving">
+            @if (saving) {
+              <mat-icon class="spin">progress_activity</mat-icon>
+              <span>Enregistrement…</span>
+            } @else {
+              <span>{{ isEditing ? 'Enregistrer les modifications' : 'Continuer vers JobTrackr' }}</span>
+              <mat-icon>arrow_forward</mat-icon>
+            }
           </button>
         </div>
       </div>
