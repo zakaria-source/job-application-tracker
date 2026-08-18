@@ -16,6 +16,7 @@ import tools.jackson.databind.json.JsonMapper;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -71,6 +72,38 @@ class CloudApiIntegrationTest {
                 .header("Authorization", "Bearer " + tokenB))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void persistsAndReadsAuthenticatedProfile() throws Exception {
+        String token = register("profile@example.com", "Initial Name");
+
+        mockMvc.perform(put("/api/v1/profile")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "name": "Cloud Candidate",
+                      "headline": "Backend Engineer",
+                      "experienceLabel": "4 years",
+                      "location": "Paris",
+                      "summary": "Cloud profile",
+                      "coreSkills": ["Java", "Spring Boot"],
+                      "certifications": ["CKA"],
+                      "education": "Computer Science",
+                      "targetCompensation": "65 k€ / year"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.name").value("Cloud Candidate"))
+            .andExpect(jsonPath("$.headline").value("Backend Engineer"))
+            .andExpect(jsonPath("$.coreSkills[0]").value("Java"));
+
+        mockMvc.perform(get("/api/v1/profile")
+                .header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.name").value("Cloud Candidate"))
+            .andExpect(jsonPath("$.certifications[0]").value("CKA"));
     }
 
     @Test
