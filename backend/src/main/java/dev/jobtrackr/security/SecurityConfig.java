@@ -1,5 +1,6 @@
 package dev.jobtrackr.security;
 
+import dev.jobtrackr.common.RequestLoggingFilter;
 import dev.jobtrackr.user.UserAccountRepository;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -96,8 +97,8 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(properties.allowedOrigins());
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "If-Match"));
-        configuration.setExposedHeaders(List.of("ETag"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "If-Match", RequestLoggingFilter.REQUEST_ID_HEADER));
+        configuration.setExposedHeaders(List.of("ETag", RequestLoggingFilter.REQUEST_ID_HEADER));
         configuration.setAllowCredentials(false);
         configuration.setMaxAge(3600L);
 

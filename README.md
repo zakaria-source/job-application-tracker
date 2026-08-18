@@ -100,6 +100,26 @@ mvn -B -f backend/pom.xml verify
 
 Backend integration tests use PostgreSQL Testcontainers.
 
+## Logs and observability
+
+The API writes concise structured logs to stdout so they are visible directly in Render.
+
+- every API request receives an `X-Request-Id`
+- request logs include method, path, HTTP status and duration
+- authentication success events log only the user UUID
+- application and interview mutations log only resource UUIDs and workflow metadata
+- handled API errors are logged with the same request correlation ID
+- passwords, JWTs, request bodies, recruiter details and notes are never logged
+- `/actuator/health` and `OPTIONS` requests are excluded from request logs to avoid noise
+
+Example:
+
+```text
+2026-08-18T12:34:56.789Z INFO requestId=8c88... RequestLoggingFilter - http_request method=POST path=/api/v1/applications status=201 durationMs=42
+```
+
+The `X-Request-Id` response header is exposed through CORS, so a browser-side failure can be matched to the corresponding backend log entry.
+
 ## Security and privacy
 
 - passwords are hashed with BCrypt

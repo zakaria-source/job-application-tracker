@@ -10,6 +10,8 @@ import dev.jobtrackr.interview.InterviewEntity;
 import dev.jobtrackr.interview.InterviewRepository;
 import dev.jobtrackr.user.UserAccountEntity;
 import dev.jobtrackr.user.UserAccountRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +22,8 @@ import java.util.UUID;
 
 @Service
 public class ApplicationService {
+
+    private static final Logger log = LoggerFactory.getLogger(ApplicationService.class);
 
     private final JobApplicationRepository applications;
     private final InterviewRepository interviews;
@@ -48,7 +52,10 @@ public class ApplicationService {
 
     @Transactional
     public ApplicationResponse create(UUID userId, ApplicationRequest request) {
-        return ApplicationResponse.from(createEntity(userId, request));
+        JobApplicationEntity application = createEntity(userId, request);
+        log.info("application_event action=create userId={} applicationId={} stage={}",
+            userId, application.getId(), application.getStage());
+        return ApplicationResponse.from(application);
     }
 
     @Transactional
@@ -57,6 +64,8 @@ public class ApplicationService {
         Instant now = Instant.now();
         apply(application, request, now);
         replaceInterviews(application, request.interviews(), now);
+        log.info("application_event action=update userId={} applicationId={} stage={}",
+            userId, applicationId, application.getStage());
         return ApplicationResponse.from(application);
     }
 
@@ -64,12 +73,14 @@ public class ApplicationService {
     public ApplicationResponse move(UUID userId, UUID applicationId, RecruitmentStage stage) {
         JobApplicationEntity application = requireOwned(userId, applicationId);
         application.moveTo(stage, Instant.now());
+        log.info("application_event action=move userId={} applicationId={} stage={}", userId, applicationId, stage);
         return ApplicationResponse.from(application);
     }
 
     @Transactional
     public void delete(UUID userId, UUID applicationId) {
         applications.delete(requireOwned(userId, applicationId));
+        log.info("application_event action=delete userId={} applicationId={}", userId, applicationId);
     }
 
     @Transactional
@@ -78,6 +89,8 @@ public class ApplicationService {
         InterviewEntity interview = new InterviewEntity(UUID.randomUUID(), application);
         interview.update(request.date(), request.type(), request.notes(), request.reminderSet());
         application.addInterview(interview, Instant.now());
+        log.info("interview_event action=create userId={} applicationId={} interviewId={}",
+            userId, applicationId, interview.getId());
         return ApplicationResponse.from(application);
     }
 
@@ -91,6 +104,8 @@ public class ApplicationService {
             .orElseThrow(ResourceNotFoundException::new);
         interview.update(request.date(), request.type(), request.notes(), request.reminderSet());
         application.touch(Instant.now());
+        log.info("interview_event action=update userId={} applicationId={} interviewId={}",
+            userId, applicationId, interviewId);
         return ApplicationResponse.from(application);
     }
 
@@ -101,6 +116,8 @@ public class ApplicationService {
             .orElseThrow(ResourceNotFoundException::new);
         application.getInterviews().remove(interview);
         application.touch(Instant.now());
+        log.info("interview_event action=delete userId={} applicationId={} interviewId={}",
+            userId, applicationId, interviewId);
         return ApplicationResponse.from(application);
     }
 
@@ -116,6 +133,8 @@ public class ApplicationService {
             createEntity(userId, request);
             imported++;
         }
+        log.info("application_event action=import userId={} requested={} imported={} skipped={}",
+            userId, requests.size(), imported, skipped);
         return new ImportSummary(imported, skipped);
     }
 
