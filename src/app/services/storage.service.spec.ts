@@ -47,13 +47,7 @@ describe('StorageService', () => {
         const existing = serverApplications.find(item => item.id === id)!;
         const status = workflow.statusForStage(stage);
         const serverNow = new Date('2026-08-18T09:00:00');
-        const saved: JobApplication = {
-          ...existing,
-          stage,
-          status,
-          responseDate: existing.responseDate ?? (status === 'Envoyé' ? undefined : serverNow),
-          lastUpdated: serverNow
-        };
+        const saved: JobApplication = {...existing, stage, status, responseDate: existing.responseDate ?? (status === 'Envoyé' ? undefined : serverNow), lastUpdated: serverNow};
         serverApplications = serverApplications.map(item => item.id === id ? saved : item);
         return of(clone(saved));
       },
@@ -67,22 +61,15 @@ describe('StorageService', () => {
       }
     } as unknown as CloudApiService;
 
-    service = new StorageService(
-      api,
-      new ApplicationAnalyticsService(),
-      new FollowUpService(),
-      workflow
-    );
+    service = new StorageService(api, new ApplicationAnalyticsService(), new FollowUpService(), workflow);
     service.connect([]);
   });
 
   it('uses the backend for add, update and delete operations', () => {
     service.addApplication(application);
     expect(service.getApplicationById('1')?.company).toBe('Example Company');
-
     service.updateApplication({...application, company: 'Updated Company'});
     expect(service.getApplicationById('1')?.company).toBe('Updated Company');
-
     service.deleteApplication('1');
     expect(service.getApplicationById('1')).toBeUndefined();
     expect(serverApplications).toHaveLength(0);
@@ -90,20 +77,8 @@ describe('StorageService', () => {
 
   it('merges only missing applications and ignores tracking query parameters', () => {
     service.addApplication(application);
-
-    const duplicateWithDifferentId: JobApplication = {
-      ...application,
-      id: 'other-id',
-      offerUrl: 'https://jobs.example.com/backend?utm_source=portfolio'
-    };
-    const second: JobApplication = {
-      ...application,
-      id: '2',
-      company: 'Second Company',
-      position: 'Java Engineer',
-      offerUrl: 'https://jobs.example.com/java'
-    };
-
+    const duplicateWithDifferentId: JobApplication = {...application, id: 'other-id', offerUrl: 'https://jobs.example.com/backend?utm_source=portfolio'};
+    const second: JobApplication = {...application, id: '2', company: 'Second Company', position: 'Java Engineer', offerUrl: 'https://jobs.example.com/java'};
     expect(service.mergeApplications([duplicateWithDifferentId, second])).toBe(1);
     expect(service.getApplicationById('other-id')).toBeUndefined();
     expect(service.getApplicationById('2')).toBeDefined();
@@ -112,9 +87,7 @@ describe('StorageService', () => {
   it('updates stage and derived workflow status atomically', () => {
     const transitionDate = new Date('2026-08-18T09:00:00');
     service.addApplication(application);
-
     service.updateApplicationStage('1', 'Entretien technique', transitionDate);
-
     const updated = service.getApplicationById('1');
     expect(updated?.stage).toBe('Entretien technique');
     expect(updated?.status).toBe('Entretien');
@@ -125,9 +98,7 @@ describe('StorageService', () => {
   it('keeps the first response date when moving between later stages', () => {
     const firstResponse = new Date('2026-08-18T09:00:00');
     service.addApplication({...application, stage: 'Screening RH', status: 'Entretien', responseDate: firstResponse});
-
     service.updateApplicationStage('1', 'Hiring Manager', new Date('2026-08-19T09:00:00'));
-
     expect(service.getApplicationById('1')?.responseDate).toEqual(firstResponse);
   });
 
@@ -135,9 +106,27 @@ describe('StorageService', () => {
     service.addApplication(application);
     const backup = service.exportData();
     service.deleteApplication('1');
-
     expect(service.importData(backup)).toBe(1);
     expect(service.getApplicationById('1')).toBeDefined();
+  });
+
+  it('previews duplicates before importing a backup', () => {
+    service.addApplication(application);
+    const duplicate = {...application, id: 'duplicate', offerUrl: 'https://jobs.example.com/backend?utm_source=backup'};
+    const fresh = {...application, id: '2', company: 'Fresh Company', offerUrl: 'https://jobs.example.com/fresh'};
+    const preview = service.previewImport(JSON.stringify({applications: [duplicate, fresh]}));
+    expect(preview.detected).toBe(2);
+    expect(preview.ready).toBe(1);
+    expect(preview.duplicates).toBe(1);
+    expect(preview.applications[0].company).toBe('Fresh Company');
+  });
+
+  it('completes a follow-up by clearing its due date and recording activity', () => {
+    const completedAt = new Date('2026-08-18T12:00:00');
+    service.addApplication({...application, followUpDate: new Date('2026-08-18T08:00:00')});
+    service.completeFollowUp('1', completedAt);
+    expect(service.getApplicationById('1')?.followUpDate).toBeUndefined();
+    expect(service.getApplicationById('1')?.lastUpdated).toEqual(completedAt);
   });
 });
 

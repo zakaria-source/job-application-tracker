@@ -5,6 +5,7 @@
       <mat-card-title>{{ application.position }}</mat-card-title>
       <div class="details-meta">
         <span>{{ application.stage }}</span>
+        <span>{{ application.status }}</span>
         <span>{{ application.contractType }}</span>
         <span>Priorité {{ application.priority.toLowerCase() }}</span>
       </div>
@@ -15,56 +16,62 @@
   </mat-card-header>
 
   <mat-card-content>
+    <section class="next-action-banner" aria-labelledby="next-action-title">
+      <div>
+        <span>WHAT’S NEXT?</span>
+        <strong id="next-action-title">{{ nextActionLabel }}</strong>
+      </div>
+      <div class="next-action-buttons">
+        @if (isFollowUpDue()) {
+          <button mat-flat-button color="primary" type="button" (click)="followUpComplete.emit(application)"><mat-icon>check</mat-icon>Relance faite</button>
+        } @else if (nextStage) {
+          <button mat-flat-button color="primary" type="button" (click)="advanceStage()"><mat-icon>arrow_forward</mat-icon>Passer à {{ nextStage }}</button>
+        } @else {
+          <button mat-stroked-button type="button" (click)="edit.emit(application)"><mat-icon>edit</mat-icon>Mettre à jour</button>
+        }
+      </div>
+    </section>
+
     <section class="details-grid" aria-label="Informations principales">
-      <div class="detail-item">
-        <strong>Statut</strong>
-        <span>{{ application.status }}</span>
-      </div>
-
-      <div class="detail-item">
-        <strong>Candidature</strong>
-        <span>{{ application.applicationDate | date:'dd MMM yyyy' }}</span>
-      </div>
-
+      <div class="detail-item"><strong>Étape</strong><span>{{ application.stage }}</span></div>
+      <div class="detail-item"><strong>Statut</strong><span>{{ application.status }}</span></div>
+      <div class="detail-item"><strong>Candidature</strong><span>{{ application.applicationDate | date:'dd MMM yyyy' }}</span></div>
       @if (application.followUpDate) {
-        <div class="detail-item">
-          <strong>Prochaine relance</strong>
-          <span [class.follow-up-due]="isFollowUpDue()">
-            {{ application.followUpDate | date:'dd MMM yyyy' }}
-          </span>
-        </div>
+        <div class="detail-item"><strong>Prochaine relance</strong><span [class.follow-up-due]="isFollowUpDue()">{{ application.followUpDate | date:'dd MMM yyyy' }}</span></div>
       }
-
       @if (application.salaryTarget) {
-        <div class="detail-item">
-          <strong>{{ application.salaryPeriod === 'Journalier' ? 'TJM cible' : 'Salaire cible' }}</strong>
-          <span>{{ formatTargetSalary() }}</span>
-        </div>
-      }
-
-      @if (application.responseDate) {
-        <div class="detail-item">
-          <strong>Première réponse</strong>
-          <span>{{ application.responseDate | date:'dd MMM yyyy' }}</span>
-        </div>
+        <div class="detail-item"><strong>{{ application.salaryPeriod === 'Journalier' ? 'TJM cible' : 'Salaire cible' }}</strong><span>{{ formatTargetSalary() }}</span></div>
       }
     </section>
 
-    @if (application.recruiterName || application.recruiterEmail || application.recruiterPhone) {
-      <section class="content-section contact-section" aria-labelledby="contact-title">
-        <div class="section-heading">
-          <span>CONTACT</span>
-          <h3 id="contact-title">Interlocuteur</h3>
-        </div>
+    <section class="content-section timeline-section" aria-labelledby="timeline-title">
+      <div class="section-heading"><span>HISTORIQUE</span><h3 id="timeline-title">Timeline</h3></div>
+      <div class="activity-timeline">
+        @for (event of timeline; track event.id) {
+          <article class="timeline-event" [class.future]="event.future">
+            <span class="timeline-icon"><mat-icon>{{ event.icon }}</mat-icon></span>
+            <div><strong>{{ event.title }}</strong><span>{{ event.detail }}</span></div>
+            <time>{{ event.date | date:'dd MMM yyyy · HH:mm' }}</time>
+          </article>
+        }
+      </div>
+    </section>
+
+    @if (application.recruiterName || application.recruiterEmail || application.recruiterPhone || application.offerUrl || application.salaryTarget) {
+      <section class="content-section contact-section" aria-labelledby="context-title">
+        <div class="section-heading"><span>CONTEXTE</span><h3 id="context-title">Informations utiles</h3></div>
         <div class="contact-grid">
           @if (application.recruiterName) {
-            <div><mat-icon>person</mat-icon><span><small>Nom</small><strong>{{ application.recruiterName }}</strong></span></div>
+            <div><mat-icon>person</mat-icon><span><small>Recruteur</small><strong>{{ application.recruiterName }}</strong></span></div>
           }
           @if (application.recruiterEmail) {
             <div><mat-icon>mail</mat-icon><span><small>Email</small><a [href]="'mailto:' + application.recruiterEmail">{{ application.recruiterEmail }}</a></span></div>
           }
           @if (application.recruiterPhone) {
-            <div><mat-icon>call</mat-icon><span><small>Téléphone</small><strong>{{ application.recruiterPhone }}</strong></span></div>
+            <div><mat-icon>call</mat-icon><span><small>Téléphone</small><a [href]="'tel:' + application.recruiterPhone">{{ application.recruiterPhone }}</a></span></div>
+          }
+          @if (application.offerUrl) {
+            <div><mat-icon>link</mat-icon><span><small>Offre</small><a [href]="application.offerUrl" target="_blank" rel="noopener noreferrer">Ouvrir l’annonce</a></span></div>
           }
         </div>
       </section>
@@ -72,22 +79,12 @@
 
     @if (application.interviews?.length) {
       <section class="content-section interviews-section" aria-labelledby="interviews-title">
-        <div class="section-heading">
-          <span>ENTRETIENS</span>
-          <h3 id="interviews-title">Rendez-vous planifiés</h3>
-        </div>
+        <div class="section-heading"><span>ENTRETIENS</span><h3 id="interviews-title">Rendez-vous</h3></div>
         <div class="interview-timeline">
           @for (interview of application.interviews; track interview.id) {
             <article class="interview-item">
-              <div class="timeline-date">
-                <strong>{{ interview.date | date:'dd' }}</strong>
-                <span>{{ interview.date | date:'MMM' }}</span>
-              </div>
-              <div class="interview-copy">
-                <strong>{{ interview.type }}</strong>
-                <span>{{ interview.date | date:'HH:mm' }}</span>
-                @if (interview.notes) { <p>{{ interview.notes }}</p> }
-              </div>
+              <div class="timeline-date"><strong>{{ interview.date | date:'dd' }}</strong><span>{{ interview.date | date:'MMM' }}</span></div>
+              <div class="interview-copy"><strong>{{ interview.type }}</strong><span>{{ interview.date | date:'HH:mm' }}</span>@if (interview.notes) { <p>{{ interview.notes }}</p> }</div>
             </article>
           }
         </div>
@@ -96,20 +93,14 @@
 
     @if (application.notes) {
       <section class="content-section notes-section" aria-labelledby="notes-title">
-        <div class="section-heading"><span>NOTES</span><h3 id="notes-title">Contexte</h3></div>
+        <div class="section-heading"><span>NOTES</span><h3 id="notes-title">Contexte libre</h3></div>
         <p>{{ application.notes }}</p>
       </section>
     }
   </mat-card-content>
 
   <mat-card-actions class="details-actions">
-    <div>
-      @if (application.offerUrl) {
-        <a mat-stroked-button [href]="application.offerUrl" target="_blank" rel="noopener noreferrer">
-          <mat-icon>open_in_new</mat-icon>Ouvrir l'offre
-        </a>
-      }
-    </div>
+    <div></div>
     <div>
       <button mat-stroked-button (click)="edit.emit(application)"><mat-icon>edit</mat-icon>Modifier</button>
       <button mat-button color="warn" (click)="delete.emit(application)"><mat-icon>delete</mat-icon>Supprimer</button>
