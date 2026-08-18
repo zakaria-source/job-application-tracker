@@ -36,7 +36,7 @@ class AdvancedTrackingIntegrationTest {
     @Autowired JsonMapper jsonMapper;
 
     @Test
-    void persistsActivityFollowUpsDebriefsAndHealth() throws Exception {
+    void persistsActivityFollowUpsDebriefsAndHealthWithoutLosingInterviewIdentity() throws Exception {
         String token = register();
         String created = mockMvc.perform(post("/api/v1/applications")
                 .header("Authorization", "Bearer " + token)
@@ -102,6 +102,51 @@ class AdvancedTrackingIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.sentiment").value("POSITIVE"))
             .andExpect(jsonPath("$.questions").value("Kafka partitions"));
+
+        mockMvc.perform(put("/api/v1/applications/{id}", applicationId)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "company": "Tracking Labs",
+                      "position": "Backend Engineer",
+                      "applicationDate": "2026-08-18",
+                      "status": "Envoyé",
+                      "notes": "Salary updated without touching the interview",
+                      "contractType": "CDI",
+                      "salaryTarget": 70000,
+                      "salaryPeriod": "Annuel",
+                      "followUpDate": "2026-08-18",
+                      "recruiterName": "Recruiter",
+                      "stage": "Candidature",
+                      "priority": "Haute",
+                      "interviews": [{
+                        "id": "%s",
+                        "date": "2026-08-20T10:00:00+02:00",
+                        "type": "Visioconférence",
+                        "notes": "Technical round",
+                        "reminderSet": true
+                      }]
+                    }
+                    """.formatted(interviewId)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.interviews[0].id").value(interviewId))
+            .andExpect(jsonPath("$.salaryTarget").value(70000));
+
+        mockMvc.perform(get("/api/v1/applications/{id}/debriefs", applicationId)
+                .header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$[0].interviewId").value(interviewId))
+            .andExpect(jsonPath("$[0].questions").value("Kafka partitions"));
+
+        mockMvc.perform(get("/api/v1/applications/{id}/tracking-overview", applicationId)
+                .header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.activity").isArray())
+            .andExpect(jsonPath("$.followUps.length()").value(1))
+            .andExpect(jsonPath("$.health.score").isNumber())
+            .andExpect(jsonPath("$.debriefs.length()").value(1));
 
         mockMvc.perform(patch("/api/v1/applications/{id}/follow-ups/current/complete", applicationId)
                 .header("Authorization", "Bearer " + token)
