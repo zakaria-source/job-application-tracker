@@ -3,6 +3,7 @@ import {Injectable} from '@angular/core';
 import {Observable, map} from 'rxjs';
 import {Interview, JobApplication, RecruitmentStage} from '@app/features/applications/models/application.model';
 import {ApplicationEvent, ApplicationHealth, FollowUp, InterviewDebrief, InterviewDebriefInput} from '@app/features/applications/models/application-tracking.model';
+import {JobImportPreview} from '@app/features/applications/models/job-import.model';
 import {UserProfile} from '@app/features/profile/user-profile.model';
 
 interface ApplicationDto extends Omit<JobApplication, 'applicationDate' | 'lastUpdated' | 'responseDate' | 'followUpDate' | 'interviews'> {
@@ -43,6 +44,9 @@ export class JobTrackrApiService {
   deleteApplication(id: string): Observable<void> { return this.http.delete<void>(`${this.applicationsUrl}/${encodeURIComponent(id)}`); }
   importApplications(applications: readonly JobApplication[]): Observable<ApplicationImportSummary> {
     return this.http.post<ApplicationImportSummary>(`${this.applicationsUrl}/import`, applications.map(application => this.toApplicationRequest(application)));
+  }
+  previewJobUrl(url: string): Observable<JobImportPreview> {
+    return this.http.post<JobImportPreview>('/api/v1/job-import/preview', {url});
   }
 
   getApplicationActivity(id: string): Observable<ApplicationEvent[]> {
