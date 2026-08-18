@@ -45,7 +45,15 @@ describe('StorageService', () => {
       },
       moveApplication: (id: string, stage: RecruitmentStage) => {
         const existing = serverApplications.find(item => item.id === id)!;
-        const saved = {...existing, stage, status: workflow.statusForStage(stage)} as JobApplication;
+        const status = workflow.statusForStage(stage);
+        const serverNow = new Date('2026-08-18T09:00:00');
+        const saved: JobApplication = {
+          ...existing,
+          stage,
+          status,
+          responseDate: existing.responseDate ?? (status === 'Envoyé' ? undefined : serverNow),
+          lastUpdated: serverNow
+        };
         serverApplications = serverApplications.map(item => item.id === id ? saved : item);
         return of(clone(saved));
       },
@@ -136,10 +144,10 @@ describe('StorageService', () => {
 function clone(item: JobApplication): JobApplication {
   return {
     ...item,
-    applicationDate: new Date(item.applicationDate),
-    lastUpdated: new Date(item.lastUpdated),
-    responseDate: item.responseDate ? new Date(item.responseDate) : undefined,
-    followUpDate: item.followUpDate ? new Date(item.followUpDate) : undefined,
-    interviews: (item.interviews ?? []).map(interview => ({...interview, date: new Date(interview.date)}))
+    applicationDate: new Date(item.applicationDate.getTime()),
+    lastUpdated: new Date(item.lastUpdated.getTime()),
+    responseDate: item.responseDate ? new Date(item.responseDate.getTime()) : undefined,
+    followUpDate: item.followUpDate ? new Date(item.followUpDate.getTime()) : undefined,
+    interviews: (item.interviews ?? []).map(interview => ({...interview, date: new Date(interview.date.getTime())}))
   };
 }
