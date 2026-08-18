@@ -1,53 +1,44 @@
 # JobTrackr
 
-JobTrackr is a **local-first job application tracking workspace** for candidates who want to manage applications, follow-ups, recruiters, interviews and job-search analytics in one place.
+JobTrackr is a **generic job-search workspace** for tracking applications, follow-ups, recruiters, interviews and pipeline analytics.
 
-The product is no longer tied to a specific candidate profile or a curated personal application dataset. A first-run onboarding creates a local user profile, and the workspace starts empty unless the user explicitly chooses to load fictional demo data.
+The current V1 supports two operating modes:
 
-**Live application:** https://trackmyjob-zakaria.netlify.app/
+- **Local mode** — no account required; profile and applications stay in the browser.
+- **Cloud mode** — optional account backed by Spring Boot and PostgreSQL, with authenticated per-user data isolation.
 
-## Product principles
+Existing local data is **never uploaded automatically** when a user signs in. Importing browser data into a cloud account requires an explicit action from the Account page.
 
-- **Generic by default** — no hard-coded owner name, career target, compensation target or real applications.
-- **Local-first** — profile and application data stay in the browser in the current frontend-only version.
-- **Safe onboarding** — existing application data is never replaced when a user creates or edits a profile.
-- **Demo data is opt-in** — three fictional applications can be merged into the workspace to explore the product.
-- **Workflow correctness first** — recruitment stage remains the source of truth for derived application status.
-- **Backend-ready boundaries** — persistence is isolated behind a repository/state facade so LocalStorage can later be replaced by an HTTP implementation.
+**Frontend deployment:** https://trackmyjob-zakaria.netlify.app/
 
-## Current product flow
+> The repository now contains the cloud backend and frontend integration. A production backend/reverse-proxy deployment is still required before the hosted frontend can use cloud mode; local mode remains independent.
+
+## V1 product flow
 
 ```text
-First visit
-   │
-   ▼
+Without an account
+──────────────────
 Onboarding
-   │
-   ├── name / target role
-   ├── experience / location
-   ├── skills / certifications
-   ├── education / compensation target
-   └── optional fictional demo data
-   │
-   ▼
-Dashboard
-   │
-   ├── profile context
-   ├── KPIs
-   ├── follow-ups
-   ├── high-priority pipeline
-   ├── interview agenda
-   └── analytics
-   │
-   ▼
-Applications workspace
-   ├── table
-   ├── Kanban
-   ├── create / edit / delete
-   ├── filters
-   ├── recruiter context
-   ├── interviews
-   └── import / export
+   ↓
+Local profile + LocalStorage applications
+   ↓
+Dashboard / List / Kanban / Interviews / Follow-ups
+
+Optional cloud account
+──────────────────────
+Register / Login
+   ↓
+JWT-authenticated workspace
+   ↓
+Spring Boot REST API
+   ↓
+PostgreSQL
+
+Existing browser data
+   ↓
+Explicit "Importer mes données locales"
+   ↓
+Duplicate-aware cloud import
 ```
 
 Routes:
@@ -57,94 +48,125 @@ Routes:
 /dashboard
 /applications
 /settings/profile
+/account
 ```
 
-Dashboard and Applications require a local profile. If none exists, JobTrackr redirects to onboarding.
+## Product principles
+
+- **Generic by default** — no hard-coded candidate identity or real application seed.
+- **Local-first** — the application remains useful without signup or backend availability.
+- **Cloud is opt-in** — signing in does not silently upload existing browser data.
+- **Tenant isolation** — backend resources are resolved from the authenticated JWT user, never from a client-supplied `userId`.
+- **Workflow correctness** — recruitment stage remains the source of truth for derived status.
+- **Incremental architecture** — the existing Angular dashboard, forms, filters and Kanban continue to consume the same state facade in local and cloud modes.
 
 ## Features
 
-### Application workflow
+### Application tracking
 
-- Company and position
-- Original job-offer URL
-- Contract type: CDI, CDD, freelance, internship, apprenticeship or other
-- Target annual salary or freelance daily rate
-- Recruitment stage and derived application status
-- Priority: high, medium or low
-- Explicit next follow-up date
-- Recruiter name, email and phone
-- Free-form notes
-- Interview tracking and browser reminders
+- company and position
+- original offer URL
+- CDI / CDD / freelance / internship / apprenticeship / other
+- annual salary or freelance daily-rate target
+- recruitment stage and derived status
+- high / medium / low priority
+- next follow-up date
+- recruiter name, email and phone
+- notes
+- interview tracking and browser reminders
+- JSON import/export
 
-The recruitment stage is the workflow source of truth. JobTrackr derives the broad status from it so contradictory combinations such as `Envoyé + Offre` cannot be created.
+### Pipeline
 
-### Pipeline management
-
-- Search by company, position, recruiter, stage or notes
-- Filter by status, contract type and priority
-- Table and Kanban representations
-- Sort and pagination in table mode
-- Angular CDK drag-and-drop between recruitment stages
-- Persistent stage transitions through the state facade
-- Follow-up highlighting
-- Keyboard-accessible rows and Kanban cards
-- Direct access to original offer URLs
-- Detailed application view
-- Versioned JSON export/import
+- search and filtering
+- sortable/paginated table
+- Kanban with Angular CDK drag-and-drop
+- compact stage cards and visual progression
+- mobile previous/next stage controls
+- overdue follow-up highlighting
+- application details and editing
 
 ### Dashboard
 
-- User-configured profile summary
-- Total applications
-- Response rate
-- Follow-ups requiring action
-- Interviews scheduled in the next 14 days
-- High-priority active pipeline
-- Application-status distribution
-- ISO-week application activity
+- candidate profile context
+- total applications
+- response rate
+- follow-ups requiring action
+- interviews in the next 14 days
+- high-priority active applications
+- application-status distribution
+- weekly application activity
 
-### Profile & onboarding
+### Optional cloud account
 
-The profile is stored separately from applications under its own LocalStorage key. Only the displayed job-search context is stored:
+- account registration and login
+- BCrypt password hashes server-side
+- bearer JWT authentication
+- authenticated profile persistence
+- authenticated application persistence
+- interview persistence
+- explicit local-to-cloud import
+- duplicate-aware import
+- logout restores the untouched browser-local workspace
 
-- display name
-- target role / headline
-- experience label
-- location or mobility
-- summary
-- key skills
-- certifications
-- education
-- compensation target
+## Workflow invariant
 
-Only name and target role are required.
+Recruitment stage is authoritative:
 
-### Optional demo mode
+```text
+Candidature                                      -> Envoyé
+Screening RH                                     -> Entretien
+Entretien technique                              -> Entretien
+Hiring Manager                                   -> Entretien
+Entretien final                                  -> Entretien
+Offre                                            -> Accepté
+Clôturé                                          -> Refusé
+```
 
-Users can opt in to three fictional applications during onboarding or from profile settings. Demo records use fictional organizations and people and are merged through the same duplicate-protection logic used by the application state facade.
-
-Loading demo data never replaces existing applications.
-
-## Tech stack
-
-- Angular 21
-- TypeScript 5.9
-- Angular Material / CDK 21
-- Angular CDK Drag & Drop
-- Angular Router
-- Reactive Forms
-- RxJS
-- Chart.js / ng2-charts 10
-- Vitest + jsdom + V8 coverage
-- Browser Local Storage
-- GitHub Actions
-- Netlify
+The backend derives status from stage instead of trusting contradictory client values.
 
 ## Architecture
 
 ```text
+Browser
+│
+├── Anonymous / local mode
+│      Angular
+│        ↓
+│      StorageService
+│        ↓
+│      LocalStorageJobApplicationRepository
+│
+└── Authenticated / cloud mode
+       Angular
+         ↓
+       StorageService
+         ↓
+       CloudApiService
+         ↓ REST + Bearer JWT
+       Spring Boot 4.1
+         ↓
+       Spring Security
+         ↓
+       JPA / Hibernate
+         ↓
+       PostgreSQL
+```
+
+The application is intentionally a **modular monolith** at V1. Backend packages separate authentication, users, profiles, applications, interviews, security and common API behavior without introducing premature distributed-system complexity.
+
+### Frontend structure
+
+```text
 src/app
+├── cloud
+│   ├── auth.interceptor.ts
+│   ├── auth.service.ts
+│   ├── cloud-api.service.ts
+│   ├── cloud-session.store.ts
+│   └── cloud-workspace.service.ts
 ├── components
+│   ├── account
 │   ├── application-details
 │   ├── application-filters
 │   ├── application-kanban
@@ -154,131 +176,145 @@ src/app
 │   ├── job-list
 │   └── profile-editor
 ├── data
-│   └── local-storage-job-application.repository.ts
 ├── domain
-│   └── application-workflow.service.ts
 ├── guards
-│   └── profile-required.guard.ts
 ├── models
-│   ├── job-application.model.ts
-│   └── user-profile.model.ts
-├── services
-│   ├── application-analytics.service.ts
-│   ├── demo-data.service.ts
-│   ├── follow-up.service.ts
-│   ├── notification.service.ts
-│   ├── storage.service.ts
-│   └── user-profile.service.ts
-├── app.routes.ts
-├── app.component.ts
-├── app.component.html
-└── app.component.css
+└── services
 ```
 
-### Responsibility boundaries
+### Backend structure
 
 ```text
-UserProfileService
-    └── local profile persistence
-
-ProfileRequiredGuard
-    └── first-run onboarding protection
-
-DemoDataService
-    └── opt-in fictional examples
-          │
-          ▼
-StorageService
-    │
-    ├── LocalStorageJobApplicationRepository
-    │      └── persistence / hydration / schema migration / import-export
-    │
-    ├── ApplicationAnalyticsService
-    │      └── response rates / ISO weekly activity / response timing
-    │
-    └── FollowUpService
-           └── due actions / suggestions
-
-ApplicationWorkflowService
-    └── recruitment-stage and status invariants
+backend/src/main/java/dev/jobtrackr
+├── application
+├── auth
+├── common
+├── domain
+├── interview
+├── profile
+├── security
+└── user
 ```
 
-Kanban drag events carry only the application id and target recruitment stage. `StorageService` applies the state transition and delegates stage-to-status rules to `ApplicationWorkflowService`. Presentation components never write persistence directly.
+Flyway owns the PostgreSQL schema; Hibernate runs with `ddl-auto=validate`.
 
-## Local-first persistence
+## Cloud API
 
-Applications use a versioned envelope:
+Authentication:
 
-```json
-{
-  "version": 2,
-  "applications": []
-}
+```text
+POST /api/v1/auth/register
+POST /api/v1/auth/login
+GET  /api/v1/auth/me
 ```
 
-The repository remains backward compatible with the original array-only LocalStorage format. Hydration validates persisted enum-like fields, rebuilds dates, migrates legacy recruiter fields and normalizes workflow state before publishing data.
+Profile:
 
-The user profile is persisted independently, so profile changes do not rewrite or reset applications.
-
-Users can export the complete application dataset as JSON and import it later. Import intentionally replaces the current application dataset after confirmation; it does not replace the local profile.
-
-## Migration from the personalized prototype
-
-The generic V1 deliberately removes:
-
-- the hard-coded owner career profile
-- the real owner application seed
-- automatic portfolio-data bootstrapping
-- personalized dashboard and shell copy
-
-Existing LocalStorage application data remains compatible. A returning browser with old application data is asked to complete the new onboarding profile, after which the existing pipeline remains available.
-
-## Analytics correctness
-
-Weekly application activity uses the **ISO week-year**, including year boundaries. Response times are calculated from calendar dates in UTC rather than raw elapsed milliseconds, avoiding daylight-saving-time distortions.
-
-## Follow-up and reminder logic
-
-Explicit follow-up dates drive the cockpit. Active applications whose follow-up date is today or overdue are surfaced as actions and visually highlighted in the Kanban.
-
-For older records without a follow-up date, a sent application older than seven days is flagged as needing a follow-up plan.
-
-Browser reminder permission is requested only after a user explicitly enables an interview reminder. Timers are rebuilt from persisted application state whenever the collection is restored or changed, preventing duplicate timers and recovering reminders after page refresh.
-
-A fully closed browser still cannot guarantee delivery; durable background notifications belong in the future backend/service-worker architecture.
-
-## Testing
-
-Business-critical behavior is covered with Vitest, including:
-
-- workflow/status normalization
-- legacy LocalStorage migration
-- versioned persistence
-- user-profile persistence and validation
-- opt-in demo-data merge and duplicate protection
-- follow-up eligibility
-- ISO week-year analytics and calendar-safe response timing
-- CRUD persistence
-- export/import round-trip
-- Applications component contracts
-- Kanban grouping and drag stage changes
-- state-facade workflow transitions
-
-Run locally:
-
-```bash
-npm test
+```text
+GET /api/v1/profile
+PUT /api/v1/profile
 ```
 
-CI run with coverage:
+Applications:
 
-```bash
-npm run test:ci
+```text
+GET    /api/v1/applications
+POST   /api/v1/applications
+GET    /api/v1/applications/{id}
+PUT    /api/v1/applications/{id}
+PATCH  /api/v1/applications/{id}/stage
+DELETE /api/v1/applications/{id}
 ```
+
+Interviews and utility endpoints:
+
+```text
+POST   /api/v1/applications/{id}/interviews
+PUT    /api/v1/applications/{id}/interviews/{interviewId}
+DELETE /api/v1/applications/{id}/interviews/{interviewId}
+POST   /api/v1/applications/import
+GET    /api/v1/applications/export
+GET    /api/v1/applications/follow-ups/due
+```
+
+## Tenant isolation
+
+The JWT subject contains the server-side user UUID. Controllers do not accept a user id in application payloads.
+
+Repository lookups use the authenticated owner, for example conceptually:
+
+```text
+(application_id, authenticated_user_id)
+```
+
+Guessing another application UUID therefore does not bypass ownership checks.
+
+## Local-to-cloud migration
+
+Signing in switches the active workspace to cloud data but does not upload LocalStorage records.
+
+The Account page exposes an explicit import action. When chosen:
+
+1. local profile data can be copied to the authenticated profile;
+2. local applications are posted through the duplicate-aware import endpoint;
+3. the cloud workspace is reloaded from the server;
+4. the original LocalStorage dataset remains untouched.
+
+Signing out switches the state facade back to that browser-local dataset.
+
+## Tech stack
+
+### Frontend
+
+- Angular 21
+- TypeScript 5.9
+- Angular Material / CDK
+- Angular Router + Reactive Forms
+- RxJS
+- Chart.js / ng2-charts
+- Vitest + jsdom + V8 coverage
+
+### Backend
+
+- Java 21
+- Spring Boot 4.1
+- Spring Web MVC
+- Spring Security + OAuth2 Resource Server JWT support
+- Spring Data JPA / Hibernate
+- PostgreSQL
+- Flyway
+- Actuator
+- Testcontainers
+- Maven
+
+### Delivery
+
+- GitHub Actions
+- Docker / Docker Compose
+- Netlify for the existing frontend deployment
 
 ## Run locally
 
-Node.js 20 is the reference runtime and is declared in `.nvmrc`.
+Requirements:
+
+- Node.js version from `.nvmrc`
+- Java 21
+- Docker
+
+Start PostgreSQL:
+
+```bash
+docker compose -f backend/compose.yml up -d
+```
+
+Start the backend:
+
+```bash
+cd backend
+mvn spring-boot:run
+```
+
+In another terminal, start Angular:
 
 ```bash
 nvm use
@@ -286,65 +322,91 @@ npm ci
 npm start
 ```
 
-Then open `http://localhost:4200`.
+`npm start` uses `proxy.conf.json`, forwarding `/api` and `/actuator` to `http://localhost:8080`.
 
-## Production build
+Open:
 
-```bash
-npm run build -- --configuration production
+```text
+http://localhost:4200
 ```
 
-## CI/CD
+## Environment variables
 
-Every pull request and push to `master` executes:
+Backend production configuration should provide at least:
+
+```text
+DATABASE_URL
+DATABASE_USERNAME
+DATABASE_PASSWORD
+JWT_SECRET
+CORS_ALLOWED_ORIGINS
+```
+
+`JWT_SECRET` must not use the development default in a deployed environment.
+
+See `backend/README.md` for backend details.
+
+## Testing and CI
+
+Frontend:
 
 ```bash
-npm ci
-npm audit --omit=dev
 npm run test:ci
 npm run build -- --configuration production
 ```
 
-Netlify provides Deploy Previews for pull requests and production deployment from the default branch.
+Backend:
+
+```bash
+mvn -B -f backend/pom.xml verify
+```
+
+Backend integration tests run against a real PostgreSQL Testcontainer and cover authentication, profile persistence, cross-user application isolation and interview replacement through the application update flow.
+
+Every pull request and push to `master` runs independent frontend and backend jobs.
 
 ## Current limitations
 
-The remaining limitations are architectural rather than hidden frontend workarounds:
+Cloud V1 is implemented in the repository, but several production concerns intentionally remain outside this milestone:
 
-- data is browser-local unless exported/imported
-- no authentication or user accounts
-- no server-side persistence
-- browser reminders cannot run reliably while the browser is completely closed
-- no end-to-end browser test suite yet
-- manual ordering of cards inside a single Kanban stage is intentionally not persisted
-- compensation formatting is still oriented toward the current EUR-focused product version
+- no production backend hosting/reverse proxy has been configured in this repository yet;
+- access tokens currently use a single HMAC signing secret rather than an external OIDC identity provider;
+- no refresh-token/session-rotation flow yet;
+- no server-side email or push notification scheduler yet;
+- no Google Calendar / Outlook integration yet;
+- no billing or Free/Pro entitlements yet;
+- no end-to-end browser suite yet;
+- compensation formatting remains EUR-oriented;
+- browser reminders remain best-effort while the browser is open.
 
-## Full-stack roadmap
+## Next milestones
 
 ```text
-Angular
-   │ REST / OAuth2
-   ▼
-Spring Boot
-   │
-   ├── PostgreSQL
-   ├── Spring Security / OIDC
-   ├── OpenAPI
-   ├── scheduled reminders
-   └── observability
+1. Production deployment
+   ├── managed PostgreSQL
+   ├── backend hosting
+   ├── reverse proxy / API routing
+   ├── secrets
+   └── HTTPS + health checks
+
+2. Production auth hardening
+   ├── OIDC provider or asymmetric JWT signing
+   ├── refresh/session strategy
+   └── account recovery / email verification
+
+3. Durable follow-ups
+   ├── server scheduler
+   ├── email / push notifications
+   └── timezone-aware delivery
+
+4. Integrations
+   ├── Google Calendar / Outlook
+   ├── job URL importer
+   ├── CSV / Excel
+   └── browser extension
+
+5. Optional product layer
+   ├── AI job/CV assistance
+   ├── advanced analytics
+   └── subscriptions / Free-Pro plans
 ```
-
-Next engineering milestones:
-
-1. Spring Boot REST API and PostgreSQL persistence
-2. Authentication with Spring Security and OAuth2/OIDC
-3. Per-user ownership and authorization on every application resource
-4. Docker Compose local environment
-5. Integration testing with Testcontainers
-6. OpenAPI documentation
-7. End-to-end browser testing
-8. Cloud deployment and observability
-9. Durable email/push reminders
-10. Optional event-driven integrations where asynchronous events add real value
-
-The current frontend remains intentionally structured so LocalStorage persistence can later be replaced by an API-backed repository without redesigning the application workflow.
