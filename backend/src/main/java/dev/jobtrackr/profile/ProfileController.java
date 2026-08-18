@@ -36,7 +36,7 @@ public class ProfileController {
     public ProfileResponse get(@AuthenticationPrincipal Jwt jwt) {
         UUID userId = CurrentUser.id(jwt);
         UserAccountEntity user = users.findById(userId).orElseThrow();
-        UserProfileEntity profile = profiles.findById(userId).orElseGet(() -> new UserProfileEntity(user, Instant.now()));
+        UserProfileEntity profile = profiles.findById(userId).orElseGet(() -> new UserProfileEntity(userId, Instant.now()));
         return ProfileResponse.from(user, profile);
     }
 
@@ -48,7 +48,7 @@ public class ProfileController {
         Instant now = Instant.now();
         user.updateDisplayName(request.name().trim(), now);
 
-        UserProfileEntity profile = profiles.findById(userId).orElseGet(() -> new UserProfileEntity(user, now));
+        UserProfileEntity profile = profiles.findById(userId).orElseGet(() -> new UserProfileEntity(userId, now));
         profile.update(
             request.headline(),
             request.experienceLabel(),
