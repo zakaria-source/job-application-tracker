@@ -34,8 +34,15 @@ jobs:
       - name: Run unit tests
         run: npm run test:ci
 
-      - name: Build application
-        run: npm run build -- --configuration production
+      - name: Build Netlify application
+        env:
+          JOBTRACKR_API_ORIGIN: https://api.example.com
+        run: npm run build:netlify
+
+      - name: Verify Netlify routing
+        run: |
+          grep -F '/api/*  https://api.example.com/api/:splat  200' dist/demo/browser/_redirects
+          grep -F '/*  /index.html  200' dist/demo/browser/_redirects
 
   backend:
     name: Backend verify
@@ -55,3 +62,6 @@ jobs:
 
       - name: Verify backend
         run: mvn -B -f backend/pom.xml verify
+
+      - name: Build production Docker image
+        run: docker build -t jobtrackr-api-ci backend
