@@ -35,7 +35,6 @@ export class ApplicationListComponent implements OnChanges {
         'contractType',
         'priority',
         'followUpDate',
-        'status',
         'actions'
     ];
 
@@ -114,9 +113,6 @@ export class ApplicationListComponent implements OnChanges {
                 case 'followUpDate':
                     comparison = (a.followUpDate?.getTime() ?? Number.MAX_SAFE_INTEGER)
                         - (b.followUpDate?.getTime() ?? Number.MAX_SAFE_INTEGER);
-                    break;
-                case 'status':
-                    comparison = a.status.localeCompare(b.status);
                     break;
                 default:
                     comparison = a.applicationDate.getTime() - b.applicationDate.getTime();
