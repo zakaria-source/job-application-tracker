@@ -6,10 +6,10 @@ import {MatIconModule} from '@angular/material/icon';
 import {Router, RouterLink} from '@angular/router';
 import {switchMap} from 'rxjs';
 import {AuthService} from '@app/core/auth/auth.service';
-import {CloudSession, SessionStore} from '@app/core/auth/session.store';
+import {AuthSession, SessionStore} from '@app/core/auth/session.store';
 import {WorkspaceService, WorkspaceState} from '@app/core/workspace/workspace.service';
 import {UserProfileService} from '@app/features/profile/user-profile.service';
-import {BrandMarkComponent} from '../ui/brand-mark/brand-mark.component';
+import {BrandMarkComponent} from '@app/shared/ui/brand-mark/brand-mark.component';
 
 @Component({
   selector: 'app-account',
@@ -28,7 +28,7 @@ export class AccountComponent {
   private readonly router = inject(Router);
 
   mode: 'login' | 'register' = 'login';
-  session: CloudSession | null = this.sessions.current;
+  session: AuthSession | null = this.sessions.current;
   workspaceState: WorkspaceState = this.workspace.state;
   submitting = false;
   errorMessage = '';
