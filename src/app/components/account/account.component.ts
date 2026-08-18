@@ -19,11 +19,11 @@ import {UserProfileService} from '../../services/user-profile.service';
     <section class="account-layout">
       @if (!session) {
         <article class="account-card auth-card">
-          <div class="card-icon"><mat-icon>cloud_sync</mat-icon></div>
-          <span class="eyebrow">CLOUD OPTIONNEL</span>
-          <h2>{{ mode === 'login' ? 'Retrouvez votre espace partout' : 'Créer un compte JobTrackr' }}</h2>
+          <div class="card-icon"><mat-icon>person_outline</mat-icon></div>
+          <span class="eyebrow">VOTRE COMPTE</span>
+          <h2>{{ mode === 'login' ? 'Connectez-vous à JobTrackr' : 'Créez votre compte' }}</h2>
           <p class="lead">
-            Le mode local reste disponible sans compte. Une connexion cloud n'envoie jamais vos données locales automatiquement.
+            Synchronisez vos candidatures et retrouvez votre espace sur vos appareils. Vous pouvez aussi continuer sans compte en mode local.
           </p>
 
           <div class="mode-switch" role="tablist" aria-label="Authentification">
@@ -34,7 +34,7 @@ import {UserProfileService} from '../../services/user-profile.service';
           <form [formGroup]="form" (ngSubmit)="submit()">
             @if (mode === 'register') {
               <label>
-                <span>Nom affiché</span>
+                <span>Nom</span>
                 <input formControlName="displayName" autocomplete="name" placeholder="Alex Martin">
               </label>
             }
@@ -59,10 +59,10 @@ import {UserProfileService} from '../../services/user-profile.service';
         </article>
 
         <aside class="privacy-card">
-          <mat-icon>shield_lock</mat-icon>
+          <mat-icon>lock_outline</mat-icon>
           <div>
-            <strong>Local-first reste le comportement par défaut</strong>
-            <p>Vous pouvez continuer à utiliser JobTrackr sans compte. Après connexion, un bouton séparé permet d'importer volontairement les données déjà présentes dans ce navigateur.</p>
+            <strong>Vos données locales restent locales</strong>
+            <p>Une connexion ne transfère rien automatiquement. Vous choisissez vous-même si vous voulez importer les données de ce navigateur.</p>
           </div>
         </aside>
       } @else {
@@ -70,7 +70,7 @@ import {UserProfileService} from '../../services/user-profile.service';
           <div class="connected-heading">
             <div class="avatar">{{ initials(session.user.displayName) }}</div>
             <div>
-              <span class="eyebrow">COMPTE CLOUD</span>
+              <span class="eyebrow">CONNECTÉ</span>
               <h2>{{ session.user.displayName }}</h2>
               <p>{{ session.user.email }}</p>
             </div>
@@ -80,9 +80,9 @@ import {UserProfileService} from '../../services/user-profile.service';
           </div>
 
           <div class="cloud-benefits">
-            <div><mat-icon>database</mat-icon><span><strong>Données serveur</strong><small>PostgreSQL, isolées par compte</small></span></div>
-            <div><mat-icon>sync</mat-icon><span><strong>Même espace</strong><small>API prête pour plusieurs appareils</small></span></div>
-            <div><mat-icon>lock</mat-icon><span><strong>Accès authentifié</strong><small>Session JWT</small></span></div>
+            <div><mat-icon>cloud_done</mat-icon><span><strong>Sauvegardé</strong><small>Vos candidatures sont conservées en ligne.</small></span></div>
+            <div><mat-icon>devices</mat-icon><span><strong>Multi-appareils</strong><small>Retrouvez le même espace après connexion.</small></span></div>
+            <div><mat-icon>lock_outline</mat-icon><span><strong>Protégé</strong><small>Vos données sont liées à votre compte.</small></span></div>
           </div>
 
           @if (message) {
@@ -92,18 +92,20 @@ import {UserProfileService} from '../../services/user-profile.service';
             <div class="feedback error"><mat-icon>error_outline</mat-icon><span>{{ errorMessage }}</span></div>
           }
 
-          <div class="migration-panel">
-            <div>
-              <strong>Importer les données de ce navigateur</strong>
-              <p>{{ localApplicationCount }} candidature{{ localApplicationCount > 1 ? 's' : '' }} locale{{ localApplicationCount > 1 ? 's' : '' }} détectée{{ localApplicationCount > 1 ? 's' : '' }}. Les doublons côté cloud sont ignorés.</p>
+          @if (hasLocalData) {
+            <div class="migration-panel">
+              <div>
+                <strong>Importer les données locales</strong>
+                <p>{{ localApplicationCount }} candidature{{ localApplicationCount > 1 ? 's' : '' }} détectée{{ localApplicationCount > 1 ? 's' : '' }} dans ce navigateur. Les doublons sont ignorés.</p>
+              </div>
+              <button type="button" class="secondary accent" [disabled]="syncing" (click)="importLocal()">
+                <mat-icon>cloud_upload</mat-icon>{{ syncing ? 'Import…' : 'Importer' }}
+              </button>
             </div>
-            <button type="button" class="secondary accent" [disabled]="syncing || !hasLocalData" (click)="importLocal()">
-              <mat-icon>cloud_upload</mat-icon>{{ syncing ? 'Import…' : 'Importer mes données locales' }}
-            </button>
-          </div>
+          }
 
           <div class="account-actions">
-            <button type="button" class="secondary" [disabled]="syncing" (click)="refreshCloud()"><mat-icon>refresh</mat-icon>Actualiser</button>
+            <button type="button" class="secondary" [disabled]="syncing" (click)="refreshCloud()"><mat-icon>refresh</mat-icon>Synchroniser</button>
             <button type="button" class="secondary danger" (click)="logout()"><mat-icon>logout</mat-icon>Se déconnecter</button>
           </div>
         </article>
@@ -111,55 +113,55 @@ import {UserProfileService} from '../../services/user-profile.service';
     </section>
   `,
   styles: [`
-    .account-layout { max-width: 860px; display: grid; gap: 18px; }
-    .account-card, .privacy-card { border: 1px solid var(--jt-border); border-radius: 22px; background: rgba(255,255,255,.96); box-shadow: var(--jt-shadow-sm); }
-    .account-card { padding: 30px; }
-    .auth-card { max-width: 620px; }
-    .card-icon { width: 48px; height: 48px; display: grid; place-items: center; margin-bottom: 18px; border-radius: 15px; color: #fff; background: linear-gradient(145deg,var(--jt-primary),var(--jt-blue)); box-shadow: 0 10px 24px rgba(79,70,229,.2); }
-    .eyebrow { color: var(--jt-primary); font-size: 10px; font-weight: 820; letter-spacing: .14em; }
-    h2 { margin: 7px 0 7px; color: var(--jt-text); font-size: 27px; letter-spacing: -.035em; }
-    p { color: var(--jt-text-muted); line-height: 1.6; }
-    .lead { margin: 0 0 22px; }
-    .mode-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 20px; padding: 4px; border-radius: 12px; background: #f1f5f9; }
-    .mode-switch button { min-height: 39px; border: 0; border-radius: 9px; color: var(--jt-text-muted); background: transparent; font-weight: 700; cursor: pointer; }
-    .mode-switch button.active { color: var(--jt-text); background: #fff; box-shadow: 0 2px 8px rgba(15,23,42,.07); }
-    form { display: grid; gap: 14px; }
-    label { display: grid; gap: 7px; color: #334155; font-size: 12px; font-weight: 700; }
-    input { min-height: 44px; padding: 0 12px; border: 1px solid var(--jt-border-strong); border-radius: 11px; color: var(--jt-text); background: #fff; font: inherit; }
-    input:focus { outline: 3px solid rgba(79,70,229,.12); border-color: var(--jt-primary); }
-    button.primary, button.secondary { display: inline-flex; align-items: center; justify-content: center; gap: 7px; border-radius: 11px; font: inherit; font-weight: 720; cursor: pointer; }
-    button.primary { min-height: 44px; margin-top: 4px; border: 0; color: #fff; background: linear-gradient(135deg,var(--jt-primary),var(--jt-blue)); }
+    .account-layout { max-width: 760px; display: grid; gap: 14px; }
+    .account-card, .privacy-card { border: 1px solid var(--jt-border); border-radius: 20px; background: #fff; box-shadow: var(--jt-shadow-sm); }
+    .account-card { padding: 26px; }
+    .auth-card { max-width: 560px; }
+    .card-icon { width: 44px; height: 44px; display: grid; place-items: center; margin-bottom: 16px; border-radius: 13px; color: var(--jt-primary); background: var(--jt-primary-soft); }
+    .eyebrow { color: var(--jt-text-soft); font-size: 9px; font-weight: 800; letter-spacing: .12em; }
+    h2 { margin: 6px 0; color: var(--jt-text); font-size: 25px; letter-spacing: -.035em; }
+    p { color: var(--jt-text-muted); line-height: 1.55; }
+    .lead { margin: 0 0 20px; font-size: 13px; }
+    .mode-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin-bottom: 18px; padding: 3px; border-radius: 11px; background: #f1f5f9; }
+    .mode-switch button { min-height: 38px; border: 0; border-radius: 8px; color: var(--jt-text-muted); background: transparent; font-weight: 700; cursor: pointer; }
+    .mode-switch button.active { color: var(--jt-text); background: #fff; box-shadow: 0 1px 5px rgba(15,23,42,.08); }
+    form { display: grid; gap: 13px; }
+    label { display: grid; gap: 6px; color: #334155; font-size: 11px; font-weight: 700; }
+    input { min-height: 43px; padding: 0 12px; border: 1px solid var(--jt-border-strong); border-radius: 10px; color: var(--jt-text); background: #fff; font: inherit; }
+    input:focus { outline: 3px solid rgba(79,70,229,.1); border-color: var(--jt-primary); }
+    button.primary, button.secondary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 10px; font: inherit; font-weight: 720; cursor: pointer; }
+    button.primary { min-height: 43px; margin-top: 3px; border: 0; color: #fff; background: var(--jt-text); }
     button.primary:disabled, button.secondary:disabled { opacity: .5; cursor: not-allowed; }
-    button mat-icon { width: 18px; height: 18px; font-size: 18px; }
-    .privacy-card { display: flex; gap: 14px; padding: 18px 20px; }
+    button mat-icon { width: 17px; height: 17px; font-size: 17px; }
+    .privacy-card { display: flex; gap: 12px; padding: 15px 17px; box-shadow: none; }
     .privacy-card > mat-icon { color: var(--jt-success); }
-    .privacy-card strong { color: var(--jt-text); font-size: 13px; }
-    .privacy-card p { margin: 4px 0 0; font-size: 12px; }
-    .connected-heading { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; }
-    .avatar { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 16px; color: #fff; background: var(--jt-text); font-weight: 800; }
-    .connected-heading h2 { margin: 3px 0 2px; font-size: 22px; }
-    .connected-heading p { margin: 0; font-size: 12px; }
-    .cloud-state { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid #bbf7d0; border-radius: 999px; color: #15803d; background: #f0fdf4; font-size: 10px; font-weight: 750; }
+    .privacy-card strong { color: var(--jt-text); font-size: 12px; }
+    .privacy-card p { margin: 3px 0 0; font-size: 11px; }
+    .connected-heading { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; }
+    .avatar { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 14px; color: #fff; background: var(--jt-text); font-weight: 800; }
+    .connected-heading h2 { margin: 2px 0; font-size: 20px; }
+    .connected-heading p { margin: 0; font-size: 11px; }
+    .cloud-state { display: inline-flex; align-items: center; gap: 6px; padding: 6px 9px; border: 1px solid #bbf7d0; border-radius: 999px; color: #15803d; background: #f0fdf4; font-size: 9px; font-weight: 750; }
     .cloud-state > span { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; }
     .cloud-state.loading { border-color: #bfdbfe; color: #1d4ed8; background: #eff6ff; }
-    .cloud-benefits { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-top: 24px; }
-    .cloud-benefits > div { display: flex; gap: 9px; padding: 13px; border: 1px solid var(--jt-border); border-radius: 13px; background: var(--jt-surface-muted); }
+    .cloud-benefits { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 20px; }
+    .cloud-benefits > div { display: flex; gap: 8px; padding: 12px; border: 1px solid var(--jt-border); border-radius: 12px; background: var(--jt-surface-muted); }
     .cloud-benefits mat-icon { color: var(--jt-primary); }
-    .cloud-benefits span { display: grid; gap: 3px; }
-    .cloud-benefits strong { font-size: 11px; }
-    .cloud-benefits small { color: var(--jt-text-muted); font-size: 10px; line-height: 1.35; }
-    .migration-panel { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 22px; padding: 17px; border: 1px solid #dbeafe; border-radius: 15px; background: #f8fbff; }
-    .migration-panel strong { font-size: 13px; }
-    .migration-panel p { margin: 4px 0 0; font-size: 11px; }
-    button.secondary { min-height: 39px; padding: 0 13px; border: 1px solid var(--jt-border-strong); color: #334155; background: #fff; }
-    button.secondary.accent { flex: 0 0 auto; border-color: #c7d2fe; color: var(--jt-primary); }
+    .cloud-benefits span { display: grid; gap: 2px; }
+    .cloud-benefits strong { font-size: 10px; }
+    .cloud-benefits small { color: var(--jt-text-muted); font-size: 9px; line-height: 1.35; }
+    .migration-panel { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 18px; padding: 14px; border: 1px solid #dbeafe; border-radius: 13px; background: #f8fbff; }
+    .migration-panel strong { font-size: 12px; }
+    .migration-panel p { margin: 3px 0 0; font-size: 10px; }
+    button.secondary { min-height: 37px; padding: 0 12px; border: 1px solid var(--jt-border-strong); color: #334155; background: #fff; }
+    button.secondary.accent { flex: 0 0 auto; color: var(--jt-primary); }
     button.secondary.danger { color: var(--jt-danger); }
-    .account-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
-    .feedback { display: flex; align-items: flex-start; gap: 8px; margin-top: 16px; padding: 11px 12px; border-radius: 11px; font-size: 12px; line-height: 1.45; }
-    .feedback mat-icon { width: 18px; height: 18px; flex: 0 0 18px; font-size: 18px; }
+    .account-actions { display: flex; justify-content: flex-end; gap: 7px; margin-top: 16px; }
+    .feedback { display: flex; align-items: flex-start; gap: 7px; margin-top: 14px; padding: 10px 11px; border-radius: 10px; font-size: 11px; line-height: 1.4; }
+    .feedback mat-icon { width: 17px; height: 17px; flex: 0 0 17px; font-size: 17px; }
     .feedback.error { color: #be123c; background: #fff1f2; }
     .feedback.success { color: #15803d; background: #f0fdf4; }
-    @media (max-width: 700px) { .account-card { padding: 22px; } .connected-heading { grid-template-columns: auto 1fr; } .cloud-state { grid-column: 1 / -1; width: fit-content; } .cloud-benefits { grid-template-columns: 1fr; } .migration-panel { align-items: stretch; flex-direction: column; } .account-actions { flex-direction: column; } button.secondary { width: 100%; } }
+    @media (max-width: 700px) { .account-card { padding: 20px; } .connected-heading { grid-template-columns: auto 1fr; } .cloud-state { grid-column: 1 / -1; width: fit-content; } .cloud-benefits { grid-template-columns: 1fr; } .migration-panel { align-items: stretch; flex-direction: column; } .account-actions { flex-direction: column; } button.secondary { width: 100%; } }
   `]
 })
 export class AccountComponent {
@@ -197,8 +199,8 @@ export class AccountComponent {
 
   get workspaceLabel(): string {
     if (this.workspaceState === 'loading') return 'Synchronisation';
-    if (this.workspaceState === 'error') return 'Connexion à vérifier';
-    return 'Cloud connecté';
+    if (this.workspaceState === 'error') return 'À vérifier';
+    return 'Synchronisé';
   }
 
   get localApplicationCount(): number {
@@ -266,7 +268,7 @@ export class AccountComponent {
     this.workspace.connect().subscribe({
       next: () => {
         this.syncing = false;
-        this.message = 'Données cloud actualisées.';
+        this.message = 'Données synchronisées.';
       },
       error: error => {
         this.syncing = false;
@@ -292,10 +294,10 @@ export class AccountComponent {
         ? String((error.error as {detail?: unknown}).detail ?? '')
         : '';
       if (detail) return detail;
-      if (error.status === 0) return 'Le backend cloud est indisponible. Le mode local reste utilisable.';
+      if (error.status === 0) return 'Le service de synchronisation est indisponible. Le mode local reste accessible.';
       if (error.status === 401) return 'Email ou mot de passe incorrect.';
       if (error.status === 409) return 'Un compte existe déjà avec cet email.';
     }
-    return 'Impossible de terminer cette opération cloud.';
+    return 'Impossible de terminer cette opération.';
   }
 }
