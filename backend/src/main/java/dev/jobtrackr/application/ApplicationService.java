@@ -117,7 +117,6 @@ public class ApplicationService {
             request.company(),
             request.position(),
             request.applicationDate(),
-            request.status(),
             request.notes(),
             request.responseDate(),
             request.offerUrl(),
