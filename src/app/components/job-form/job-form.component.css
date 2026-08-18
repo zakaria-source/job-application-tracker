@@ -1,162 +1,73 @@
 .application-form-card {
-  max-width: 900px;
+  max-width: 920px;
   margin: 0 auto;
-  box-shadow: none !important;
+  box-shadow: var(--jt-shadow-sm) !important;
 }
 
-form {
-  display: grid;
-  gap: 18px;
-}
-
-.form-section {
-  display: grid;
-  gap: 2px;
-}
-
-.form-grid {
-  display: grid;
-  gap: 14px;
-}
-
-.two-columns {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.three-columns {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.full-width {
-  width: 100%;
-}
+form { display: grid; gap: 18px; }
+.form-section { display: grid; gap: 2px; }
+.form-grid { display: grid; gap: 12px; }
+.two-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.three-columns { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.full-width { width: 100%; }
 
 .advanced-section {
   border: 1px solid var(--jt-border);
-  border-radius: 14px;
+  border-radius: 9px;
   background: #fff;
   overflow: hidden;
 }
 
 .advanced-section summary {
-  min-height: 48px;
+  min-height: 46px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 0 14px;
-  color: var(--jt-text-muted);
-  background: var(--jt-surface-muted);
+  padding: 0 13px;
+  color: #475467;
+  background: #fafafa;
   list-style: none;
   cursor: pointer;
   user-select: none;
 }
+.advanced-section summary::-webkit-details-marker { display: none; }
+.advanced-section summary > span { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 650; }
+.advanced-section summary mat-icon { width: 17px; height: 17px; font-size: 17px; }
+.advanced-section .chevron { transition: transform 150ms ease; }
+.advanced-section[open] .chevron { transform: rotate(180deg); }
+.advanced-content { display: grid; gap: 13px; padding: 16px; border-top: 1px solid var(--jt-border); }
 
-.advanced-section summary::-webkit-details-marker {
-  display: none;
-}
-
-.advanced-section summary > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.advanced-section summary mat-icon {
-  width: 18px;
-  height: 18px;
-  font-size: 18px;
-}
-
-.advanced-section .chevron {
-  transition: transform 150ms ease;
-}
-
-.advanced-section[open] .chevron {
-  transform: rotate(180deg);
-}
-
-.advanced-content {
-  display: grid;
-  gap: 14px;
-  padding: 16px;
-  border-top: 1px solid var(--jt-border);
-}
-
-.subsection-heading {
-  margin-top: 4px;
-}
-
-.subsection-heading h3 {
-  margin: 0;
-  color: var(--jt-text);
-  font-size: 13px;
-  font-weight: 720;
-}
-
-.interview-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.interview-heading p {
-  margin: 3px 0 0;
-  color: var(--jt-text-muted);
-  font-size: 11px;
-}
+.subsection-heading { margin-top: 5px; }
+.subsection-heading h3 { margin: 0; color: var(--jt-text); font-size: 12px; font-weight: 670; }
+.interview-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.interview-heading p { margin: 4px 0 0; color: var(--jt-text-muted); font-size: 11px; }
 
 .interview-item {
-  margin-top: 10px;
-  padding: 14px;
+  margin-top: 9px;
+  padding: 13px;
   border: 1px solid var(--jt-border);
-  border-radius: 12px;
-  background: var(--jt-surface-muted);
+  border-radius: 8px;
+  background: #fafafa;
 }
-
-.interview-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
+.interview-actions { display: flex; justify-content: space-between; align-items: center; }
 
 .form-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 9px;
-  padding-top: 4px;
+  gap: 8px;
+  margin-top: 2px;
+  padding-top: 16px;
+  border-top: 1px solid var(--jt-border);
 }
+.form-actions button { min-width: 106px; }
 
-.form-actions button {
-  min-width: 110px;
-}
-
-@media (max-width: 760px) {
-  .three-columns {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
+@media (max-width: 760px) { .three-columns { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 620px) {
   .two-columns,
-  .three-columns {
-    grid-template-columns: 1fr;
-  }
-
-  .interview-heading {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .form-actions {
-    flex-direction: column-reverse;
-  }
-
+  .three-columns { grid-template-columns: 1fr; }
+  .interview-heading { align-items: stretch; flex-direction: column; }
+  .form-actions { flex-direction: column-reverse; }
   .form-actions button,
-  .interview-heading button {
-    width: 100%;
-  }
+  .interview-heading button { width: 100%; }
 }

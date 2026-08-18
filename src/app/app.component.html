@@ -2,18 +2,14 @@
   <header class="topbar">
     <div class="topbar-inner">
       <a class="brand" [routerLink]="cloudConnected ? '/dashboard' : '/account'" aria-label="JobTrackr">
-        <div class="brand-mark"><mat-icon>work_outline</mat-icon></div>
+        <span class="brand-monogram">JT</span>
         <strong>JobTrackr</strong>
       </a>
 
       @if (cloudConnected && !isOnboarding) {
         <nav class="topbar-nav" aria-label="Navigation principale">
-          <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
-            <span>Vue d’ensemble</span>
-          </a>
-          <a routerLink="/applications" routerLinkActive="active">
-            <span>Candidatures</span>
-          </a>
+          <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">Vue d’ensemble</a>
+          <a routerLink="/applications" routerLinkActive="active">Candidatures</a>
         </nav>
       }
 
@@ -25,8 +21,8 @@
         @if (cloudConnected) {
           <span class="avatar">{{ accountInitials }}</span>
         } @else {
-          <mat-icon>login</mat-icon>
           <span>Connexion</span>
+          <mat-icon>arrow_forward</mat-icon>
         }
       </a>
     </div>
@@ -35,6 +31,7 @@
   <main class="workspace" [class.onboarding-workspace]="isOnboarding">
     @if (!isOnboarding) {
       <section class="page-heading">
+        <span class="page-kicker">JOBTRACKR</span>
         <h1>{{ pageTitle }}</h1>
       </section>
     }
