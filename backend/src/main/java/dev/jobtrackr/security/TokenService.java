@@ -21,7 +21,7 @@ public class TokenService {
         this.properties = properties;
     }
 
-    public Token issue(UserAccountEntity user) {
+    public IssuedToken issue(UserAccountEntity user) {
         Instant now = Instant.now();
         Instant expiresAt = now.plus(properties.tokenTtl());
 
@@ -36,9 +36,6 @@ public class TokenService {
 
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
         String value = encoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
-        return new Token(value, expiresAt);
-    }
-
-    public record Token(String value, Instant expiresAt) {
+        return new IssuedToken(value, expiresAt);
     }
 }
