@@ -1,7 +1,7 @@
 package dev.jobtrackr.common;
 
-import dev.jobtrackr.application.ApplicationService;
-import dev.jobtrackr.auth.AuthController;
+import dev.jobtrackr.auth.exception.DuplicateEmailException;
+import dev.jobtrackr.common.exception.ResourceNotFoundException;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,13 +24,13 @@ public class ApiExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
-    @ExceptionHandler(ApplicationService.ResourceNotFoundException.class)
+    @ExceptionHandler(ResourceNotFoundException.class)
     ResponseEntity<ProblemDetail> notFound() {
         log.warn("api_error type=resource_not_found status=404");
         return problem(HttpStatus.NOT_FOUND, "Resource not found", "The requested resource does not exist.");
     }
 
-    @ExceptionHandler({AuthController.DuplicateEmailException.class, DataIntegrityViolationException.class})
+    @ExceptionHandler({DuplicateEmailException.class, DataIntegrityViolationException.class})
     ResponseEntity<ProblemDetail> conflict(Exception exception) {
         log.warn("api_error type=conflict status=409 exception={}", exception.getClass().getSimpleName());
         return problem(HttpStatus.CONFLICT, "Conflict", "A resource with the same unique identity already exists.");
