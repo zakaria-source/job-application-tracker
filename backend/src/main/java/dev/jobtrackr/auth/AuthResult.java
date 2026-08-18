@@ -1,0 +1,7 @@
+package dev.jobtrackr.auth;
+
+import dev.jobtrackr.auth.dto.UserResponse;
+import dev.jobtrackr.security.IssuedToken;
+
+record AuthResult(IssuedToken token, UserResponse user) {
+}
