@@ -1,9 +1,16 @@
 <div class="dashboard-container">
   <mat-card class="profile-card">
     <mat-card-content>
+      <div class="profile-topline">
+        <span class="profile-eyebrow">VOTRE ESPACE</span>
+        <a mat-stroked-button routerLink="/settings/profile">
+          <mat-icon>tune</mat-icon>
+          Modifier le profil
+        </a>
+      </div>
+
       <div class="profile-main">
         <div>
-          <span class="profile-eyebrow">VOTRE PROFIL</span>
           <h2>{{ profile.name }}</h2>
           <strong>{{ profile.headline }}</strong>
           @if (profile.summary) {
@@ -44,6 +51,24 @@
       }
     </mat-card-content>
   </mat-card>
+
+  @if (applications.length === 0) {
+    <section class="getting-started" aria-label="Premiers pas">
+      <div class="getting-started-icon"><mat-icon>rocket_launch</mat-icon></div>
+      <div class="getting-started-copy">
+        <span class="getting-started-label">PREMIER PAS</span>
+        <h2>Ajoutez votre première candidature</h2>
+        <p>Votre dashboard se remplira automatiquement avec les relances, statistiques, priorités et entretiens.</p>
+      </div>
+      <div class="getting-started-actions">
+        <a mat-flat-button color="primary" routerLink="/applications">
+          <mat-icon>add</mat-icon>
+          Ajouter une candidature
+        </a>
+        <a mat-stroked-button routerLink="/settings/profile">Compléter mon profil</a>
+      </div>
+    </section>
+  }
 
   <section class="kpi-grid">
     <mat-card class="kpi-card">
@@ -89,7 +114,8 @@
         @if (followUpActions.length === 0) {
           <div class="empty-state small">
             <mat-icon>task_alt</mat-icon>
-            <p>Aucune relance urgente.</p>
+            <strong>Tout est à jour</strong>
+            <p>Aucune relance urgente pour le moment.</p>
           </div>
         }
 
@@ -114,6 +140,7 @@
         @if (highPriorityApplications.length === 0) {
           <div class="empty-state small">
             <mat-icon>flag</mat-icon>
+            <strong>Rien de critique</strong>
             <p>Aucune candidature active en priorité haute.</p>
           </div>
         }
@@ -158,7 +185,8 @@
       @if (upcomingInterviews.length === 0) {
         <div class="empty-state interview-empty">
           <mat-icon>event_available</mat-icon>
-          <p>Aucun entretien prévu.</p>
+          <strong>Agenda libre</strong>
+          <p>Aucun entretien prévu dans les deux prochaines semaines.</p>
         </div>
       }
 

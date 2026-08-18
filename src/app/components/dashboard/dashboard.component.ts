@@ -3,6 +3,7 @@ import {CommonModule} from '@angular/common';
 import {MatButtonModule} from '@angular/material/button';
 import {MatCardModule} from '@angular/material/card';
 import {MatIconModule} from '@angular/material/icon';
+import {RouterLink} from '@angular/router';
 import {BaseChartDirective} from 'ng2-charts';
 import {ChartConfiguration, ChartData} from 'chart.js';
 import {combineLatest, timer} from 'rxjs';
@@ -24,7 +25,7 @@ interface UpcomingInterview {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatCardModule, MatIconModule, BaseChartDirective],
+  imports: [CommonModule, MatButtonModule, MatCardModule, MatIconModule, RouterLink, BaseChartDirective],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })
