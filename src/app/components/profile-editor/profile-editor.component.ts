@@ -12,9 +12,9 @@ import {UserProfileService} from '../../services/user-profile.service';
     <section class="profile-editor">
       <div class="editor-card">
         <div class="editor-heading">
-          <span class="eyebrow">{{ isEditing ? 'PROFIL' : 'BIENVENUE' }}</span>
-          <h1>{{ isEditing ? 'Votre profil' : 'Configurez votre espace' }}</h1>
-          <p>{{ isEditing ? 'Gardez uniquement les informations utiles à votre recherche.' : 'Deux informations suffisent pour commencer.' }}</p>
+          <span class="eyebrow">{{ isEditing ? 'PROFIL PROFESSIONNEL' : 'CONFIGURATION' }}</span>
+          <h1>{{ isEditing ? 'Informations principales' : 'Configurez votre espace' }}</h1>
+          <p>{{ isEditing ? 'Les informations utilisées pour personnaliser votre suivi.' : 'Renseignez uniquement l’essentiel pour démarrer.' }}</p>
         </div>
 
         <form [formGroup]="form" (ngSubmit)="save()">
@@ -66,27 +66,28 @@ import {UserProfileService} from '../../services/user-profile.service';
   `,
   styles: [`
     :host { display: block; }
-    .profile-editor { max-width: 720px; margin: 0 auto; }
-    .editor-card { border: 1px solid var(--jt-border); border-radius: 16px; padding: 28px; background: #fff; }
-    .editor-heading { margin-bottom: 24px; }
-    .eyebrow { display: block; margin-bottom: 7px; color: var(--jt-primary-strong); font-size: 11px; font-weight: 800; letter-spacing: .1em; }
-    .editor-heading h1 { margin: 0; color: var(--jt-text); font-size: clamp(26px, 3vw, 32px); font-weight: 780; letter-spacing: -.04em; }
-    .editor-heading p { margin: 7px 0 0; color: var(--jt-text-muted); font-size: 13px; line-height: 1.55; }
+    .profile-editor { max-width: 760px; margin: 0 auto; }
+    .editor-card { border: 1px solid var(--jt-border); border-radius: 12px; background: #fff; box-shadow: var(--jt-shadow-sm); overflow: hidden; }
+    .editor-heading { padding: 28px 30px 24px; border-bottom: 1px solid var(--jt-border); background: #fafafa; }
+    .eyebrow { display: block; margin-bottom: 8px; color: #8b93a3; font-size: 9px; font-weight: 720; letter-spacing: .14em; }
+    .editor-heading h1 { margin: 0; color: var(--jt-text); font-size: clamp(24px, 3vw, 29px); font-weight: 630; letter-spacing: -.04em; }
+    .editor-heading p { margin: 7px 0 0; color: var(--jt-text-muted); font-size: 12px; line-height: 1.55; }
+    form { padding: 28px 30px 26px; }
     .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-    label { display: flex; flex-direction: column; gap: 7px; color: #334155; font-size: 12px; font-weight: 680; }
+    label { display: flex; flex-direction: column; gap: 7px; color: #344054; font-size: 11px; font-weight: 620; }
     label.wide { grid-column: 1 / -1; }
-    input { width: 100%; min-height: 44px; box-sizing: border-box; border: 1px solid var(--jt-border-strong); border-radius: 10px; padding: 0 12px; color: var(--jt-text); background: #fff; font: inherit; font-size: 13px; font-weight: 480; }
-    input:focus { outline: none; border-color: var(--jt-primary); box-shadow: 0 0 0 3px rgba(79,70,229,.1); }
-    input::placeholder { color: #94a3b8; }
-    small { color: var(--jt-text-soft); font-size: 11px; font-weight: 500; line-height: 1.4; }
+    input { width: 100%; min-height: 43px; box-sizing: border-box; border: 1px solid var(--jt-border-strong); border-radius: 8px; padding: 0 12px; color: var(--jt-text); background: #fff; font: inherit; font-size: 12px; font-weight: 480; }
+    input:focus { outline: none; border-color: var(--jt-accent); box-shadow: 0 0 0 3px rgba(98,91,246,.11); }
+    input::placeholder { color: #a1a8b5; }
+    small { color: var(--jt-text-soft); font-size: 10px; font-weight: 500; line-height: 1.4; }
     .field-error { color: var(--jt-danger); font-weight: 620; }
-    .form-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--jt-border); }
-    button { min-height: 40px; border-radius: 10px; padding: 0 17px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
-    button.primary { min-width: 120px; border: 0; color: #fff; background: var(--jt-primary); }
+    .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--jt-border); }
+    button { min-height: 39px; border-radius: 8px; padding: 0 16px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
+    button.primary { min-width: 116px; border: 0; color: #fff; background: var(--jt-primary); }
     button.primary:hover { background: var(--jt-primary-strong); }
     button.primary:disabled { opacity: .45; cursor: not-allowed; }
     button.secondary { border: 1px solid var(--jt-border-strong); color: var(--jt-text-muted); background: #fff; }
-    @media (max-width: 620px) { .editor-card { padding: 20px; } .form-grid { grid-template-columns: 1fr; } label.wide { grid-column: auto; } .form-actions { flex-direction: column-reverse; } .form-actions button { width: 100%; } }
+    @media (max-width: 620px) { .editor-heading, form { padding: 22px; } .form-grid { grid-template-columns: 1fr; } label.wide { grid-column: auto; } .form-actions { flex-direction: column-reverse; } .form-actions button { width: 100%; } }
   `]
 })
 export class ProfileEditorComponent {
