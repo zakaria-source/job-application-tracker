@@ -19,6 +19,12 @@ spring:
 server:
   port: ${PORT:8080}
 
+logging:
+  level:
+    dev.jobtrackr: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level requestId=%X{requestId:-} %logger{36} - %msg%n"
+
 management:
   endpoints:
     web:
