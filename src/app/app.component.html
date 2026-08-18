@@ -20,12 +20,18 @@
           <a routerLink="/settings/profile" routerLinkActive="active">
             <mat-icon>manage_accounts</mat-icon><span>Profil</span>
           </a>
+          <a routerLink="/account" routerLinkActive="active">
+            <mat-icon>{{ cloudConnected ? 'cloud_done' : 'cloud_outlined' }}</mat-icon><span>Compte</span>
+          </a>
         </nav>
       }
 
-      <div class="product-status" title="Les données restent dans ce navigateur">
-        <mat-icon>lock</mat-icon>
-        <span>Local & privé</span>
+      <div
+        class="product-status"
+        [class.cloud]="cloudConnected"
+        [title]="cloudConnected ? 'Les données actives sont synchronisées avec votre compte cloud' : 'Les données restent dans ce navigateur'">
+        <mat-icon>{{ cloudConnected ? 'cloud_done' : 'lock' }}</mat-icon>
+        <span>{{ cloudConnected ? 'Cloud connecté' : 'Local & privé' }}</span>
       </div>
     </div>
   </header>

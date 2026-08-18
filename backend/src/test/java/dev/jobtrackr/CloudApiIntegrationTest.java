@@ -45,20 +45,7 @@ class CloudApiIntegrationTest {
         mockMvc.perform(post("/api/v1/applications")
                 .header("Authorization", "Bearer " + tokenA)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("""
-                    {
-                      "company": "Acme Cloud",
-                      "position": "Backend Engineer",
-                      "applicationDate": "2026-08-18",
-                      "status": "Envoyé",
-                      "notes": "",
-                      "contractType": "CDI",
-                      "salaryPeriod": "Annuel",
-                      "stage": "Candidature",
-                      "priority": "Haute",
-                      "interviews": []
-                    }
-                    """))
+                .content(applicationJson("Acme Cloud", "Backend Engineer", "[]")))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.company").value("Acme Cloud"))
             .andExpect(jsonPath("$.status").value("Envoyé"));
@@ -107,6 +94,43 @@ class CloudApiIntegrationTest {
     }
 
     @Test
+    void replacesInterviewsWhenUpdatingAnApplication() throws Exception {
+        String token = register("interviews@example.com", "Interview User");
+
+        String created = mockMvc.perform(post("/api/v1/applications")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(applicationJson("Nova Labs", "Java Engineer", "[]")))
+            .andExpect(status().isCreated())
+            .andReturn().getResponse().getContentAsString();
+        String id = jsonMapper.readTree(created).path("id").asText();
+
+        String interview = """
+            [{
+              "date": "2026-08-20T10:00:00+02:00",
+              "type": "Visioconférence",
+              "notes": "Technical round",
+              "reminderSet": true
+            }]
+            """;
+
+        mockMvc.perform(put("/api/v1/applications/{id}", id)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(applicationJson("Nova Labs", "Java Engineer", interview)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.interviews.length()").value(1))
+            .andExpect(jsonPath("$.interviews[0].type").value("Visioconférence"));
+
+        mockMvc.perform(put("/api/v1/applications/{id}", id)
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(applicationJson("Nova Labs", "Java Engineer", "[]")))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.interviews.length()").value(0));
+    }
+
+    @Test
     void rejectsDuplicateEmailAndUnauthenticatedApiAccess() throws Exception {
         register("duplicate@example.com", "First User");
 
@@ -144,5 +168,22 @@ class CloudApiIntegrationTest {
         String token = json.path("accessToken").asText();
         assertThat(token).isNotBlank();
         return token;
+    }
+
+    private String applicationJson(String company, String position, String interviews) {
+        return """
+            {
+              "company": "%s",
+              "position": "%s",
+              "applicationDate": "2026-08-18",
+              "status": "Envoyé",
+              "notes": "",
+              "contractType": "CDI",
+              "salaryPeriod": "Annuel",
+              "stage": "Candidature",
+              "priority": "Haute",
+              "interviews": %s
+            }
+            """.formatted(company, position, interviews);
     }
 }

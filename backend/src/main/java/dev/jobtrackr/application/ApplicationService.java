@@ -54,7 +54,9 @@ public class ApplicationService {
     @Transactional
     public ApplicationResponse update(UUID userId, UUID applicationId, ApplicationRequest request) {
         JobApplicationEntity application = requireOwned(userId, applicationId);
-        apply(application, request, Instant.now());
+        Instant now = Instant.now();
+        apply(application, request, now);
+        replaceInterviews(application, request.interviews(), now);
         return ApplicationResponse.from(application);
     }
 
@@ -132,19 +134,19 @@ public class ApplicationService {
         JobApplicationEntity application = new JobApplicationEntity(UUID.randomUUID(), user);
         Instant now = Instant.now();
         apply(application, request, now);
+        replaceInterviews(application, request.interviews(), now);
+        return applications.save(application);
+    }
 
-        for (InterviewRequest interviewRequest : request.interviews() == null ? List.<InterviewRequest>of() : request.interviews()) {
+    private static void replaceInterviews(JobApplicationEntity application,
+                                          List<InterviewRequest> interviewRequests,
+                                          Instant now) {
+        application.getInterviews().clear();
+        for (InterviewRequest request : interviewRequests == null ? List.<InterviewRequest>of() : interviewRequests) {
             InterviewEntity interview = new InterviewEntity(UUID.randomUUID(), application);
-            interview.update(
-                interviewRequest.date(),
-                interviewRequest.type(),
-                interviewRequest.notes(),
-                interviewRequest.reminderSet()
-            );
+            interview.update(request.date(), request.type(), request.notes(), request.reminderSet());
             application.addInterview(interview, now);
         }
-
-        return applications.save(application);
     }
 
     private static void apply(JobApplicationEntity application, ApplicationRequest request, Instant now) {
