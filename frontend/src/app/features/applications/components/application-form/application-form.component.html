@@ -1,21 +1,26 @@
-<mat-card class="application-form-card">
-  <mat-card-header>
-    <div class="form-heading">
-      <span class="form-kicker">{{ editMode ? 'MISE À JOUR' : 'NOUVELLE OPPORTUNITÉ' }}</span>
-      <mat-card-title>{{ editMode ? 'Modifier la candidature' : 'Ajouter une candidature' }}</mat-card-title>
-      <p>{{ editMode ? 'Mettez à jour uniquement les informations qui ont évolué.' : 'Commencez avec l’essentiel. Les détails restent optionnels.' }}</p>
-    </div>
-  </mat-card-header>
+<mat-card class="application-form-card" [class.embedded]="embedded">
+  @if (!embedded) {
+    <mat-card-header>
+      <div class="form-heading">
+        <span class="form-kicker">{{ editMode ? 'MISE À JOUR' : 'NOUVELLE OPPORTUNITÉ' }}</span>
+        <mat-card-title>{{ editMode ? 'Modifier la candidature' : 'Ajouter une candidature' }}</mat-card-title>
+        <p>{{ editMode ? 'Mettez à jour uniquement les informations qui ont évolué.' : 'Commencez avec l’essentiel. Les détails restent optionnels.' }}</p>
+      </div>
+    </mat-card-header>
+  }
+
   <mat-card-content>
     <form [formGroup]="jobForm" (ngSubmit)="onSubmit()">
       <section class="form-section primary-fields" aria-labelledby="essential-fields">
-        <div class="section-label" id="essential-fields"><span>01</span><strong>Essentiel</strong></div>
+        @if (!embedded) {
+          <div class="section-label" id="essential-fields"><span>01</span><strong>Essentiel</strong></div>
+        }
 
-        <div class="form-grid two-columns">
+        <div class="form-grid two-columns identity-grid">
           <mat-form-field appearance="outline">
             <mat-label>Entreprise</mat-label>
             <input matInput formControlName="company" autocomplete="organization" required>
-            @if (jobForm.get('company')?.hasError('required')) {
+            @if (jobForm.get('company')?.hasError('required') && jobForm.get('company')?.touched) {
               <mat-error>L'entreprise est requise</mat-error>
             }
           </mat-form-field>
@@ -23,27 +28,34 @@
           <mat-form-field appearance="outline">
             <mat-label>Poste</mat-label>
             <input matInput formControlName="position" autocomplete="organization-title" required>
-            @if (jobForm.get('position')?.hasError('required')) {
+            @if (jobForm.get('position')?.hasError('required') && jobForm.get('position')?.touched) {
               <mat-error>Le poste est requis</mat-error>
             }
           </mat-form-field>
         </div>
 
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Lien de l'offre</mat-label>
-          <input matInput formControlName="offerUrl" type="url" placeholder="https://..." autocomplete="url">
-          <mat-icon matSuffix>link</mat-icon>
-          @if (jobForm.get('offerUrl')?.hasError('pattern')) {
-            <mat-error>Utilisez une URL commençant par http:// ou https://</mat-error>
-          }
-        </mat-form-field>
+        @if (!hideOfferUrl) {
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Lien de l'offre</mat-label>
+            <input matInput formControlName="offerUrl" type="url" placeholder="https://..." autocomplete="url">
+            <mat-icon matSuffix>link</mat-icon>
+            @if (jobForm.get('offerUrl')?.hasError('pattern') && jobForm.get('offerUrl')?.touched) {
+              <mat-error>Utilisez une URL commençant par http:// ou https://</mat-error>
+            }
+          </mat-form-field>
+        }
 
-        <div class="form-grid two-columns">
+        <div class="form-grid two-columns compact-grid">
           <mat-form-field appearance="outline">
-            <mat-label>Date de candidature</mat-label>
-            <input matInput [matDatepicker]="applicationPicker" formControlName="applicationDate" required>
-            <mat-datepicker-toggle matIconSuffix [for]="applicationPicker"></mat-datepicker-toggle>
-            <mat-datepicker #applicationPicker></mat-datepicker>
+            <mat-label>Contrat</mat-label>
+            <mat-select formControlName="contractType">
+              <mat-option value="CDI">CDI</mat-option>
+              <mat-option value="CDD">CDD</mat-option>
+              <mat-option value="Freelance">Freelance</mat-option>
+              <mat-option value="Stage">Stage</mat-option>
+              <mat-option value="Alternance">Alternance</mat-option>
+              <mat-option value="Autre">Autre</mat-option>
+            </mat-select>
           </mat-form-field>
 
           <mat-form-field appearance="outline">
@@ -58,29 +70,33 @@
               <mat-option value="Clôturé">Clôturé</mat-option>
             </mat-select>
           </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Date de candidature</mat-label>
+            <input matInput [matDatepicker]="applicationPicker" formControlName="applicationDate" required>
+            <mat-datepicker-toggle matIconSuffix [for]="applicationPicker"></mat-datepicker-toggle>
+            <mat-datepicker #applicationPicker></mat-datepicker>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Priorité</mat-label>
+            <mat-select formControlName="priority">
+              <mat-option value="Haute">Haute</mat-option>
+              <mat-option value="Moyenne">Moyenne</mat-option>
+              <mat-option value="Basse">Basse</mat-option>
+            </mat-select>
+          </mat-form-field>
         </div>
       </section>
 
       <details class="advanced-section" [open]="editMode">
         <summary>
-          <span><span class="summary-number">02</span><strong>Contexte et suivi</strong><small>Salaire, contact, relance, notes et entretiens</small></span>
+          <span><span class="summary-number">+</span><strong>Informations complémentaires</strong><small>Salaire, relance, contact, notes et entretiens</small></span>
           <mat-icon class="chevron">expand_more</mat-icon>
         </summary>
 
         <div class="advanced-content">
           <div class="form-grid three-columns">
-            <mat-form-field appearance="outline">
-              <mat-label>Contrat</mat-label>
-              <mat-select formControlName="contractType">
-                <mat-option value="CDI">CDI</mat-option>
-                <mat-option value="CDD">CDD</mat-option>
-                <mat-option value="Freelance">Freelance</mat-option>
-                <mat-option value="Stage">Stage</mat-option>
-                <mat-option value="Alternance">Alternance</mat-option>
-                <mat-option value="Autre">Autre</mat-option>
-              </mat-select>
-            </mat-form-field>
-
             <mat-form-field appearance="outline">
               <mat-label>Salaire / TJM cible</mat-label>
               <input matInput formControlName="salaryTarget" type="number" min="0">
@@ -91,17 +107,6 @@
               <mat-select formControlName="salaryPeriod">
                 <mat-option value="Annuel">Brut annuel</mat-option>
                 <mat-option value="Journalier">TJM</mat-option>
-              </mat-select>
-            </mat-form-field>
-          </div>
-
-          <div class="form-grid two-columns">
-            <mat-form-field appearance="outline">
-              <mat-label>Priorité</mat-label>
-              <mat-select formControlName="priority">
-                <mat-option value="Haute">Haute</mat-option>
-                <mat-option value="Moyenne">Moyenne</mat-option>
-                <mat-option value="Basse">Basse</mat-option>
               </mat-select>
             </mat-form-field>
 
@@ -127,7 +132,7 @@
             <mat-form-field appearance="outline">
               <mat-label>Email</mat-label>
               <input matInput formControlName="recruiterEmail" type="email" autocomplete="email">
-              @if (jobForm.get('recruiterEmail')?.hasError('email')) {
+              @if (jobForm.get('recruiterEmail')?.hasError('email') && jobForm.get('recruiterEmail')?.touched) {
                 <mat-error>Email invalide</mat-error>
               }
             </mat-form-field>
@@ -190,12 +195,14 @@
         </div>
       </details>
 
-      <div class="form-actions">
-        <button type="button" mat-stroked-button (click)="onCancel()">Annuler</button>
-        <button type="submit" mat-flat-button color="primary" [disabled]="jobForm.invalid">
-          {{ editMode ? 'Enregistrer les modifications' : 'Ajouter la candidature' }}
-        </button>
-      </div>
+      @if (!embedded) {
+        <div class="form-actions">
+          <button type="button" mat-stroked-button (click)="onCancel()">Annuler</button>
+          <button type="submit" mat-flat-button color="primary">
+            {{ editMode ? 'Enregistrer les modifications' : 'Ajouter la candidature' }}
+          </button>
+        </div>
+      }
     </form>
   </mat-card-content>
 </mat-card>
