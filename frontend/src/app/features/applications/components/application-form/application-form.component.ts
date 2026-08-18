@@ -1,4 +1,4 @@
-import {Component, EventEmitter, Input, OnInit, Output} from '@angular/core';
+import {Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges} from '@angular/core';
 import {FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
 import {MatCardModule} from '@angular/material/card';
@@ -10,9 +10,9 @@ import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatIconModule} from '@angular/material/icon';
 import {MatInputModule} from '@angular/material/input';
 import {MatSelectModule} from '@angular/material/select';
+import {NotificationService} from '@app/core/notifications/notification.service';
 import {ApplicationWorkflowService} from '@app/features/applications/domain/application-workflow.service';
 import {Interview, JobApplication} from '@app/features/applications/models/application.model';
-import {NotificationService} from '@app/core/notifications/notification.service';
 
 @Component({
     selector: 'app-application-form',
@@ -33,9 +33,11 @@ import {NotificationService} from '@app/core/notifications/notification.service'
     templateUrl: './application-form.component.html',
     styleUrl: './application-form.component.css'
 })
-export class ApplicationFormComponent implements OnInit {
+export class ApplicationFormComponent implements OnInit, OnChanges {
     @Input() editMode = false;
     @Input() application: JobApplication | null = null;
+    @Input() embedded = false;
+    @Input() hideOfferUrl = false;
     @Output() formSubmit = new EventEmitter<JobApplication>();
     @Output() cancel = new EventEmitter<void>();
 
@@ -49,6 +51,71 @@ export class ApplicationFormComponent implements OnInit {
 
     ngOnInit(): void {
         this.initForm();
+    }
+
+    ngOnChanges(changes: SimpleChanges): void {
+        if (this.jobForm && (changes['application'] || changes['editMode'])) {
+            this.initForm();
+        }
+    }
+
+    get interviews(): FormArray {
+        return this.jobForm.get('interviews') as FormArray;
+    }
+
+    get isDirty(): boolean {
+        return this.jobForm?.dirty ?? false;
+    }
+
+    get isInvalid(): boolean {
+        return this.jobForm?.invalid ?? true;
+    }
+
+    get companyValue(): string {
+        return String(this.jobForm?.get('company')?.value ?? '').trim();
+    }
+
+    get positionValue(): string {
+        return String(this.jobForm?.get('position')?.value ?? '').trim();
+    }
+
+    get contractTypeValue(): string {
+        return String(this.jobForm?.get('contractType')?.value ?? 'CDI');
+    }
+
+    get stageValue(): string {
+        return String(this.jobForm?.get('stage')?.value ?? 'Candidature');
+    }
+
+    get priorityValue(): string {
+        return String(this.jobForm?.get('priority')?.value ?? 'Moyenne');
+    }
+
+    get followUpDateValue(): Date | null {
+        return this.jobForm?.get('followUpDate')?.value ?? null;
+    }
+
+    setOfferUrl(url: string): void {
+        const control = this.jobForm.get('offerUrl');
+        if (!control) return;
+        control.setValue(url);
+        if (url.trim()) control.markAsDirty();
+    }
+
+    applyImportedDraft(draft: JobApplication): void {
+        const company = this.jobForm.get('company');
+        const position = this.jobForm.get('position');
+        const notes = this.jobForm.get('notes');
+        const contractType = this.jobForm.get('contractType');
+
+        this.jobForm.patchValue({
+            company: company?.value?.trim() ? company.value : draft.company,
+            position: position?.value?.trim() ? position.value : draft.position,
+            offerUrl: draft.offerUrl ?? '',
+            contractType: contractType?.dirty ? contractType.value : draft.contractType,
+            notes: notes?.value?.trim() ? notes.value : draft.notes
+        });
+        this.jobForm.markAsDirty();
     }
 
     private initForm(): void {
@@ -96,10 +163,6 @@ export class ApplicationFormComponent implements OnInit {
         });
     }
 
-    get interviews(): FormArray {
-        return this.jobForm.get('interviews') as FormArray;
-    }
-
     private createInterviewFormGroup(interview?: Interview): FormGroup {
         return this.fb.group({
             id: [interview?.id ?? this.generateId()],
@@ -112,15 +175,18 @@ export class ApplicationFormComponent implements OnInit {
 
     addInterview(): void {
         this.interviews.push(this.createInterviewFormGroup());
+        this.jobForm.markAsDirty();
     }
 
     removeInterview(index: number): void {
         this.interviews.removeAt(index);
+        this.jobForm.markAsDirty();
     }
 
     async onSubmit(): Promise<void> {
         if (this.jobForm.invalid) {
             this.jobForm.markAllAsTouched();
+            queueMicrotask(() => this.focusFirstInvalidField());
             return;
         }
 
@@ -161,6 +227,11 @@ export class ApplicationFormComponent implements OnInit {
 
     onCancel(): void {
         this.cancel.emit();
+    }
+
+    private focusFirstInvalidField(): void {
+        const invalid = document.querySelector<HTMLElement>('.application-studio .ng-invalid[formControlName]');
+        invalid?.focus();
     }
 
     private getResponseDate(status: JobApplication['status']): Date | undefined {
