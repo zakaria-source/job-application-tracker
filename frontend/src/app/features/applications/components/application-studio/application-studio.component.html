@@ -1,0 +1,139 @@
+<div class="studio-backdrop" role="presentation" (click)="requestClose()">
+  <section class="application-studio" role="dialog" aria-modal="true" aria-labelledby="studio-title" (click)="$event.stopPropagation()">
+    <header class="studio-header">
+      <div class="studio-heading">
+        <span>{{ editMode ? 'OPPORTUNITÉ' : 'NOUVELLE OPPORTUNITÉ' }}</span>
+        <h2 id="studio-title">{{ editMode ? (company || 'Modifier la candidature') : 'Nouvelle candidature' }}</h2>
+        <p>{{ editMode ? (position || 'Mettez à jour les informations utiles.') : 'Capturez l’essentiel maintenant. Enrichissez le reste quand il devient utile.' }}</p>
+      </div>
+      <div class="studio-header-actions">
+        <span class="keyboard-hint"><kbd>Esc</kbd> fermer</span>
+        <button class="icon-button" type="button" aria-label="Fermer" (click)="requestClose()"><mat-icon>close</mat-icon></button>
+      </div>
+    </header>
+
+    <div class="studio-body">
+      <main class="studio-main">
+        @if (!editMode) {
+          <section class="smart-capture" [class.detected]="jobUrlPreview">
+            <div class="capture-heading">
+              <span class="capture-icon"><mat-icon>auto_awesome</mat-icon></span>
+              <div>
+                <strong>Préremplir depuis l’offre</strong>
+                <small>Collez un lien Greenhouse, Lever, Workday, Welcome to the Jungle ou une page publique compatible.</small>
+              </div>
+            </div>
+
+            <div class="capture-input-row">
+              <div class="capture-input-wrap">
+                <mat-icon>link</mat-icon>
+                <input
+                  type="url"
+                  maxlength="2048"
+                  autocomplete="url"
+                  placeholder="https://careers.company.com/jobs/..."
+                  [value]="jobUrl"
+                  (input)="jobUrl = $any($event.target).value"
+                  (paste)="onJobUrlPaste($event)">
+              </div>
+              <button mat-stroked-button type="button" [disabled]="jobUrlLoading || !jobUrl.trim()" (click)="analyzeJobUrl()">
+                @if (jobUrlLoading) {
+                  <mat-icon class="spin">progress_activity</mat-icon>Analyse…
+                } @else if (jobUrlPreview) {
+                  <mat-icon>refresh</mat-icon>Réanalyser
+                } @else {
+                  <mat-icon>bolt</mat-icon>Préremplir
+                }
+              </button>
+            </div>
+
+            @if (jobUrlPreview) {
+              <div class="capture-result" role="status" aria-live="polite">
+                <span class="result-check"><mat-icon>check</mat-icon></span>
+                <div><strong>{{ extractionSourceLabel(jobUrlPreview.extractionSource) }} détecté</strong><small>{{ detectedFields }} informations préremplies · {{ confidenceLabel(jobUrlPreview.confidence) }}</small></div>
+              </div>
+            }
+
+            @if (jobUrlError) {
+              <div class="capture-error" role="alert"><mat-icon>info</mat-icon><span>{{ jobUrlError }}</span></div>
+            }
+          </section>
+        }
+
+        <section class="editor-section">
+          <div class="editor-section-heading">
+            <div><span>ESSENTIEL</span><h3>{{ editMode ? 'Informations de la candidature' : 'Ce que vous voulez suivre' }}</h3></div>
+            @if (!editMode) { <small>Entreprise et poste suffisent pour commencer.</small> }
+          </div>
+
+          <app-application-form
+            [editMode]="editMode"
+            [application]="application"
+            [embedded]="true"
+            [hideOfferUrl]="!editMode"
+            (formSubmit)="onFormSubmit($event)" />
+        </section>
+      </main>
+
+      <aside class="studio-context" aria-label="Aperçu de l'opportunité">
+        <div class="identity-card">
+          <span class="company-mark">{{ companyInitial }}</span>
+          <div><strong>{{ company || 'Nouvelle entreprise' }}</strong><span>{{ position || 'Poste à préciser' }}</span></div>
+        </div>
+
+        <div class="context-block">
+          <span class="context-label">PIPELINE</span>
+          <div class="pipeline-state"><span class="status-dot"></span><strong>{{ stage }}</strong></div>
+          <div class="context-row"><span>Contrat</span><strong>{{ contractType }}</strong></div>
+          <div class="context-row"><span>Priorité</span><strong>{{ priority }}</strong></div>
+        </div>
+
+        @if (jobUrlPreview) {
+          <div class="context-block source-block">
+            <span class="context-label">SOURCE DÉTECTÉE</span>
+            <div class="source-name"><mat-icon>verified</mat-icon><strong>{{ extractionSourceLabel(jobUrlPreview.extractionSource) }}</strong></div>
+            <span class="source-confidence">{{ confidenceLabel(jobUrlPreview.confidence) }}</span>
+            @if (jobUrlPreview.salary) {
+              <div class="context-row"><span>Salaire annoncé</span><strong>{{ jobUrlPreview.salary }}</strong></div>
+            }
+            @if (jobUrlPreview.location) {
+              <div class="context-row"><span>Localisation</span><strong>{{ jobUrlPreview.location }}</strong></div>
+            }
+          </div>
+        } @else if (!editMode) {
+          <div class="context-tip">
+            <mat-icon>lightbulb</mat-icon>
+            <div><strong>Capture rapide</strong><span>Vous pourrez ajouter recruteur, relance, entretiens et notes après création.</span></div>
+          </div>
+        }
+
+        <div class="studio-trust"><mat-icon>shield</mat-icon><span>Les imports restent en aperçu jusqu’à votre validation.</span></div>
+      </aside>
+    </div>
+
+    <footer class="studio-footer">
+      <div class="footer-hint"><kbd>⌘</kbd><kbd>↵</kbd><span>{{ editMode ? 'Enregistrer' : 'Ajouter au pipeline' }}</span></div>
+      <div class="footer-actions">
+        <button mat-stroked-button type="button" (click)="requestClose()">Annuler</button>
+        <button mat-flat-button color="primary" type="button" (click)="submit()">
+          <mat-icon>{{ editMode ? 'save' : 'arrow_forward' }}</mat-icon>
+          {{ editMode ? 'Enregistrer' : 'Ajouter au pipeline' }}
+        </button>
+      </div>
+    </footer>
+  </section>
+
+  @if (showDiscardConfirm) {
+    <div class="discard-backdrop" role="presentation" (click)="keepEditing()">
+      <section class="discard-dialog" role="alertdialog" aria-modal="true" aria-labelledby="discard-title" (click)="$event.stopPropagation()">
+        <span class="discard-icon"><mat-icon>edit_note</mat-icon></span>
+        <h3 id="discard-title">Abandonner les modifications ?</h3>
+        <p>Les informations saisies dans ce Studio ne sont pas encore enregistrées.</p>
+        <div class="discard-actions">
+          <button mat-stroked-button type="button" (click)="keepEditing()">Continuer l’édition</button>
+          <button mat-flat-button color="warn" type="button" (click)="discardAndClose()">Abandonner</button>
+        </div>
+      </section>
+    </div>
+  }
+</div>
