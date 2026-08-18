@@ -1,5 +1,5 @@
 import {Injectable} from '@angular/core';
-import {BehaviorSubject, Observable, map, tap} from 'rxjs';
+import {BehaviorSubject, Observable, catchError, map, tap, throwError} from 'rxjs';
 import {CloudApiService} from '../cloud/cloud-api.service';
 import {UserProfile} from '../models/user-profile.model';
 
@@ -32,9 +32,16 @@ export class UserProfileService {
 
   saveProfile(profile: UserProfile): Observable<UserProfile> {
     const normalized = this.normalize(profile);
+    const previous = this.profileSubject.value;
+    this.profileSubject.next(normalized);
+
     return this.cloudApi.updateProfile(normalized).pipe(
       map(saved => this.normalize(saved)),
-      tap(saved => this.profileSubject.next(saved))
+      tap(saved => this.profileSubject.next(saved)),
+      catchError(error => {
+        this.profileSubject.next(previous);
+        return throwError(() => error);
+      })
     );
   }
 
