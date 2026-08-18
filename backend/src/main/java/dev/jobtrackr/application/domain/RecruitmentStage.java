@@ -1,6 +1,8 @@
 package dev.jobtrackr.application.domain;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import dev.jobtrackr.common.domain.EnumSupport;
+import dev.jobtrackr.common.domain.LabelledEnum;
 
 public enum RecruitmentStage implements LabelledEnum {
     CANDIDATURE("Candidature"),
