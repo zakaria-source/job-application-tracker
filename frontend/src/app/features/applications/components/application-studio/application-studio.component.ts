@@ -193,7 +193,12 @@ export class ApplicationStudioComponent implements OnChanges, AfterViewInit, OnD
   }
 
   onFormDraftChange(): void {
-    if (this.editMode || this.availableDraft) return;
+    if (this.editMode) return;
+    if (this.availableDraft) {
+      this.draftService.clear();
+      this.availableDraft = null;
+      this.draftSavedAt = null;
+    }
     if (this.draftTimer) clearTimeout(this.draftTimer);
     this.draftTimer = setTimeout(() => this.persistDraftNow(), 500);
   }
