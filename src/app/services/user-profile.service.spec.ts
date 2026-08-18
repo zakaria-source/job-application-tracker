@@ -1,15 +1,26 @@
 import {beforeEach, describe, expect, it} from 'vitest';
+import {of} from 'rxjs';
+import {CloudApiService} from '../cloud/cloud-api.service';
+import {UserProfile} from '../models/user-profile.model';
 import {UserProfileService} from './user-profile.service';
 
 describe('UserProfileService', () => {
   let service: UserProfileService;
+  let savedProfile: UserProfile | null;
 
   beforeEach(() => {
-    localStorage.clear();
-    service = new UserProfileService();
+    savedProfile = null;
+    const api = {
+      updateProfile: (profile: UserProfile) => {
+        savedProfile = profile;
+        return of(profile);
+      }
+    } as unknown as CloudApiService;
+
+    service = new UserProfileService(api);
   });
 
-  it('persists and normalizes a user profile', () => {
+  it('normalizes and persists a profile through the backend', () => {
     service.saveProfile({
       name: '  Alex Martin  ',
       headline: ' Backend Engineer ',
@@ -34,19 +45,28 @@ describe('UserProfileService', () => {
       education: 'Master Informatique',
       targetCompensation: '65 k€ / an'
     });
+    expect(savedProfile).toEqual(service.getProfile());
   });
 
-  it('ignores corrupted or incomplete persisted profiles', () => {
-    localStorage.setItem('jobtrackr-user-profile-v1', '{invalid-json');
-    expect(service.getProfile()).toBeNull();
+  it('hydrates the profile received from the backend', () => {
+    service.connect({
+      name: ' Alex ',
+      headline: ' Engineer ',
+      experienceLabel: '',
+      location: '',
+      summary: '',
+      coreSkills: [' Java '],
+      certifications: [],
+      education: '',
+      targetCompensation: ''
+    });
 
-    localStorage.setItem('jobtrackr-user-profile-v1', JSON.stringify({name: 'Alex'}));
-    expect(service.getProfile()).toBeNull();
+    expect(service.getProfile()?.name).toBe('Alex');
+    expect(service.getProfile()?.coreSkills).toEqual(['Java']);
   });
 
-  it('can clear the local profile without touching application data', () => {
-    localStorage.setItem('jobtrackr-applications', 'keep-me');
-    service.saveProfile({
+  it('clears only in-memory profile state on logout', () => {
+    service.connect({
       name: 'Alex',
       headline: 'Engineer',
       experienceLabel: '',
@@ -58,9 +78,8 @@ describe('UserProfileService', () => {
       targetCompensation: ''
     });
 
-    service.clearProfile();
+    service.clear();
 
     expect(service.getProfile()).toBeNull();
-    expect(localStorage.getItem('jobtrackr-applications')).toBe('keep-me');
   });
 });
