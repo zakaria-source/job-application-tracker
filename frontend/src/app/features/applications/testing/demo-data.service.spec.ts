@@ -1,12 +1,13 @@
 import {beforeEach, describe, expect, it} from 'vitest';
 import {of} from 'rxjs';
 import {JobTrackrApiService} from '@app/core/api/jobtrackr-api.service';
-import {ApplicationWorkflowService} from '@app/features/applications/domain/application-workflow.service';
-import {JobApplication} from '@app/features/applications/models/application.model';
-import {ApplicationAnalyticsService} from '@app/features/applications/domain/application-analytics.service';
-import {FollowUpService} from '@app/features/applications/domain/follow-up.service';
-import {DemoDataService} from '@app/features/applications/testing/demo-data.service';
+import {ApplicationImportService} from '@app/features/applications/data-access/application-import.service';
 import {ApplicationStore} from '@app/features/applications/data-access/application.store';
+import {ApplicationAnalyticsService} from '@app/features/applications/domain/application-analytics.service';
+import {ApplicationWorkflowService} from '@app/features/applications/domain/application-workflow.service';
+import {FollowUpService} from '@app/features/applications/domain/follow-up.service';
+import {JobApplication} from '@app/features/applications/models/application.model';
+import {DemoDataService} from '@app/features/applications/testing/demo-data.service';
 
 describe('DemoDataService', () => {
   let storage: ApplicationStore;
@@ -28,7 +29,8 @@ describe('DemoDataService', () => {
       api,
       new ApplicationAnalyticsService(),
       new FollowUpService(),
-      workflow
+      workflow,
+      new ApplicationImportService(workflow)
     );
     storage.connect([]);
     demoData = new DemoDataService(storage);
