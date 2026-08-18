@@ -1,5 +1,6 @@
 package dev.jobtrackr;
 
+import dev.jobtrackr.security.SessionCookieService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -174,7 +175,7 @@ class AdvancedTrackingIntegrationTest {
     }
 
     private String register() throws Exception {
-        String response = mockMvc.perform(post("/api/v1/auth/register")
+        var result = mockMvc.perform(post("/api/v1/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -184,7 +185,11 @@ class AdvancedTrackingIntegrationTest {
                     }
                     """))
             .andExpect(status().isCreated())
-            .andReturn().getResponse().getContentAsString();
-        return jsonMapper.readTree(response).path("accessToken").asText();
+            .andExpect(jsonPath("$.accessToken").doesNotExist())
+            .andReturn();
+
+        var cookie = result.getResponse().getCookie(SessionCookieService.COOKIE_NAME);
+        assertThat(cookie).isNotNull();
+        return cookie.getValue();
     }
 }
