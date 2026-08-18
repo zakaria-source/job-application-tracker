@@ -1,17 +1,17 @@
 package dev.jobtrackr.profile;
 
-import dev.jobtrackr.user.UserAccountEntity;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.MapsId;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.OrderColumn;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PostPersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
+import org.springframework.data.domain.Persistable;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -20,16 +20,11 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "user_profile")
-public class UserProfileEntity {
+public class UserProfileEntity implements Persistable<UUID> {
 
     @Id
     @Column(name = "user_id")
     private UUID userId;
-
-    @MapsId
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
-    private UserAccountEntity user;
 
     @Column(nullable = false, length = 180)
     private String headline = "";
@@ -64,17 +59,34 @@ public class UserProfileEntity {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Transient
+    private boolean newEntity = true;
+
     protected UserProfileEntity() {
     }
 
-    public UserProfileEntity(UserAccountEntity user, Instant now) {
-        this.user = user;
-        this.userId = user.getId();
+    public UserProfileEntity(UUID userId, Instant now) {
+        this.userId = userId;
         this.updatedAt = now;
     }
 
+    @Override
+    public UUID getId() {
+        return userId;
+    }
+
+    @Override
+    public boolean isNew() {
+        return newEntity;
+    }
+
+    @PostLoad
+    @PostPersist
+    void markNotNew() {
+        this.newEntity = false;
+    }
+
     public UUID getUserId() { return userId; }
-    public UserAccountEntity getUser() { return user; }
     public String getHeadline() { return headline; }
     public String getExperienceLabel() { return experienceLabel; }
     public String getLocation() { return location; }
