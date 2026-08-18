@@ -1,9 +1,9 @@
 import {Injectable} from '@angular/core';
 import {BehaviorSubject, Observable, catchError, forkJoin, map, tap, throwError} from 'rxjs';
-import {ApplicationStore} from '@app/features/applications/data-access/application.store';
-import {UserProfileService} from '@app/features/profile/user-profile.service';
 import {JobTrackrApiService} from '@app/core/api/jobtrackr-api.service';
 import {SessionStore} from '@app/core/auth/session.store';
+import {ApplicationStore} from '@app/features/applications/data-access/application.store';
+import {UserProfileService} from '@app/features/profile/user-profile.service';
 
 export type WorkspaceState = 'signed-out' | 'loading' | 'ready' | 'error';
 
@@ -17,7 +17,7 @@ export class WorkspaceService {
   constructor(
     private readonly sessions: SessionStore,
     private readonly api: JobTrackrApiService,
-    private readonly storage: ApplicationStore,
+    private readonly applications: ApplicationStore,
     private readonly profiles: UserProfileService
   ) {}
 
@@ -31,9 +31,7 @@ export class WorkspaceService {
     }
 
     this.bootstrapped = true;
-    this.connect().subscribe({
-      error: () => undefined
-    });
+    this.connect().subscribe({error: () => undefined});
   }
 
   connect(): Observable<void> {
@@ -49,7 +47,7 @@ export class WorkspaceService {
     }).pipe(
       tap(({profile, applications}) => {
         this.profiles.connect(profile);
-        this.storage.connect(applications);
+        this.applications.connect(applications);
         this.stateSubject.next('ready');
       }),
       map(() => undefined),
@@ -62,7 +60,7 @@ export class WorkspaceService {
 
   disconnect(): void {
     this.sessions.clear();
-    this.storage.clear();
+    this.applications.clear();
     this.profiles.clear();
     this.stateSubject.next('signed-out');
     this.bootstrapped = false;
