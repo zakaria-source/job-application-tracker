@@ -145,27 +145,36 @@
           <button type="button" role="tab" [attr.aria-selected]="mode === 'register'" [class.active]="mode === 'register'" (click)="setMode('register')">Créer un compte</button>
         </div>
 
-        <form [formGroup]="form" (ngSubmit)="submit()">
+        <form [formGroup]="form" (ngSubmit)="submit()" novalidate [attr.aria-busy]="submitting">
           @if (mode === 'register') {
             <label>
               <span>Nom</span>
-              <input formControlName="displayName" autocomplete="name" placeholder="Alex Martin">
+              <input formControlName="displayName" autocomplete="name" placeholder="Alex Martin" maxlength="100">
+              @if (form.controls.displayName.touched && form.controls.displayName.invalid) {
+                <small class="field-error">Indiquez votre nom.</small>
+              }
             </label>
           }
           <label>
             <span>Email</span>
-            <input formControlName="email" type="email" autocomplete="email" placeholder="alex@example.com">
+            <input formControlName="email" type="email" autocomplete="email" placeholder="alex@example.com" maxlength="254">
+            @if (form.controls.email.touched && form.controls.email.invalid) {
+              <small class="field-error">Saisissez une adresse email valide.</small>
+            }
           </label>
           <label>
             <span>Mot de passe</span>
-            <input formControlName="password" type="password" [attr.autocomplete]="mode === 'login' ? 'current-password' : 'new-password'" placeholder="10 caractères minimum">
+            <input formControlName="password" type="password" [attr.autocomplete]="mode === 'login' ? 'current-password' : 'new-password'" placeholder="10 caractères minimum" maxlength="200">
+            @if (form.controls.password.touched && form.controls.password.invalid) {
+              <small class="field-error">Le mot de passe doit contenir au moins 10 caractères.</small>
+            }
           </label>
 
           @if (errorMessage) {
             <div class="feedback error" role="alert"><mat-icon>error</mat-icon><span>{{ errorMessage }}</span></div>
           }
 
-          <button class="primary" type="submit" [disabled]="submitting || form.invalid || (mode === 'register' && !form.controls.displayName.value.trim())">
+          <button class="primary" type="submit" [disabled]="submitting">
             @if (submitting) { <mat-icon class="spin">progress_activity</mat-icon> }
             <span>{{ submitting ? 'Connexion au workspace…' : mode === 'login' ? 'Se connecter' : 'Créer mon espace' }}</span>
             @if (!submitting) { <mat-icon>arrow_forward</mat-icon> }
