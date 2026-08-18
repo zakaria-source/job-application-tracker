@@ -9,6 +9,7 @@ import {ApplicationFilterCriteria, ApplicationFiltersComponent} from '@app/featu
 import {ApplicationKanbanComponent, ApplicationStageChange} from '@app/features/applications/components/application-kanban/application-kanban.component';
 import {ApplicationListComponent} from '@app/features/applications/components/application-list/application-list.component';
 import {ApplicationStudioComponent} from '@app/features/applications/components/application-studio/application-studio.component';
+import {ApplicationDraftService} from '@app/features/applications/data-access/application-draft.service';
 import {ApplicationExportService} from '@app/features/applications/data-access/application-export.service';
 import {ApplicationImportService, ImportPreview} from '@app/features/applications/data-access/application-import.service';
 import {ApplicationStore} from '@app/features/applications/data-access/application.store';
@@ -47,6 +48,7 @@ export class ApplicationsPageComponent implements OnInit {
 
   constructor(
     private readonly applicationStore: ApplicationStore,
+    private readonly draftService: ApplicationDraftService,
     private readonly importService: ApplicationImportService,
     private readonly exportService: ApplicationExportService,
     private readonly workspace: WorkspaceService
@@ -172,8 +174,13 @@ export class ApplicationsPageComponent implements OnInit {
       this.applicationStore.updateApplication(application);
       this.showFeedback(`Candidature mise à jour · ${application.company}`);
     } else {
-      this.applicationStore.addApplication(application);
-      this.showFeedback(`Candidature ajoutée au pipeline · ${application.company}`);
+      this.applicationStore.addApplication(application, {
+        onSuccess: saved => {
+          this.draftService.clear();
+          this.showFeedback(`Candidature ajoutée au pipeline · ${saved.company}`);
+        },
+        onError: () => this.showFeedback('Ajout impossible · votre brouillon a été conservé')
+      });
     }
     this.cancelForm();
   }
