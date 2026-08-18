@@ -3,31 +3,45 @@
     <mat-card-content>
       <div class="profile-main">
         <div>
-          <span class="profile-eyebrow">PROFIL CIBLE</span>
+          <span class="profile-eyebrow">VOTRE PROFIL</span>
           <h2>{{ profile.name }}</h2>
-          <strong>{{ profile.title }}</strong>
-          <p>{{ profile.summary }}</p>
+          <strong>{{ profile.headline }}</strong>
+          @if (profile.summary) {
+            <p>{{ profile.summary }}</p>
+          }
         </div>
         <div class="profile-facts">
-          <span><mat-icon>schedule</mat-icon>{{ profile.experienceLabel }}</span>
-          <span><mat-icon>location_on</mat-icon>{{ profile.mobility }}</span>
-          <span><mat-icon>school</mat-icon>{{ profile.education }}</span>
-          <span><mat-icon>payments</mat-icon>{{ profile.targetCompensation }}</span>
+          @if (profile.experienceLabel) {
+            <span><mat-icon>schedule</mat-icon>{{ profile.experienceLabel }}</span>
+          }
+          @if (profile.location) {
+            <span><mat-icon>location_on</mat-icon>{{ profile.location }}</span>
+          }
+          @if (profile.education) {
+            <span><mat-icon>school</mat-icon>{{ profile.education }}</span>
+          }
+          @if (profile.targetCompensation) {
+            <span><mat-icon>payments</mat-icon>{{ profile.targetCompensation }}</span>
+          }
         </div>
       </div>
 
-      <div class="profile-tags" aria-label="Compétences principales">
-        @for (skill of profile.coreSkills; track skill) {
-          <span>{{ skill }}</span>
-        }
-      </div>
+      @if (profile.coreSkills.length > 0) {
+        <div class="profile-tags" aria-label="Compétences principales">
+          @for (skill of profile.coreSkills; track skill) {
+            <span>{{ skill }}</span>
+          }
+        </div>
+      }
 
-      <div class="profile-certifications">
-        <strong>Certifications</strong>
-        @for (certification of profile.certifications; track certification) {
-          <span>{{ certification }}</span>
-        }
-      </div>
+      @if (profile.certifications.length > 0) {
+        <div class="profile-certifications">
+          <strong>Certifications</strong>
+          @for (certification of profile.certifications; track certification) {
+            <span>{{ certification }}</span>
+          }
+        </div>
+      }
     </mat-card-content>
   </mat-card>
 

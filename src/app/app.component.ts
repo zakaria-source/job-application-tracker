@@ -4,7 +4,6 @@ import {Router, RouterLink, RouterLinkActive, RouterOutlet} from '@angular/route
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {StorageService} from './services/storage.service';
 import {NotificationService} from './services/notification.service';
-import {PortfolioBootstrapService} from './services/portfolio-bootstrap.service';
 
 @Component({
   selector: 'app-root',
@@ -19,25 +18,36 @@ export class App {
   constructor(
     readonly router: Router,
     storageService: StorageService,
-    notificationService: NotificationService,
-    portfolioBootstrap: PortfolioBootstrapService
+    notificationService: NotificationService
   ) {
-    portfolioBootstrap.bootstrap();
-
     storageService.getApplications()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(applications => notificationService.syncReminders(applications));
   }
 
   get pageTitle(): string {
-    return this.router.url.startsWith('/applications')
-      ? 'Pipeline de candidatures'
-      : 'Vue d’ensemble de Zakaria';
+    if (this.router.url.startsWith('/applications')) {
+      return 'Pipeline de candidatures';
+    }
+    if (this.router.url.startsWith('/settings/profile')) {
+      return 'Profil & préférences';
+    }
+    if (this.router.url.startsWith('/onboarding')) {
+      return 'Bienvenue sur JobTrackr';
+    }
+    return 'Tableau de bord';
   }
 
   get pageDescription(): string {
-    return this.router.url.startsWith('/applications')
-      ? 'Candidatures réelles, relances, contacts et étapes de recrutement centralisés au même endroit.'
-      : 'Pilotage de la recherche Backend Java / Cloud-Native : priorités, relances, entretiens et progression.';
+    if (this.router.url.startsWith('/applications')) {
+      return 'Candidatures, relances, contacts et étapes de recrutement centralisés au même endroit.';
+    }
+    if (this.router.url.startsWith('/settings/profile')) {
+      return 'Personnalisez le contexte affiché dans votre espace de recherche.';
+    }
+    if (this.router.url.startsWith('/onboarding')) {
+      return 'Créez votre espace local en quelques informations, puis commencez à suivre vos candidatures.';
+    }
+    return 'Priorités, relances, entretiens et progression de votre recherche d’emploi.';
   }
 }
