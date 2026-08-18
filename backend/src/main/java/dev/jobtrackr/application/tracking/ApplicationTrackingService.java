@@ -44,7 +44,7 @@ public class ApplicationTrackingService {
     @Transactional
     public FollowUpResponse schedule(UUID userId, UUID applicationId, LocalDate date) {
         JobApplicationEntity application = requireOwned(userId, applicationId); Instant now = Instant.now();
-        FollowUpEntity followUp = followUps.findFirstByApplication_IdAndStatusInOrderByScheduledForDesc(applicationId, OPEN_FOLLOW_UPS)
+        FollowUpEntity followUp = findOpen(applicationId)
             .map(existing -> { existing.snooze(date, now); return existing; })
             .orElseGet(() -> new FollowUpEntity(UUID.randomUUID(), application, date, now));
         application.scheduleFollowUp(date, now); applications.save(application); followUps.save(followUp);
@@ -53,12 +53,17 @@ public class ApplicationTrackingService {
     }
 
     @Transactional
+    public FollowUpResponse completeCurrent(UUID userId, UUID applicationId) {
+        JobApplicationEntity application = requireOwned(userId, applicationId);
+        FollowUpEntity followUp = findOpen(applicationId).orElseThrow(ResourceNotFoundException::new);
+        return complete(application, followUp);
+    }
+
+    @Transactional
     public FollowUpResponse complete(UUID userId, UUID applicationId, UUID followUpId) {
         JobApplicationEntity application = requireOwned(userId, applicationId);
         FollowUpEntity followUp = followUps.findById(followUpId).filter(item -> item.getApplicationId().equals(applicationId)).orElseThrow(ResourceNotFoundException::new);
-        Instant now = Instant.now(); followUp.complete(now); application.clearFollowUp(now); applications.save(application);
-        record(application, ApplicationEventType.FOLLOW_UP_COMPLETED, "Relance effectuée", "Action marquée comme terminée", now);
-        return followUpResponse(followUp);
+        return complete(application, followUp);
     }
 
     @Transactional
@@ -108,16 +113,22 @@ public class ApplicationTrackingService {
 
     public void recordCreated(JobApplicationEntity application, Instant now) { record(application, ApplicationEventType.APPLICATION_CREATED, "Candidature créée", application.getCompany() + " · " + application.getPosition(), now); }
     public void recordUpdated(JobApplicationEntity application, Instant now) { record(application, ApplicationEventType.APPLICATION_UPDATED, "Candidature mise à jour", "Étape actuelle : " + application.getStage(), now); }
-    public void recordStageChanged(JobApplicationEntity application, RecruitmentStage previous, Instant now) { record(application, ApplicationEventType.STAGE_CHANGED, "Étape modifiée", previous + " → " + application.getStage(), now); }
+    public void recordStageChanged(JobApplicationEntity application, RecruitmentStage previous, Instant now) { if (previous != application.getStage()) record(application, ApplicationEventType.STAGE_CHANGED, "Étape modifiée", previous + " → " + application.getStage(), now); }
     public void recordInterviewsUpdated(JobApplicationEntity application, Instant now) { record(application, ApplicationEventType.INTERVIEWS_UPDATED, "Entretiens mis à jour", application.getInterviews().size() + " rendez-vous", now); }
     public void syncLegacyFollowUp(JobApplicationEntity application, LocalDate previousDate, Instant now) {
         if (Objects.equals(previousDate, application.getFollowUpDate())) return;
-        Optional<FollowUpEntity> current = followUps.findFirstByApplication_IdAndStatusInOrderByScheduledForDesc(application.getId(), OPEN_FOLLOW_UPS);
+        Optional<FollowUpEntity> current = findOpen(application.getId());
         if (application.getFollowUpDate() == null) { current.ifPresent(item -> item.cancel(now)); return; }
         FollowUpEntity item = current.orElseGet(() -> new FollowUpEntity(UUID.randomUUID(), application, application.getFollowUpDate(), now));
         if (current.isPresent()) item.snooze(application.getFollowUpDate(), now); followUps.save(item);
         record(application, ApplicationEventType.FOLLOW_UP_SCHEDULED, "Relance planifiée", "Prévue le " + application.getFollowUpDate(), now);
     }
+    private FollowUpResponse complete(JobApplicationEntity application, FollowUpEntity followUp) {
+        Instant now = Instant.now(); followUp.complete(now); application.clearFollowUp(now); applications.save(application);
+        record(application, ApplicationEventType.FOLLOW_UP_COMPLETED, "Relance effectuée", "Action marquée comme terminée", now);
+        return followUpResponse(followUp);
+    }
+    private Optional<FollowUpEntity> findOpen(UUID applicationId) { return followUps.findFirstByApplication_IdAndStatusInOrderByScheduledForDesc(applicationId, OPEN_FOLLOW_UPS); }
     private void record(JobApplicationEntity application, ApplicationEventType type, String title, String details, Instant now) { events.save(new ApplicationEventEntity(UUID.randomUUID(), application, type, title, details, now)); }
     private JobApplicationEntity requireOwned(UUID userId, UUID applicationId) { return applications.findByIdAndOwner_Id(applicationId, userId).orElseThrow(ResourceNotFoundException::new); }
     private ApplicationEventResponse eventResponse(ApplicationEventEntity e) { return new ApplicationEventResponse(e.getId(), e.getType(), e.getTitle(), e.getDetails(), e.getCreatedAt()); }

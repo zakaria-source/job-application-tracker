@@ -14,10 +14,10 @@ import java.util.UUID;
 public class ApplicationTrackingController {
     private final ApplicationTrackingService tracking;
     public ApplicationTrackingController(ApplicationTrackingService tracking) { this.tracking = tracking; }
-
     @GetMapping("/activity") public List<ApplicationEventResponse> activity(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID applicationId) { return tracking.events(CurrentUser.id(jwt), applicationId); }
     @GetMapping("/follow-ups") public List<FollowUpResponse> followUps(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID applicationId) { return tracking.followUps(CurrentUser.id(jwt), applicationId); }
     @PostMapping("/follow-ups") public FollowUpResponse schedule(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID applicationId, @Valid @RequestBody FollowUpRequest request) { return tracking.schedule(CurrentUser.id(jwt), applicationId, request.scheduledFor()); }
+    @PatchMapping("/follow-ups/current/complete") public FollowUpResponse completeCurrent(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID applicationId) { return tracking.completeCurrent(CurrentUser.id(jwt), applicationId); }
     @PatchMapping("/follow-ups/{followUpId}/complete") public FollowUpResponse complete(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID applicationId, @PathVariable UUID followUpId) { return tracking.complete(CurrentUser.id(jwt), applicationId, followUpId); }
     @PatchMapping("/follow-ups/{followUpId}/snooze") public FollowUpResponse snooze(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID applicationId, @PathVariable UUID followUpId, @Valid @RequestBody FollowUpRequest request) { return tracking.snooze(CurrentUser.id(jwt), applicationId, followUpId, request.scheduledFor()); }
     @GetMapping("/debriefs") public List<InterviewDebriefResponse> debriefs(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID applicationId) { return tracking.debriefs(CurrentUser.id(jwt), applicationId); }
