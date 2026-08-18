@@ -7,7 +7,9 @@ import dev.jobtrackr.application.dto.StageRequest;
 import dev.jobtrackr.security.CurrentUser;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -42,24 +45,44 @@ public class ApplicationController {
     }
 
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public ApplicationResponse create(@AuthenticationPrincipal Jwt jwt,
-                                      @Valid @RequestBody ApplicationRequest request) {
-        return applicationService.create(CurrentUser.id(jwt), request);
+    public ResponseEntity<ApplicationResponse> create(
+        @AuthenticationPrincipal Jwt jwt,
+        @Valid @RequestBody ApplicationRequest request
+    ) {
+        ApplicationResponse response = applicationService.create(CurrentUser.id(jwt), request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .header(HttpHeaders.ETAG, etag(response.version()))
+            .body(response);
     }
 
     @PutMapping("/{id}")
-    public ApplicationResponse update(@AuthenticationPrincipal Jwt jwt,
-                                      @PathVariable UUID id,
-                                      @Valid @RequestBody ApplicationRequest request) {
-        return applicationService.update(CurrentUser.id(jwt), id, request);
+    public ResponseEntity<ApplicationResponse> update(
+        @AuthenticationPrincipal Jwt jwt,
+        @PathVariable UUID id,
+        @RequestHeader(value = HttpHeaders.IF_MATCH, required = false) String ifMatch,
+        @Valid @RequestBody ApplicationRequest request
+    ) {
+        ApplicationResponse response = applicationService.update(
+            CurrentUser.id(jwt),
+            id,
+            request,
+            parseVersion(ifMatch)
+        );
+        return ResponseEntity.ok()
+            .header(HttpHeaders.ETAG, etag(response.version()))
+            .body(response);
     }
 
     @PatchMapping("/{id}/stage")
-    public ApplicationResponse move(@AuthenticationPrincipal Jwt jwt,
-                                    @PathVariable UUID id,
-                                    @Valid @RequestBody StageRequest request) {
-        return applicationService.move(CurrentUser.id(jwt), id, request.stage());
+    public ResponseEntity<ApplicationResponse> move(
+        @AuthenticationPrincipal Jwt jwt,
+        @PathVariable UUID id,
+        @Valid @RequestBody StageRequest request
+    ) {
+        ApplicationResponse response = applicationService.move(CurrentUser.id(jwt), id, request.stage());
+        return ResponseEntity.ok()
+            .header(HttpHeaders.ETAG, etag(response.version()))
+            .body(response);
     }
 
     @DeleteMapping("/{id}")
@@ -74,5 +97,27 @@ public class ApplicationController {
         @RequestBody @Size(max = 1000) List<@Valid ApplicationRequest> requests
     ) {
         return applicationService.importApplications(CurrentUser.id(jwt), requests);
+    }
+
+    private static Long parseVersion(String ifMatch) {
+        if (ifMatch == null || ifMatch.isBlank()) {
+            return null;
+        }
+        String value = ifMatch.trim();
+        if (value.startsWith("W/")) {
+            value = value.substring(2).trim();
+        }
+        if (value.length() >= 2 && value.startsWith("\"") && value.endsWith("\"")) {
+            value = value.substring(1, value.length() - 1);
+        }
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException exception) {
+            throw new StaleApplicationException();
+        }
+    }
+
+    private static String etag(long version) {
+        return "\"" + version + "\"";
     }
 }
