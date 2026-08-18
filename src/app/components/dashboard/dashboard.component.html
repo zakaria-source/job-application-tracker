@@ -34,16 +34,26 @@
       </div>
     </section>
   } @else {
-    <section class="metrics-strip" aria-label="Résumé de la recherche">
-      <div class="metric">
-        <span>Actives</span>
-        <strong>{{ activeApplications }}</strong>
-        <small>opportunités en cours</small>
+    <section class="today-header" aria-labelledby="today-title">
+      <div>
+        <span class="panel-kicker">AUJOURD’HUI</span>
+        <h2 id="today-title">Votre recherche, en une décision.</h2>
+        <p>
+          @if (nextActions.length > 0) {
+            {{ nextActions.length }} action{{ nextActions.length > 1 ? 's' : '' }} mérite{{ nextActions.length > 1 ? 'nt' : '' }} votre attention.
+          } @else {
+            Rien d’urgent : votre pipeline est à jour.
+          }
+        </p>
       </div>
-      <div class="metric">
-        <span>Relances</span>
-        <strong>{{ followUpActions.length }}</strong>
-        <small>actions à traiter</small>
+      <a mat-flat-button color="primary" routerLink="/applications"><mat-icon>add</mat-icon>Nouvelle candidature</a>
+    </section>
+
+    <section class="metrics-strip" aria-label="Résumé de la recherche">
+      <div class="metric" [class.attention]="overdueFollowUps.length > 0">
+        <span>À relancer</span>
+        <strong>{{ overdueFollowUps.length + todayFollowUps.length }}</strong>
+        <small>{{ overdueFollowUps.length }} en retard · {{ todayFollowUps.length }} aujourd’hui</small>
       </div>
       <div class="metric">
         <span>Entretiens</span>
@@ -53,88 +63,124 @@
       <div class="metric">
         <span>Taux de réponse</span>
         <strong>{{ statistics.responseRate | number:'1.0-0' }}%</strong>
-        <small>sur {{ statistics.totalApplications }} candidatures</small>
+        <small>{{ statistics.averageResponseTime | number:'1.0-0' }} j de délai moyen</small>
+      </div>
+      <div class="metric">
+        <span>Taux d’entretien</span>
+        <strong>{{ interviewRate }}%</strong>
+        <small>{{ statistics.statusCounts.interview }} candidature{{ statistics.statusCounts.interview > 1 ? 's' : '' }} en entretien</small>
       </div>
     </section>
 
-    <section class="dashboard-grid">
-      <mat-card class="panel actions-panel">
+    <section class="command-grid">
+      <mat-card class="panel next-actions-panel">
         <mat-card-header>
           <div class="panel-heading">
             <div>
-              <span class="panel-kicker">À TRAITER</span>
-              <mat-card-title>Prochaines actions</mat-card-title>
+              <span class="panel-kicker">NEXT BEST ACTIONS</span>
+              <mat-card-title>À faire maintenant</mat-card-title>
             </div>
             <a routerLink="/applications">Ouvrir le pipeline <mat-icon>arrow_forward</mat-icon></a>
           </div>
         </mat-card-header>
         <mat-card-content>
-          @if (followUpActions.length === 0 && upcomingInterviews.length === 0) {
+          @if (nextActions.length === 0) {
             <div class="empty-state compact">
               <span class="status-dot success"></span>
-              <div>
-                <strong>Rien d’urgent</strong>
-                <p>Vos prochaines relances et vos entretiens apparaîtront ici.</p>
-              </div>
+              <div><strong>Pipeline sous contrôle</strong><p>Aucune relance, préparation d’entretien ou candidature inactive ne demande d’action.</p></div>
             </div>
           }
 
-          @for (action of followUpActions; track action) {
-            <div class="action-item">
-              <span class="action-marker warning"></span>
+          @for (action of nextActions; track action.id) {
+            <article class="next-action" [class.overdue]="action.kind === 'follow-up' && action.label === 'Relance en retard'">
+              <span class="action-icon"><mat-icon>{{ action.kind === 'follow-up' ? 'outgoing_mail' : action.kind === 'interview' ? 'event' : 'history' }}</mat-icon></span>
               <div class="action-copy">
-                <strong>{{ getApplicationLabel(action.relatedApplicationId) }}</strong>
-                <span>{{ action.message }}</span>
+                <strong>{{ action.label }}</strong>
+                <a routerLink="/applications">{{ action.company }} — {{ action.position }}</a>
+                <span>{{ action.detail }}</span>
               </div>
-              <span class="action-type">RELANCE</span>
-            </div>
-          }
-
-          @for (interview of upcomingInterviews; track interview.id) {
-            <div class="action-item">
-              <div class="action-date">
-                <strong>{{ interview.date | date:'dd' }}</strong>
-                <span>{{ interview.date | date:'MMM' }}</span>
-              </div>
-              <div class="action-copy">
-                <strong>{{ interview.company }} — {{ interview.position }}</strong>
-                <span>{{ interview.date | date:'HH:mm' }} · {{ interview.type }}</span>
-              </div>
-              <span class="action-type accent">ENTRETIEN</span>
-            </div>
+              @if (action.kind === 'follow-up') {
+                <button mat-stroked-button type="button" (click)="completeFollowUp(action.applicationId)"><mat-icon>check</mat-icon>Fait</button>
+              } @else {
+                <a class="action-open" routerLink="/applications" aria-label="Ouvrir la candidature"><mat-icon>arrow_forward</mat-icon></a>
+              }
+            </article>
           }
         </mat-card-content>
       </mat-card>
 
-      <mat-card class="panel pipeline-panel">
+      <mat-card class="panel follow-up-panel">
         <mat-card-header>
           <div>
-            <span class="panel-kicker">PIPELINE</span>
-            <mat-card-title>Progression</mat-card-title>
+            <span class="panel-kicker">FOLLOW-UPS</span>
+            <mat-card-title>Relances</mat-card-title>
           </div>
         </mat-card-header>
         <mat-card-content>
-          <div class="pipeline-summary">
-            <strong>{{ statistics.totalApplications }}</strong>
-            <span>candidatures suivies</span>
+          <div class="follow-up-summary">
+            <div><strong>{{ overdueFollowUps.length }}</strong><span>En retard</span></div>
+            <div><strong>{{ todayFollowUps.length }}</strong><span>Aujourd’hui</span></div>
+            <div><strong>{{ upcomingFollowUps.length }}</strong><span>À venir</span></div>
           </div>
+          @if (followUps.length === 0) {
+            <p class="quiet-copy">Aucune relance planifiée sur les 14 prochains jours.</p>
+          } @else {
+            <div class="follow-up-list">
+              @for (item of followUps.slice(0, 5); track item.application.id) {
+                <div class="follow-up-row">
+                  <span class="follow-up-state" [class.overdue]="item.state === 'overdue'" [class.today]="item.state === 'today'">{{ item.state === 'overdue' ? 'RETARD' : item.state === 'today' ? 'AUJ.' : 'À VENIR' }}</span>
+                  <div><strong>{{ item.application.company }}</strong><span>{{ item.date | date:'dd MMM' }}</span></div>
+                  <button type="button" (click)="completeFollowUp(item.application.id)" aria-label="Marquer la relance comme effectuée"><mat-icon>check</mat-icon></button>
+                </div>
+              }
+            </div>
+          }
+        </mat-card-content>
+      </mat-card>
+    </section>
 
-          <div class="pipeline-row">
-            <div><span>Envoyées</span><strong>{{ statistics.statusCounts.sent }}</strong></div>
-            <div class="pipeline-track"><span [style.width.%]="statusPercentage(statistics.statusCounts.sent)"></span></div>
+    <section class="pipeline-command" aria-labelledby="pipeline-title">
+      <div class="pipeline-command-heading">
+        <div><span class="panel-kicker">SIGNATURE PIPELINE</span><h2 id="pipeline-title">Où en sont vos opportunités ?</h2></div>
+        <span>{{ activeApplications }} active{{ activeApplications > 1 ? 's' : '' }}</span>
+      </div>
+      <div class="stage-rail" role="list" aria-label="Répartition par étape">
+        @for (stage of stageSummary; track stage.stage; let i = $index) {
+          <div class="stage-node" role="listitem" [class.has-items]="stage.count > 0">
+            <div class="stage-number"><span>{{ i + 1 }}</span><strong>{{ stage.count }}</strong></div>
+            <div class="stage-copy"><strong>{{ stage.shortLabel }}</strong><span>{{ stageShare(stage.count) }}% des actives</span></div>
           </div>
-          <div class="pipeline-row">
-            <div><span>Entretiens</span><strong>{{ statistics.statusCounts.interview }}</strong></div>
-            <div class="pipeline-track accent"><span [style.width.%]="statusPercentage(statistics.statusCounts.interview)"></span></div>
-          </div>
-          <div class="pipeline-row">
-            <div><span>Acceptées</span><strong>{{ statistics.statusCounts.accepted }}</strong></div>
-            <div class="pipeline-track success"><span [style.width.%]="statusPercentage(statistics.statusCounts.accepted)"></span></div>
-          </div>
-          <div class="pipeline-row">
-            <div><span>Refusées</span><strong>{{ statistics.statusCounts.rejected }}</strong></div>
-            <div class="pipeline-track muted"><span [style.width.%]="statusPercentage(statistics.statusCounts.rejected)"></span></div>
-          </div>
+        }
+      </div>
+    </section>
+
+    <section class="insights-grid">
+      <mat-card class="panel interview-panel">
+        <mat-card-header><div><span class="panel-kicker">PROCHAINS RENDEZ-VOUS</span><mat-card-title>Entretiens</mat-card-title></div></mat-card-header>
+        <mat-card-content>
+          @if (upcomingInterviews.length === 0) {
+            <p class="quiet-copy">Aucun entretien planifié dans les 14 prochains jours.</p>
+          } @else {
+            @for (interview of upcomingInterviews; track interview.id) {
+              <div class="interview-row">
+                <div class="action-date"><strong>{{ interview.date | date:'dd' }}</strong><span>{{ interview.date | date:'MMM' }}</span></div>
+                <div class="action-copy"><strong>{{ interview.company }} — {{ interview.position }}</strong><span>{{ interview.date | date:'HH:mm' }} · {{ interview.type }}</span></div>
+              </div>
+            }
+          }
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="panel stale-panel">
+        <mat-card-header><div><span class="panel-kicker">SANS ACTIVITÉ</span><mat-card-title>À requalifier</mat-card-title></div></mat-card-header>
+        <mat-card-content>
+          @if (staleApplications.length === 0) {
+            <p class="quiet-copy">Aucune candidature active n’est laissée sans prochaine étape.</p>
+          } @else {
+            @for (application of staleApplications; track application.id) {
+              <div class="stale-row"><div><strong>{{ application.company }}</strong><span>{{ application.position }}</span></div><time>{{ application.lastUpdated | date:'dd MMM' }}</time></div>
+            }
+          }
         </mat-card-content>
       </mat-card>
     </section>
@@ -150,7 +196,7 @@
             <span class="company-initial">{{ application.company.charAt(0).toUpperCase() }}</span>
             <div class="recent-main"><strong>{{ application.company }}</strong><span>{{ application.position }}</span></div>
             <span class="recent-stage">{{ application.stage }}</span>
-            <time>{{ application.applicationDate | date:'dd MMM' }}</time>
+            <time>{{ application.lastUpdated | date:'dd MMM' }}</time>
           </div>
         }
       </div>
