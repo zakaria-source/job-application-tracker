@@ -8,7 +8,6 @@ import {switchMap} from 'rxjs';
 import {AuthService} from '../../cloud/auth.service';
 import {CloudSession, CloudSessionStore} from '../../cloud/cloud-session.store';
 import {CloudWorkspaceService, CloudWorkspaceState} from '../../cloud/cloud-workspace.service';
-import {StorageService} from '../../services/storage.service';
 import {UserProfileService} from '../../services/user-profile.service';
 
 @Component({
@@ -20,11 +19,9 @@ import {UserProfileService} from '../../services/user-profile.service';
       @if (!session) {
         <article class="account-card auth-card">
           <div class="card-icon"><mat-icon>person_outline</mat-icon></div>
-          <span class="eyebrow">VOTRE COMPTE</span>
-          <h2>{{ mode === 'login' ? 'Connectez-vous à JobTrackr' : 'Créez votre compte' }}</h2>
-          <p class="lead">
-            Synchronisez vos candidatures et retrouvez votre espace sur vos appareils. Vous pouvez aussi continuer sans compte en mode local.
-          </p>
+          <span class="eyebrow">JOBTRACKR</span>
+          <h2>{{ mode === 'login' ? 'Connectez-vous' : 'Créez votre compte' }}</h2>
+          <p class="lead">Votre compte sauvegarde vos candidatures et votre profil en ligne.</p>
 
           <div class="mode-switch" role="tablist" aria-label="Authentification">
             <button type="button" [class.active]="mode === 'login'" (click)="setMode('login')">Connexion</button>
@@ -57,32 +54,24 @@ import {UserProfileService} from '../../services/user-profile.service';
             </button>
           </form>
         </article>
-
-        <aside class="privacy-card">
-          <mat-icon>lock_outline</mat-icon>
-          <div>
-            <strong>Vos données locales restent locales</strong>
-            <p>Une connexion ne transfère rien automatiquement. Vous choisissez vous-même si vous voulez importer les données de ce navigateur.</p>
-          </div>
-        </aside>
       } @else {
         <article class="account-card connected-card">
           <div class="connected-heading">
             <div class="avatar">{{ initials(session.user.displayName) }}</div>
             <div>
-              <span class="eyebrow">CONNECTÉ</span>
+              <span class="eyebrow">COMPTE</span>
               <h2>{{ session.user.displayName }}</h2>
               <p>{{ session.user.email }}</p>
             </div>
-            <span class="cloud-state" [class.loading]="workspaceState === 'loading'">
+            <span class="cloud-state" [class.loading]="workspaceState === 'loading'" [class.error]="workspaceState === 'error'">
               <span></span>{{ workspaceLabel }}
             </span>
           </div>
 
           <div class="cloud-benefits">
-            <div><mat-icon>cloud_done</mat-icon><span><strong>Sauvegardé</strong><small>Vos candidatures sont conservées en ligne.</small></span></div>
-            <div><mat-icon>devices</mat-icon><span><strong>Multi-appareils</strong><small>Retrouvez le même espace après connexion.</small></span></div>
-            <div><mat-icon>lock_outline</mat-icon><span><strong>Protégé</strong><small>Vos données sont liées à votre compte.</small></span></div>
+            <div><mat-icon>cloud_done</mat-icon><span><strong>Sauvegardé</strong><small>Données conservées en ligne</small></span></div>
+            <div><mat-icon>devices</mat-icon><span><strong>Multi-appareils</strong><small>Le même espace après connexion</small></span></div>
+            <div><mat-icon>lock_outline</mat-icon><span><strong>Privé</strong><small>Données isolées par compte</small></span></div>
           </div>
 
           @if (message) {
@@ -92,20 +81,8 @@ import {UserProfileService} from '../../services/user-profile.service';
             <div class="feedback error"><mat-icon>error_outline</mat-icon><span>{{ errorMessage }}</span></div>
           }
 
-          @if (hasLocalData) {
-            <div class="migration-panel">
-              <div>
-                <strong>Importer les données locales</strong>
-                <p>{{ localApplicationCount }} candidature{{ localApplicationCount > 1 ? 's' : '' }} détectée{{ localApplicationCount > 1 ? 's' : '' }} dans ce navigateur. Les doublons sont ignorés.</p>
-              </div>
-              <button type="button" class="secondary accent" [disabled]="syncing" (click)="importLocal()">
-                <mat-icon>cloud_upload</mat-icon>{{ syncing ? 'Import…' : 'Importer' }}
-              </button>
-            </div>
-          }
-
           <div class="account-actions">
-            <button type="button" class="secondary" [disabled]="syncing" (click)="refreshCloud()"><mat-icon>refresh</mat-icon>Synchroniser</button>
+            <button type="button" class="secondary" [disabled]="syncing" (click)="refresh()"><mat-icon>refresh</mat-icon>Actualiser</button>
             <button type="button" class="secondary danger" (click)="logout()"><mat-icon>logout</mat-icon>Se déconnecter</button>
           </div>
         </article>
@@ -113,9 +90,8 @@ import {UserProfileService} from '../../services/user-profile.service';
     </section>
   `,
   styles: [`
-    .account-layout { max-width: 760px; display: grid; gap: 14px; }
-    .account-card, .privacy-card { border: 1px solid var(--jt-border); border-radius: 20px; background: #fff; box-shadow: var(--jt-shadow-sm); }
-    .account-card { padding: 26px; }
+    .account-layout { max-width: 700px; display: grid; gap: 14px; }
+    .account-card { border: 1px solid var(--jt-border); border-radius: 20px; padding: 26px; background: #fff; box-shadow: var(--jt-shadow-sm); }
     .auth-card { max-width: 560px; }
     .card-icon { width: 44px; height: 44px; display: grid; place-items: center; margin-bottom: 16px; border-radius: 13px; color: var(--jt-primary); background: var(--jt-primary-soft); }
     .eyebrow { color: var(--jt-text-soft); font-size: 9px; font-weight: 800; letter-spacing: .12em; }
@@ -133,10 +109,6 @@ import {UserProfileService} from '../../services/user-profile.service';
     button.primary { min-height: 43px; margin-top: 3px; border: 0; color: #fff; background: var(--jt-text); }
     button.primary:disabled, button.secondary:disabled { opacity: .5; cursor: not-allowed; }
     button mat-icon { width: 17px; height: 17px; font-size: 17px; }
-    .privacy-card { display: flex; gap: 12px; padding: 15px 17px; box-shadow: none; }
-    .privacy-card > mat-icon { color: var(--jt-success); }
-    .privacy-card strong { color: var(--jt-text); font-size: 12px; }
-    .privacy-card p { margin: 3px 0 0; font-size: 11px; }
     .connected-heading { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; }
     .avatar { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 14px; color: #fff; background: var(--jt-text); font-weight: 800; }
     .connected-heading h2 { margin: 2px 0; font-size: 20px; }
@@ -144,24 +116,23 @@ import {UserProfileService} from '../../services/user-profile.service';
     .cloud-state { display: inline-flex; align-items: center; gap: 6px; padding: 6px 9px; border: 1px solid #bbf7d0; border-radius: 999px; color: #15803d; background: #f0fdf4; font-size: 9px; font-weight: 750; }
     .cloud-state > span { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; }
     .cloud-state.loading { border-color: #bfdbfe; color: #1d4ed8; background: #eff6ff; }
+    .cloud-state.loading > span { background: #3b82f6; }
+    .cloud-state.error { border-color: #fecdd3; color: #be123c; background: #fff1f2; }
+    .cloud-state.error > span { background: #e11d48; }
     .cloud-benefits { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 20px; }
     .cloud-benefits > div { display: flex; gap: 8px; padding: 12px; border: 1px solid var(--jt-border); border-radius: 12px; background: var(--jt-surface-muted); }
     .cloud-benefits mat-icon { color: var(--jt-primary); }
     .cloud-benefits span { display: grid; gap: 2px; }
     .cloud-benefits strong { font-size: 10px; }
     .cloud-benefits small { color: var(--jt-text-muted); font-size: 9px; line-height: 1.35; }
-    .migration-panel { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 18px; padding: 14px; border: 1px solid #dbeafe; border-radius: 13px; background: #f8fbff; }
-    .migration-panel strong { font-size: 12px; }
-    .migration-panel p { margin: 3px 0 0; font-size: 10px; }
     button.secondary { min-height: 37px; padding: 0 12px; border: 1px solid var(--jt-border-strong); color: #334155; background: #fff; }
-    button.secondary.accent { flex: 0 0 auto; color: var(--jt-primary); }
     button.secondary.danger { color: var(--jt-danger); }
-    .account-actions { display: flex; justify-content: flex-end; gap: 7px; margin-top: 16px; }
+    .account-actions { display: flex; justify-content: flex-end; gap: 7px; margin-top: 20px; }
     .feedback { display: flex; align-items: flex-start; gap: 7px; margin-top: 14px; padding: 10px 11px; border-radius: 10px; font-size: 11px; line-height: 1.4; }
     .feedback mat-icon { width: 17px; height: 17px; flex: 0 0 17px; font-size: 17px; }
     .feedback.error { color: #be123c; background: #fff1f2; }
     .feedback.success { color: #15803d; background: #f0fdf4; }
-    @media (max-width: 700px) { .account-card { padding: 20px; } .connected-heading { grid-template-columns: auto 1fr; } .cloud-state { grid-column: 1 / -1; width: fit-content; } .cloud-benefits { grid-template-columns: 1fr; } .migration-panel { align-items: stretch; flex-direction: column; } .account-actions { flex-direction: column; } button.secondary { width: 100%; } }
+    @media (max-width: 700px) { .account-card { padding: 20px; } .connected-heading { grid-template-columns: auto 1fr; } .cloud-state { grid-column: 1 / -1; width: fit-content; } .cloud-benefits { grid-template-columns: 1fr; } .account-actions { flex-direction: column; } button.secondary { width: 100%; } }
   `]
 })
 export class AccountComponent {
@@ -170,7 +141,6 @@ export class AccountComponent {
   private readonly auth = inject(AuthService);
   private readonly sessions = inject(CloudSessionStore);
   private readonly workspace = inject(CloudWorkspaceService);
-  private readonly storage = inject(StorageService);
   private readonly profiles = inject(UserProfileService);
   private readonly router = inject(Router);
 
@@ -200,15 +170,8 @@ export class AccountComponent {
   get workspaceLabel(): string {
     if (this.workspaceState === 'loading') return 'Synchronisation';
     if (this.workspaceState === 'error') return 'À vérifier';
-    return 'Synchronisé';
-  }
-
-  get localApplicationCount(): number {
-    return this.storage.getLocalApplicationsSnapshot().length;
-  }
-
-  get hasLocalData(): boolean {
-    return this.localApplicationCount > 0 || this.profiles.getLocalProfileSnapshot() !== null;
+    if (this.workspaceState === 'ready') return 'Synchronisé';
+    return 'Déconnecté';
   }
 
   setMode(mode: 'login' | 'register'): void {
@@ -245,30 +208,14 @@ export class AccountComponent {
     });
   }
 
-  importLocal(): void {
-    if (!this.hasLocalData || this.syncing) return;
+  refresh(): void {
     this.syncing = true;
     this.errorMessage = '';
     this.message = '';
-    this.workspace.importLocalData().subscribe({
-      next: summary => {
-        this.syncing = false;
-        this.message = `${summary.imported} candidature(s) importée(s), ${summary.skipped} doublon(s) ignoré(s).`;
-      },
-      error: error => {
-        this.syncing = false;
-        this.errorMessage = this.readError(error);
-      }
-    });
-  }
-
-  refreshCloud(): void {
-    this.syncing = true;
-    this.errorMessage = '';
     this.workspace.connect().subscribe({
       next: () => {
         this.syncing = false;
-        this.message = 'Données synchronisées.';
+        this.message = 'Données actualisées.';
       },
       error: error => {
         this.syncing = false;
@@ -281,7 +228,7 @@ export class AccountComponent {
     this.workspace.disconnect();
     this.message = '';
     this.errorMessage = '';
-    void this.router.navigate(['/dashboard']);
+    void this.router.navigate(['/account']);
   }
 
   initials(name: string): string {
@@ -294,7 +241,7 @@ export class AccountComponent {
         ? String((error.error as {detail?: unknown}).detail ?? '')
         : '';
       if (detail) return detail;
-      if (error.status === 0) return 'Le service de synchronisation est indisponible. Le mode local reste accessible.';
+      if (error.status === 0) return 'Le serveur JobTrackr est indisponible. Réessayez dans quelques instants.';
       if (error.status === 401) return 'Email ou mot de passe incorrect.';
       if (error.status === 409) return 'Un compte existe déjà avec cet email.';
     }
