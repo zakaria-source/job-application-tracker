@@ -1,6 +1,8 @@
 package dev.jobtrackr.application.domain;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import dev.jobtrackr.common.domain.EnumSupport;
+import dev.jobtrackr.common.domain.LabelledEnum;
 
 public enum SalaryPeriod implements LabelledEnum {
     ANNUEL("Annuel"),
