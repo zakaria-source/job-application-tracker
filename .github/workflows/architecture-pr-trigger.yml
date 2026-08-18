@@ -43,7 +43,7 @@ jobs:
           set -euo pipefail
           bash /tmp/restructure.sh
           python /tmp/rewrite.py
-          rm .github/workflows/architecture-migration.yml .github/workflows/architecture-pr-trigger.yml
+          git checkout HEAD -- .github/workflows/ci.yml .github/workflows/architecture-migration.yml .github/workflows/architecture-pr-trigger.yml
 
       - name: Commit migrated tree
         shell: bash
