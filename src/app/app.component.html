@@ -1,38 +1,61 @@
-<div class="app-shell">
+<div class="app-shell" [class.public-shell]="isPublicEntry">
   <header class="topbar">
     <div class="topbar-inner">
-      <a class="brand" [routerLink]="cloudConnected ? '/dashboard' : '/account'" aria-label="JobTrackr">
-        <span class="brand-monogram">JT</span>
+      <a class="brand" [routerLink]="cloudConnected ? '/dashboard' : '/account'" aria-label="JobTrackr — Accueil">
+        <app-brand-mark [compact]="true" />
         <strong>JobTrackr</strong>
       </a>
 
       @if (cloudConnected && !isOnboarding) {
         <nav class="topbar-nav" aria-label="Navigation principale">
-          <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">Vue d’ensemble</a>
-          <a routerLink="/applications" routerLinkActive="active">Candidatures</a>
+          <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+            <mat-icon>space_dashboard</mat-icon>
+            <span>Vue d’ensemble</span>
+          </a>
+          <a routerLink="/applications" routerLinkActive="active">
+            <mat-icon>work</mat-icon>
+            <span>Candidatures</span>
+          </a>
+        </nav>
+      } @else if (isPublicEntry) {
+        <nav class="public-nav" aria-label="Navigation de présentation">
+          <a href="#product">Produit</a>
+          <a href="#workflow">Workflow</a>
         </nav>
       }
 
-      <a
-        class="account-link"
-        routerLink="/account"
-        routerLinkActive="active"
-        [attr.aria-label]="cloudConnected ? 'Ouvrir le compte' : 'Se connecter'">
+      <div class="topbar-actions">
         @if (cloudConnected) {
-          <span class="avatar">{{ accountInitials }}</span>
+          <a class="quick-add" routerLink="/applications" aria-label="Ajouter une candidature">
+            <mat-icon>add</mat-icon>
+            <span>Ajouter</span>
+          </a>
+          <a
+            class="account-link"
+            routerLink="/account"
+            routerLinkActive="active"
+            aria-label="Ouvrir le compte">
+            <span class="avatar">{{ accountInitials }}</span>
+          </a>
         } @else {
-          <span>Connexion</span>
-          <mat-icon>arrow_forward</mat-icon>
+          <a class="signin-link" href="#auth">Connexion</a>
+          <a class="start-link" href="#auth">Commencer</a>
         }
-      </a>
+      </div>
     </div>
   </header>
 
-  <main class="workspace" [class.onboarding-workspace]="isOnboarding">
-    @if (!isOnboarding) {
+  <main
+    class="workspace"
+    [class.onboarding-workspace]="isOnboarding"
+    [class.public-workspace]="isPublicEntry">
+    @if (!isOnboarding && !isPublicEntry) {
       <section class="page-heading">
-        <span class="page-kicker">JOBTRACKR</span>
-        <h1>{{ pageTitle }}</h1>
+        <div>
+          <span class="page-kicker">ESPACE PERSONNEL</span>
+          <h1>{{ pageTitle }}</h1>
+          <p>{{ pageDescription }}</p>
+        </div>
       </section>
     }
 
