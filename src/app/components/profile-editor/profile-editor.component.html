@@ -1,0 +1,68 @@
+<section class="profile-editor">
+  <div class="editor-card">
+    <div class="editor-heading">
+      <div>
+        <span class="eyebrow">{{ isEditing ? 'PROFIL PROFESSIONNEL' : 'CONFIGURATION INITIALE' }}</span>
+        <h1>{{ isEditing ? 'Votre contexte de recherche' : 'Personnalisez votre workspace' }}</h1>
+        <p>{{ isEditing ? 'Gardez uniquement les informations qui aident JobTrackr à contextualiser votre suivi.' : 'Quelques informations suffisent pour rendre votre espace immédiatement utile.' }}</p>
+      </div>
+      <span class="profile-state"><span></span>{{ isEditing ? 'Profil actif' : '1 minute' }}</span>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="save()">
+      <div class="form-section-label"><span>01</span><strong>Identité professionnelle</strong></div>
+      <div class="form-grid">
+        <label>
+          <span>Nom *</span>
+          <input formControlName="name" autocomplete="name" placeholder="Alex Martin" />
+          @if (form.controls.name.touched && form.controls.name.invalid) {
+            <small class="field-error">Indiquez votre nom.</small>
+          }
+        </label>
+
+        <label>
+          <span>Poste recherché *</span>
+          <input formControlName="headline" autocomplete="organization-title" placeholder="Backend Engineer" />
+          @if (form.controls.headline.touched && form.controls.headline.invalid) {
+            <small class="field-error">Indiquez le poste recherché.</small>
+          }
+        </label>
+
+        <label>
+          <span>Expérience</span>
+          <input formControlName="experienceLabel" placeholder="4 ans d’expérience" />
+        </label>
+
+        <label>
+          <span>Localisation</span>
+          <input formControlName="location" autocomplete="address-level2" placeholder="Paris · Remote Europe" />
+        </label>
+
+        <label class="wide">
+          <span>Compétences principales</span>
+          <input formControlName="skills" placeholder="Java, Spring Boot, Kafka, Kubernetes" />
+          <small>Quelques compétences structurantes, séparées par des virgules.</small>
+        </label>
+      </div>
+
+      @if (errorMessage) {
+        <div class="save-feedback error" role="alert">
+          <span class="feedback-dot"></span>
+          <span>{{ errorMessage }}</span>
+        </div>
+      }
+
+      <div class="form-actions">
+        <span class="save-hint">Les modifications sont enregistrées dans votre espace cloud.</span>
+        <div>
+          @if (isEditing) {
+            <button type="button" class="secondary" [disabled]="saving" (click)="cancel()">Annuler</button>
+          }
+          <button type="submit" class="primary" [disabled]="form.invalid || saving">
+            {{ saving ? 'Enregistrement…' : isEditing ? 'Enregistrer' : 'Continuer' }}
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</section>
