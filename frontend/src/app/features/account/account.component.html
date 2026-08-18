@@ -7,14 +7,10 @@
         <p class="hero-lead">Centralisez vos candidatures, entretiens et relances dans un espace privé pensé pour savoir exactement quoi faire ensuite.</p>
 
         <div class="hero-actions">
-          <button type="button" class="hero-primary" (click)="openAuth('register')">
-            Créer mon espace
+          <button type="button" class="hero-primary" (click)="openRegistration()">
+            Commencer
             <mat-icon>arrow_forward</mat-icon>
           </button>
-          <a class="hero-secondary" href="#product">
-            Voir le produit
-            <mat-icon>south</mat-icon>
-          </a>
         </div>
 
         <div class="hero-trust" aria-label="Garanties produit">
@@ -24,7 +20,7 @@
         </div>
       </div>
 
-      <div class="hero-product" id="product" aria-label="Aperçu de JobTrackr">
+      <div class="hero-product" aria-label="Aperçu de JobTrackr">
         <div class="preview-window">
           <div class="preview-chrome">
             <div class="preview-brand"><app-brand-mark [compact]="true"/><strong>JobTrackr</strong></div>
@@ -71,7 +67,7 @@
       <div><mat-icon>shield</mat-icon><span><strong>Données privées</strong>Votre recherche reste dans votre espace.</span></div>
     </section>
 
-    <section class="capabilities section-wrap" aria-labelledby="capabilities-title">
+    <section class="capabilities section-wrap" id="capabilities" aria-labelledby="capabilities-title">
       <div class="section-heading">
         <span class="section-kicker">UN SEUL ESPACE</span>
         <h2 id="capabilities-title">Moins de suivi manuel.<br>Plus de visibilité.</h2>
@@ -140,11 +136,6 @@
           </div>
         </div>
 
-        <div class="mode-switch" role="tablist" aria-label="Authentification">
-          <button type="button" role="tab" [attr.aria-selected]="mode === 'login'" [class.active]="mode === 'login'" (click)="setMode('login')">Connexion</button>
-          <button type="button" role="tab" [attr.aria-selected]="mode === 'register'" [class.active]="mode === 'register'" (click)="setMode('register')">Créer un compte</button>
-        </div>
-
         <form [formGroup]="form" (ngSubmit)="submit()" novalidate [attr.aria-busy]="submitting">
           @if (mode === 'register') {
             <label>
@@ -176,10 +167,20 @@
 
           <button class="primary" type="submit" [disabled]="submitting">
             @if (submitting) { <mat-icon class="spin">progress_activity</mat-icon> }
-            <span>{{ submitting ? 'Connexion au workspace…' : mode === 'login' ? 'Se connecter' : 'Créer mon espace' }}</span>
+            <span>{{ submitting ? 'Connexion au workspace…' : mode === 'login' ? 'Se connecter' : 'Créer mon compte' }}</span>
             @if (!submitting) { <mat-icon>arrow_forward</mat-icon> }
           </button>
         </form>
+
+        <div class="auth-alternate">
+          @if (mode === 'login') {
+            <span>Nouveau sur JobTrackr ?</span>
+            <button type="button" (click)="setMode('register')">Créer un compte</button>
+          } @else {
+            <span>Vous avez déjà un compte ?</span>
+            <button type="button" (click)="setMode('login')">Se connecter</button>
+          }
+        </div>
       </article>
     </section>
 
