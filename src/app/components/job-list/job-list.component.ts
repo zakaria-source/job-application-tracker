@@ -58,6 +58,10 @@ export class JobListComponent implements OnInit {
 
     constructor(private readonly storageService: StorageService) {}
 
+    get hasActiveFilters(): boolean {
+        return Object.values(this.activeFilters).some(Boolean);
+    }
+
     ngOnInit(): void {
         this.storageService.getApplications()
             .pipe(takeUntilDestroyed(this.destroyRef))
@@ -157,7 +161,7 @@ export class JobListComponent implements OnInit {
         const reader = new FileReader();
         reader.onload = () => {
             try {
-                if (!confirm('Importer ce fichier remplacera les candidatures actuellement stockées. Continuer ?')) {
+                if (!confirm('Importer les candidatures de ce fichier dans votre compte ? Les doublons seront ignorés.')) {
                     return;
                 }
                 this.storageService.importData(String(reader.result ?? ''));
