@@ -1,5 +1,5 @@
 import {Injectable} from '@angular/core';
-import {BehaviorSubject, Observable} from 'rxjs';
+import {BehaviorSubject, Observable, map, tap} from 'rxjs';
 import {CloudApiService} from '../cloud/cloud-api.service';
 import {UserProfile} from '../models/user-profile.model';
 
@@ -30,18 +30,12 @@ export class UserProfileService {
     this.profileSubject.next(null);
   }
 
-  saveProfile(profile: UserProfile): void {
+  saveProfile(profile: UserProfile): Observable<UserProfile> {
     const normalized = this.normalize(profile);
-    const previous = this.profileSubject.value;
-    this.profileSubject.next(normalized);
-
-    this.cloudApi.updateProfile(normalized).subscribe({
-      next: saved => this.profileSubject.next(this.normalize(saved)),
-      error: error => {
-        this.profileSubject.next(previous);
-        console.error('Unable to persist profile', error);
-      }
-    });
+    return this.cloudApi.updateProfile(normalized).pipe(
+      map(saved => this.normalize(saved)),
+      tap(saved => this.profileSubject.next(saved))
+    );
   }
 
   private normalize(profile: UserProfile): UserProfile {
