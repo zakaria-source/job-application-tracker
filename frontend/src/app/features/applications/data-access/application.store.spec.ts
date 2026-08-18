@@ -1,11 +1,12 @@
 import {beforeEach, describe, expect, it} from 'vitest';
 import {of} from 'rxjs';
 import {JobTrackrApiService} from '@app/core/api/jobtrackr-api.service';
-import {ApplicationWorkflowService} from '@app/features/applications/domain/application-workflow.service';
-import {JobApplication, RecruitmentStage} from '@app/features/applications/models/application.model';
 import {ApplicationAnalyticsService} from '@app/features/applications/domain/application-analytics.service';
+import {ApplicationWorkflowService} from '@app/features/applications/domain/application-workflow.service';
 import {FollowUpService} from '@app/features/applications/domain/follow-up.service';
-import {ApplicationStore} from '@app/features/applications/data-access/application.store';
+import {JobApplication, RecruitmentStage} from '@app/features/applications/models/application.model';
+import {ApplicationImportService} from './application-import.service';
+import {ApplicationStore} from './application.store';
 
 const application: JobApplication = {
   id: '1',
@@ -61,7 +62,13 @@ describe('ApplicationStore', () => {
       }
     } as unknown as JobTrackrApiService;
 
-    service = new ApplicationStore(api, new ApplicationAnalyticsService(), new FollowUpService(), workflow);
+    service = new ApplicationStore(
+      api,
+      new ApplicationAnalyticsService(),
+      new FollowUpService(),
+      workflow,
+      new ApplicationImportService(workflow)
+    );
     service.connect([]);
   });
 
@@ -100,25 +107,6 @@ describe('ApplicationStore', () => {
     service.addApplication({...application, stage: 'Screening RH', status: 'Entretien', responseDate: firstResponse});
     service.updateApplicationStage('1', 'Hiring Manager', new Date('2026-08-19T09:00:00'));
     expect(service.getApplicationById('1')?.responseDate).toEqual(firstResponse);
-  });
-
-  it('exports and imports backups through the backend', () => {
-    service.addApplication(application);
-    const backup = service.exportData();
-    service.deleteApplication('1');
-    expect(service.importData(backup)).toBe(1);
-    expect(service.getApplicationById('1')).toBeDefined();
-  });
-
-  it('previews duplicates before importing a backup', () => {
-    service.addApplication(application);
-    const duplicate = {...application, id: 'duplicate', offerUrl: 'https://jobs.example.com/backend?utm_source=backup'};
-    const fresh = {...application, id: '2', company: 'Fresh Company', offerUrl: 'https://jobs.example.com/fresh'};
-    const preview = service.previewImport(JSON.stringify({applications: [duplicate, fresh]}));
-    expect(preview.detected).toBe(2);
-    expect(preview.ready).toBe(1);
-    expect(preview.duplicates).toBe(1);
-    expect(preview.applications[0].company).toBe('Fresh Company');
   });
 
   it('completes a follow-up by clearing its due date and recording activity', () => {
