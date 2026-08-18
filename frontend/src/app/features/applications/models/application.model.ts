@@ -13,6 +13,7 @@ export type RecruitmentStage =
 
 export interface JobApplication {
   id: string;
+  version?: number;
   company: string;
   position: string;
   applicationDate: Date;
