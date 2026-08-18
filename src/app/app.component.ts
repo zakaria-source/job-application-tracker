@@ -1,86 +1,57 @@
-import {Component} from '@angular/core';
-import {MatToolbarModule} from '@angular/material/toolbar';
-import {MatTabsModule} from '@angular/material/tabs';
-import {JobListComponent} from './components/job-list/job-list.component';
-import {DashboardComponent} from './components/dashboard/dashboard.component';
+import {Component, DestroyRef, inject} from '@angular/core';
+import {MatIconModule} from '@angular/material/icon';
+import {Router, RouterLink, RouterLinkActive, RouterOutlet} from '@angular/router';
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
+import {StorageService} from './services/storage.service';
+import {NotificationService} from './services/notification.service';
 
 @Component({
-    selector: 'app-root',
-    standalone: true,
-    imports: [
-        MatToolbarModule,
-        MatTabsModule,
-        JobListComponent,
-        DashboardComponent
-    ],
-    template: `
-    <div class="app-container">
-      <mat-toolbar color="primary" class="app-toolbar">
-        <span>JobTrackr</span>
-        <span class="toolbar-spacer"></span>
-        <span class="toolbar-subtitle">Suivi de candidatures</span>
-      </mat-toolbar>
-
-      <main class="app-content">
-        <mat-tab-group animationDuration="0ms">
-          <mat-tab label="Tableau de bord">
-            <div class="tab-content">
-              <app-dashboard></app-dashboard>
-            </div>
-          </mat-tab>
-
-          <mat-tab label="Candidatures">
-            <div class="tab-content">
-              <app-job-list></app-job-list>
-            </div>
-          </mat-tab>
-        </mat-tab-group>
-      </main>
-    </div>
-  `,
-    styles: [`
-    .app-container {
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-    }
-
-    .app-toolbar {
-      position: sticky;
-      top: 0;
-      z-index: 1000;
-    }
-
-    .toolbar-spacer {
-      flex: 1 1 auto;
-    }
-
-    .toolbar-subtitle {
-      font-size: 14px;
-      font-weight: 400;
-      opacity: 0.85;
-    }
-
-    .app-content {
-      flex: 1;
-    }
-
-    .tab-content {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-
-    @media (max-width: 600px) {
-      .toolbar-subtitle {
-        display: none;
-      }
-
-      .tab-content {
-        padding: 12px;
-      }
-    }
-  `]
+  selector: 'app-root',
+  standalone: true,
+  imports: [MatIconModule, RouterLink, RouterLinkActive, RouterOutlet],
+  templateUrl: './app.component.html',
+  styleUrl: './app.component.css'
 })
 export class App {
+  private readonly destroyRef = inject(DestroyRef);
+
+  constructor(
+    readonly router: Router,
+    storageService: StorageService,
+    notificationService: NotificationService
+  ) {
+    storageService.getApplications()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(applications => notificationService.syncReminders(applications));
+  }
+
+  get isOnboarding(): boolean {
+    return this.router.url.startsWith('/onboarding');
+  }
+
+  get pageTitle(): string {
+    if (this.router.url.startsWith('/applications')) {
+      return 'Candidatures';
+    }
+    if (this.router.url.startsWith('/settings/profile')) {
+      return 'Profil & préférences';
+    }
+    if (this.isOnboarding) {
+      return 'Bienvenue sur JobTrackr';
+    }
+    return 'Tableau de bord';
+  }
+
+  get pageDescription(): string {
+    if (this.router.url.startsWith('/applications')) {
+      return 'Pilotez votre pipeline, vos relances et chaque étape du recrutement depuis un seul espace.';
+    }
+    if (this.router.url.startsWith('/settings/profile')) {
+      return 'Ajustez votre positionnement et les informations affichées sur votre tableau de bord.';
+    }
+    if (this.isOnboarding) {
+      return 'Créez votre espace local en quelques informations, puis commencez à suivre vos candidatures.';
+    }
+    return 'Voyez immédiatement ce qui mérite votre attention : relances, priorités, entretiens et progression.';
+  }
 }

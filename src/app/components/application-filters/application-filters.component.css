@@ -1,0 +1,26 @@
+.filters {
+  display: grid;
+  grid-template-columns: minmax(260px, 2fr) repeat(3, minmax(145px, 1fr));
+  gap: 12px;
+  margin: 20px 0 8px;
+}
+
+@media (max-width: 950px) {
+  .filters {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .search-field {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 600px) {
+  .filters {
+    grid-template-columns: 1fr;
+  }
+
+  .search-field {
+    grid-column: auto;
+  }
+}

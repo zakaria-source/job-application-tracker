@@ -1,0 +1,113 @@
+<mat-card>
+  <mat-card-header>
+    <mat-card-title>{{ application.position }} — {{ application.company }}</mat-card-title>
+    <mat-card-subtitle>
+      {{ application.contractType }} · {{ application.stage }} · Priorité {{ application.priority.toLowerCase() }}
+    </mat-card-subtitle>
+    <button mat-icon-button (click)="close.emit()" class="close-button" aria-label="Fermer les détails">
+      <mat-icon>close</mat-icon>
+    </button>
+  </mat-card-header>
+
+  <mat-card-content>
+    <div class="details-grid">
+      <div class="detail-item">
+        <strong>Statut</strong>
+        <span>{{ application.status }}</span>
+      </div>
+
+      <div class="detail-item">
+        <strong>Date de candidature</strong>
+        <span>{{ application.applicationDate | date:'dd/MM/yyyy' }}</span>
+      </div>
+
+      @if (application.followUpDate) {
+        <div class="detail-item">
+          <strong>Prochaine relance</strong>
+          <span [class.follow-up-due]="isFollowUpDue()">
+            {{ application.followUpDate | date:'dd/MM/yyyy' }}
+          </span>
+        </div>
+      }
+
+      @if (application.salaryTarget) {
+        <div class="detail-item">
+          <strong>{{ application.salaryPeriod === 'Journalier' ? 'TJM cible' : 'Salaire cible' }}</strong>
+          <span>{{ formatTargetSalary() }}</span>
+        </div>
+      }
+
+      @if (application.recruiterName) {
+        <div class="detail-item">
+          <strong>Recruteur</strong>
+          <span>{{ application.recruiterName }}</span>
+        </div>
+      }
+
+      @if (application.recruiterEmail) {
+        <div class="detail-item">
+          <strong>Email</strong>
+          <a [href]="'mailto:' + application.recruiterEmail">{{ application.recruiterEmail }}</a>
+        </div>
+      }
+
+      @if (application.recruiterPhone) {
+        <div class="detail-item">
+          <strong>Téléphone</strong>
+          <span>{{ application.recruiterPhone }}</span>
+        </div>
+      }
+
+      @if (application.responseDate) {
+        <div class="detail-item">
+          <strong>Première réponse</strong>
+          <span>{{ application.responseDate | date:'dd/MM/yyyy' }}</span>
+        </div>
+      }
+    </div>
+
+    @if (application.offerUrl) {
+      <a
+        mat-stroked-button
+        color="primary"
+        [href]="application.offerUrl"
+        target="_blank"
+        rel="noopener noreferrer">
+        <mat-icon>open_in_new</mat-icon> Voir l'offre
+      </a>
+    }
+
+    @if (application.notes) {
+      <div class="notes-section">
+        <h3>Notes</h3>
+        <p>{{ application.notes }}</p>
+      </div>
+    }
+
+    @if (application.interviews?.length) {
+      <div class="interviews-section">
+        <h3>Entretiens</h3>
+        @for (interview of application.interviews; track interview.id) {
+          <div class="interview-item">
+            <div class="interview-header">
+              <span>{{ interview.date | date:'dd/MM/yyyy HH:mm' }}</span>
+              <span class="interview-type">{{ interview.type }}</span>
+            </div>
+            @if (interview.notes) {
+              <p>{{ interview.notes }}</p>
+            }
+          </div>
+        }
+      </div>
+    }
+  </mat-card-content>
+
+  <mat-card-actions>
+    <button mat-button color="primary" (click)="edit.emit(application)">
+      <mat-icon>edit</mat-icon> Modifier
+    </button>
+    <button mat-button color="warn" (click)="delete.emit(application)">
+      <mat-icon>delete</mat-icon> Supprimer
+    </button>
+  </mat-card-actions>
+</mat-card>

@@ -1,9 +1,14 @@
+import {provideZoneChangeDetection} from '@angular/core';
 import {bootstrapApplication} from '@angular/platform-browser';
-import {provideAnimations} from '@angular/platform-browser/animations';
+import {provideRouter} from '@angular/router';
+import {provideCharts, withDefaultRegisterables} from 'ng2-charts';
 import {App} from './app/app.component';
+import {APP_ROUTES} from './app/app.routes';
 
 bootstrapApplication(App, {
     providers: [
-        provideAnimations()
+        provideCharts(withDefaultRegisterables()),
+        provideZoneChangeDetection(),
+        provideRouter(APP_ROUTES)
     ]
 }).catch(err => console.error(err));

@@ -1,0 +1,141 @@
+<section class="kanban-shell" aria-label="Pipeline de recrutement en Kanban">
+  <div class="kanban-guide" aria-hidden="true">
+    <div class="desktop-guide">
+      <mat-icon>drag_indicator</mat-icon>
+      <span><strong>Glissez une carte</strong> avec sa poignée pour changer d’étape.</span>
+    </div>
+    <div class="mobile-guide">
+      <mat-icon>swipe</mat-icon>
+      <span>Balayez les colonnes et utilisez les flèches sur les cartes pour avancer rapidement.</span>
+    </div>
+  </div>
+
+  <div class="kanban-board" cdkDropListGroup>
+    @for (column of columns; track column.stage) {
+      <section class="kanban-column" [class.closed-column]="column.stage === 'Clôturé'" [attr.aria-label]="column.stage">
+        <header class="column-header">
+          <div class="column-header-top">
+            <div class="column-title">
+              <span class="stage-icon"><mat-icon>{{ stageIcon(column.stage) }}</mat-icon></span>
+              <div>
+                <span class="stage-step">{{ stageStepLabel(column.stage) }}</span>
+                <h3>{{ column.stage }}</h3>
+              </div>
+            </div>
+            <span class="column-count">{{ column.applications.length }}</span>
+          </div>
+
+          <div class="stage-progress" [class.closed]="column.stage === 'Clôturé'">
+            <span [style.width.%]="stageProgress(column.stage)"></span>
+          </div>
+        </header>
+
+        <div
+          class="column-dropzone"
+          cdkDropList
+          [cdkDropListData]="column"
+          [cdkDropListSortingDisabled]="true"
+          (cdkDropListDropped)="drop($event)">
+          @for (application of column.applications; track application.id) {
+            <article
+              class="kanban-card"
+              cdkDrag
+              [cdkDragData]="application"
+              tabindex="0"
+              role="button"
+              [attr.aria-label]="'Ouvrir ' + application.position + ' chez ' + application.company"
+              (click)="viewApplication.emit(application)"
+              (keydown.enter)="viewApplication.emit(application)">
+
+              <div class="card-heading">
+                <div class="company-mark" aria-hidden="true">{{ companyInitial(application) }}</div>
+                <div class="card-title">
+                  <strong>{{ application.company }}</strong>
+                  <span>{{ application.position }}</span>
+                </div>
+                <div class="card-heading-actions">
+                  <div class="drag-handle" cdkDragHandle matTooltip="Déplacer la candidature" aria-label="Déplacer la candidature">
+                    <mat-icon>drag_indicator</mat-icon>
+                  </div>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    aria-label="Modifier la candidature"
+                    matTooltip="Modifier"
+                    (click)="$event.stopPropagation(); editApplication.emit(application)">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                </div>
+              </div>
+
+              <div class="card-meta">
+                <span class="priority-chip" [class.high]="application.priority === 'Haute'" [class.low]="application.priority === 'Basse'">
+                  <span class="priority-dot"></span>{{ application.priority }}
+                </span>
+                <span>{{ application.contractType }}</span>
+                @if (formatTargetSalary(application); as salary) {
+                  <span>{{ salary }}</span>
+                }
+              </div>
+
+              <div class="card-timeline">
+                <div class="timeline-item">
+                  <mat-icon>calendar_today</mat-icon>
+                  <span>Candidaté le {{ application.applicationDate | date:'dd/MM' }}</span>
+                </div>
+
+                @if (application.followUpDate) {
+                  <div class="timeline-item follow-up" [class.overdue]="isFollowUpDue(application)">
+                    <mat-icon>{{ isFollowUpDue(application) ? 'notification_important' : 'schedule' }}</mat-icon>
+                    <span>{{ isFollowUpDue(application) ? 'Relance due' : 'Relance' }} {{ application.followUpDate | date:'dd/MM' }}</span>
+                  </div>
+                }
+
+                @if (application.recruiterName) {
+                  <div class="timeline-item recruiter">
+                    <mat-icon>person_outline</mat-icon>
+                    <span>{{ application.recruiterName }}</span>
+                  </div>
+                }
+              </div>
+
+              <footer class="card-footer">
+                <div class="stage-shortcuts" aria-label="Déplacer rapidement la candidature">
+                  @if (previousStage(application); as previous) {
+                    <button
+                      mat-icon-button
+                      type="button"
+                      [attr.aria-label]="'Revenir à ' + previous"
+                      [matTooltip]="'Revenir à ' + previous"
+                      (click)="movePrevious($event, application)">
+                      <mat-icon>arrow_back</mat-icon>
+                    </button>
+                  }
+                  @if (nextStage(application); as next) {
+                    <button
+                      mat-icon-button
+                      type="button"
+                      class="next-stage"
+                      [attr.aria-label]="'Passer à ' + next"
+                      [matTooltip]="'Passer à ' + next"
+                      (click)="moveNext($event, application)">
+                      <mat-icon>arrow_forward</mat-icon>
+                    </button>
+                  }
+                </div>
+
+                <span class="view-details">Voir le détail <mat-icon>chevron_right</mat-icon></span>
+              </footer>
+            </article>
+          } @empty {
+            <div class="empty-column">
+              <mat-icon>move_to_inbox</mat-icon>
+              <strong>Aucune candidature</strong>
+              <span>Déposez une carte ici</span>
+            </div>
+          }
+        </div>
+      </section>
+    }
+  </div>
+</section>

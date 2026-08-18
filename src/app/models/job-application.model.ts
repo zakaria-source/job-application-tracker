@@ -1,16 +1,45 @@
+export type ApplicationStatus = 'Envoyé' | 'Entretien' | 'Accepté' | 'Refusé';
+export type ContractType = 'CDI' | 'CDD' | 'Freelance' | 'Stage' | 'Alternance' | 'Autre';
+export type ApplicationPriority = 'Haute' | 'Moyenne' | 'Basse';
+export type SalaryPeriod = 'Annuel' | 'Journalier';
+export type RecruitmentStage =
+    | 'Candidature'
+    | 'Screening RH'
+    | 'Entretien technique'
+    | 'Hiring Manager'
+    | 'Entretien final'
+    | 'Offre'
+    | 'Clôturé';
+
 export interface JobApplication {
     id: string;
     company: string;
     position: string;
     applicationDate: Date;
-    status: 'Envoyé' | 'Entretien' | 'Accepté' | 'Refusé';
+    status: ApplicationStatus;
     notes: string;
-    contactPerson?: string;
-    contactEmail?: string;
-    contactPhone?: string;
-    interviews?: Interview[];
     lastUpdated: Date;
     responseDate?: Date;
+
+    offerUrl?: string;
+    contractType: ContractType;
+    salaryTarget?: number;
+    salaryPeriod: SalaryPeriod;
+    followUpDate?: Date;
+    recruiterName?: string;
+    recruiterEmail?: string;
+    recruiterPhone?: string;
+    stage: RecruitmentStage;
+    priority: ApplicationPriority;
+
+    interviews?: Interview[];
+
+    /** @deprecated Legacy fields kept for LocalStorage migration. */
+    contactPerson?: string;
+    /** @deprecated Legacy fields kept for LocalStorage migration. */
+    contactEmail?: string;
+    /** @deprecated Legacy fields kept for LocalStorage migration. */
+    contactPhone?: string;
 }
 
 export interface Interview {

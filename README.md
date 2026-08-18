@@ -1,43 +1,141 @@
 # JobTrackr
 
-JobTrackr is an Angular application for tracking job applications, follow-ups, responses and interviews from a single dashboard.
+JobTrackr is a **local-first job application tracking workspace** for candidates who want to manage applications, follow-ups, recruiters, interviews and job-search analytics in one place.
 
-**Live demo:** https://trackmyjob-zakaria.netlify.app/
+The product is no longer tied to a specific candidate profile or a curated personal application dataset. A first-run onboarding creates a local user profile, and the workspace starts empty unless the user explicitly chooses to load fictional demo data.
 
-## Product scope
+**Live application:** https://trackmyjob-zakaria.netlify.app/
 
-The application is intentionally focused on two clear areas:
+## Product principles
 
-- **Dashboard** — understand the current state of the job search, identify follow-ups and see upcoming interviews.
-- **Applications** — create, search, filter, inspect, edit and delete job applications.
+- **Generic by default** — no hard-coded owner name, career target, compensation target or real applications.
+- **Local-first** — profile and application data stay in the browser in the current frontend-only version.
+- **Safe onboarding** — existing application data is never replaced when a user creates or edits a profile.
+- **Demo data is opt-in** — three fictional applications can be merged into the workspace to explore the product.
+- **Workflow correctness first** — recruitment stage remains the source of truth for derived application status.
+- **Backend-ready boundaries** — persistence is isolated behind a repository/state facade so LocalStorage can later be replaced by an HTTP implementation.
 
-Keeping these responsibilities separate avoids duplicated user journeys and makes the interface easier to understand.
+## Current product flow
+
+```text
+First visit
+   │
+   ▼
+Onboarding
+   │
+   ├── name / target role
+   ├── experience / location
+   ├── skills / certifications
+   ├── education / compensation target
+   └── optional fictional demo data
+   │
+   ▼
+Dashboard
+   │
+   ├── profile context
+   ├── KPIs
+   ├── follow-ups
+   ├── high-priority pipeline
+   ├── interview agenda
+   └── analytics
+   │
+   ▼
+Applications workspace
+   ├── table
+   ├── Kanban
+   ├── create / edit / delete
+   ├── filters
+   ├── recruiter context
+   ├── interviews
+   └── import / export
+```
+
+Routes:
+
+```text
+/onboarding
+/dashboard
+/applications
+/settings/profile
+```
+
+Dashboard and Applications require a local profile. If none exists, JobTrackr redirects to onboarding.
 
 ## Features
 
-- Create, update and delete job applications
-- Search applications by company, position or notes
-- Filter applications by status
-- Sort directly from table columns
-- Track application status: sent, interview, accepted or rejected
-- Store recruiter/contact information
-- Track interviews and reminders
-- Persist application data in browser local storage
-- Dashboard statistics and application trends
-- Response-rate and average-response-time calculation
-- Weekly application activity
-- Most responsive companies ranking
-- Follow-up suggestions for applications without a response
-- Upcoming interview agenda
-- Responsive Angular Material interface
+### Application workflow
+
+- Company and position
+- Original job-offer URL
+- Contract type: CDI, CDD, freelance, internship, apprenticeship or other
+- Target annual salary or freelance daily rate
+- Recruitment stage and derived application status
+- Priority: high, medium or low
+- Explicit next follow-up date
+- Recruiter name, email and phone
+- Free-form notes
+- Interview tracking and browser reminders
+
+The recruitment stage is the workflow source of truth. JobTrackr derives the broad status from it so contradictory combinations such as `Envoyé + Offre` cannot be created.
+
+### Pipeline management
+
+- Search by company, position, recruiter, stage or notes
+- Filter by status, contract type and priority
+- Table and Kanban representations
+- Sort and pagination in table mode
+- Angular CDK drag-and-drop between recruitment stages
+- Persistent stage transitions through the state facade
+- Follow-up highlighting
+- Keyboard-accessible rows and Kanban cards
+- Direct access to original offer URLs
+- Detailed application view
+- Versioned JSON export/import
+
+### Dashboard
+
+- User-configured profile summary
+- Total applications
+- Response rate
+- Follow-ups requiring action
+- Interviews scheduled in the next 14 days
+- High-priority active pipeline
+- Application-status distribution
+- ISO-week application activity
+
+### Profile & onboarding
+
+The profile is stored separately from applications under its own LocalStorage key. Only the displayed job-search context is stored:
+
+- display name
+- target role / headline
+- experience label
+- location or mobility
+- summary
+- key skills
+- certifications
+- education
+- compensation target
+
+Only name and target role are required.
+
+### Optional demo mode
+
+Users can opt in to three fictional applications during onboarding or from profile settings. Demo records use fictional organizations and people and are merged through the same duplicate-protection logic used by the application state facade.
+
+Loading demo data never replaces existing applications.
 
 ## Tech stack
 
-- Angular 19
-- TypeScript
-- Angular Material
+- Angular 21
+- TypeScript 5.9
+- Angular Material / CDK 21
+- Angular CDK Drag & Drop
+- Angular Router
+- Reactive Forms
 - RxJS
-- Chart.js / ng2-charts
+- Chart.js / ng2-charts 10
+- Vitest + jsdom + V8 coverage
 - Browser Local Storage
 - GitHub Actions
 - Netlify
@@ -47,65 +145,136 @@ Keeping these responsibilities separate avoids duplicated user journeys and make
 ```text
 src/app
 ├── components
+│   ├── application-details
+│   ├── application-filters
+│   ├── application-kanban
+│   ├── application-list
 │   ├── dashboard
 │   ├── job-form
-│   └── job-list
+│   ├── job-list
+│   └── profile-editor
+├── data
+│   └── local-storage-job-application.repository.ts
+├── domain
+│   └── application-workflow.service.ts
+├── guards
+│   └── profile-required.guard.ts
 ├── models
-│   └── job-application.model.ts
+│   ├── job-application.model.ts
+│   └── user-profile.model.ts
 ├── services
+│   ├── application-analytics.service.ts
+│   ├── demo-data.service.ts
+│   ├── follow-up.service.ts
 │   ├── notification.service.ts
-│   └── storage.service.ts
-└── app.component.ts
+│   ├── storage.service.ts
+│   └── user-profile.service.ts
+├── app.routes.ts
+├── app.component.ts
+├── app.component.html
+└── app.component.css
 ```
 
-### State flow
+### Responsibility boundaries
 
 ```text
-JobForm / JobList
-       │
-       ▼
+UserProfileService
+    └── local profile persistence
+
+ProfileRequiredGuard
+    └── first-run onboarding protection
+
+DemoDataService
+    └── opt-in fictional examples
+          │
+          ▼
 StorageService
-       │
-       ├── Browser Local Storage
-       │
-       └── BehaviorSubject<JobApplication[]>
-                    │
-                    ├── JobList
-                    └── Dashboard
+    │
+    ├── LocalStorageJobApplicationRepository
+    │      └── persistence / hydration / schema migration / import-export
+    │
+    ├── ApplicationAnalyticsService
+    │      └── response rates / ISO weekly activity / response timing
+    │
+    └── FollowUpService
+           └── due actions / suggestions
+
+ApplicationWorkflowService
+    └── recruitment-stage and status invariants
 ```
 
-`StorageService` owns the application collection and exposes immutable snapshots through RxJS. Stored JSON is hydrated back into typed application objects, including `Date` values, before being published to the UI.
+Kanban drag events carry only the application id and target recruitment stage. `StorageService` applies the state transition and delegates stage-to-status rules to `ApplicationWorkflowService`. Presentation components never write persistence directly.
 
-Subscriptions in long-lived components use Angular's `takeUntilDestroyed` lifecycle integration so they are disposed automatically.
+## Local-first persistence
 
-## Dashboard responsibilities
+Applications use a versioned envelope:
 
-The dashboard deliberately avoids reproducing the full applications page. It focuses on information that helps decide what to do next:
+```json
+{
+  "version": 2,
+  "applications": []
+}
+```
 
-- total applications
-- response rate
-- average response time
-- follow-ups currently due
-- application status distribution
-- application activity over time
-- company response-time comparison
-- upcoming interviews
+The repository remains backward compatible with the original array-only LocalStorage format. Hydration validates persisted enum-like fields, rebuilds dates, migrates legacy recruiter fields and normalizes workflow state before publishing data.
 
-Interview events are shown in the agenda rather than duplicated again as generic suggestions.
+The user profile is persisted independently, so profile changes do not rewrite or reset applications.
 
-## Application management
+Users can export the complete application dataset as JSON and import it later. Import intentionally replaces the current application dataset after confirmation; it does not replace the local profile.
 
-The Applications view is the single workspace for application operations:
+## Migration from the personalized prototype
 
-- add a new application
-- filter and search
-- sort using table headers
-- inspect application details
-- edit an application
-- delete an application
-- manage associated interviews
+The generic V1 deliberately removes:
 
-The UI distinguishes between an empty tracker and a filter returning no results, so each state presents the appropriate action.
+- the hard-coded owner career profile
+- the real owner application seed
+- automatic portfolio-data bootstrapping
+- personalized dashboard and shell copy
+
+Existing LocalStorage application data remains compatible. A returning browser with old application data is asked to complete the new onboarding profile, after which the existing pipeline remains available.
+
+## Analytics correctness
+
+Weekly application activity uses the **ISO week-year**, including year boundaries. Response times are calculated from calendar dates in UTC rather than raw elapsed milliseconds, avoiding daylight-saving-time distortions.
+
+## Follow-up and reminder logic
+
+Explicit follow-up dates drive the cockpit. Active applications whose follow-up date is today or overdue are surfaced as actions and visually highlighted in the Kanban.
+
+For older records without a follow-up date, a sent application older than seven days is flagged as needing a follow-up plan.
+
+Browser reminder permission is requested only after a user explicitly enables an interview reminder. Timers are rebuilt from persisted application state whenever the collection is restored or changed, preventing duplicate timers and recovering reminders after page refresh.
+
+A fully closed browser still cannot guarantee delivery; durable background notifications belong in the future backend/service-worker architecture.
+
+## Testing
+
+Business-critical behavior is covered with Vitest, including:
+
+- workflow/status normalization
+- legacy LocalStorage migration
+- versioned persistence
+- user-profile persistence and validation
+- opt-in demo-data merge and duplicate protection
+- follow-up eligibility
+- ISO week-year analytics and calendar-safe response timing
+- CRUD persistence
+- export/import round-trip
+- Applications component contracts
+- Kanban grouping and drag stage changes
+- state-facade workflow transitions
+
+Run locally:
+
+```bash
+npm test
+```
+
+CI run with coverage:
+
+```bash
+npm run test:ci
+```
 
 ## Run locally
 
@@ -127,46 +296,30 @@ npm run build -- --configuration production
 
 ## CI/CD
 
-Pull requests and pushes to the default branch are validated by GitHub Actions with a clean install and production Angular build.
+Every pull request and push to `master` executes:
 
-```text
-GitHub
-  │
-  ├── Pull Request
-  │     ├── GitHub Actions production build
-  │     └── Netlify Deploy Preview
-  │
-  └── master
-        └── Netlify production deployment
+```bash
+npm ci
+npm audit --omit=dev
+npm run test:ci
+npm run build -- --configuration production
 ```
 
-This keeps production deployment separate from feature validation: changes can be checked through a Netlify preview before being merged.
-
-## Engineering decisions
-
-### Why local storage?
-
-The current version is intentionally frontend-only. This keeps deployment simple while demonstrating Angular component design, reactive state, persistence and data visualization.
-
-### Why a dedicated storage service?
-
-Components do not manipulate browser storage directly. Persistence and application state are centralized behind `StorageService`, making a future replacement with an HTTP repository considerably easier.
-
-### Why derived dashboard statistics?
-
-Statistics and suggestions are calculated from the application state rather than persisted separately. This avoids synchronization problems between stored applications and derived analytics.
+Netlify provides Deploy Previews for pull requests and production deployment from the default branch.
 
 ## Current limitations
 
-- Data is limited to the current browser/device
-- No authentication or user accounts
-- No server-side persistence
-- Browser notifications are limited by browser lifecycle and permissions
-- No automated unit or end-to-end test suite yet
+The remaining limitations are architectural rather than hidden frontend workarounds:
 
-## Roadmap
+- data is browser-local unless exported/imported
+- no authentication or user accounts
+- no server-side persistence
+- browser reminders cannot run reliably while the browser is completely closed
+- no end-to-end browser test suite yet
+- manual ordering of cards inside a single Kanban stage is intentionally not persisted
+- compensation formatting is still oriented toward the current EUR-focused product version
 
-A natural backend evolution would turn the project into a full-stack application:
+## Full-stack roadmap
 
 ```text
 Angular
@@ -175,21 +328,23 @@ Angular
 Spring Boot
    │
    ├── PostgreSQL
-   ├── Spring Security / JWT or OIDC
+   ├── Spring Security / OIDC
    ├── OpenAPI
-   └── scheduled/event-driven reminders
+   ├── scheduled reminders
+   └── observability
 ```
 
-Potential additions:
+Next engineering milestones:
 
-1. Spring Boot REST API
-2. PostgreSQL persistence
-3. Authentication with Spring Security and OAuth2/OIDC
-4. Docker Compose development environment
-5. Unit and integration tests with Testcontainers
-6. OpenAPI API documentation
-7. Import/export of application data
+1. Spring Boot REST API and PostgreSQL persistence
+2. Authentication with Spring Security and OAuth2/OIDC
+3. Per-user ownership and authorization on every application resource
+4. Docker Compose local environment
+5. Integration testing with Testcontainers
+6. OpenAPI documentation
+7. End-to-end browser testing
 8. Cloud deployment and observability
-9. Optional Kafka-based notification/event workflow
+9. Durable email/push reminders
+10. Optional event-driven integrations where asynchronous events add real value
 
-The frontend is structured so the browser persistence layer can eventually be replaced by an API-backed repository without redesigning the entire UI.
+The current frontend remains intentionally structured so LocalStorage persistence can later be replaced by an API-backed repository without redesigning the application workflow.
