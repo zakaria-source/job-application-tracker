@@ -95,6 +95,22 @@ export class ApplicationFormComponent implements OnInit, OnChanges {
         return this.jobForm?.get('followUpDate')?.value ?? null;
     }
 
+    applyImportedDraft(draft: JobApplication): void {
+        const company = this.jobForm.get('company');
+        const position = this.jobForm.get('position');
+        const notes = this.jobForm.get('notes');
+        const contractType = this.jobForm.get('contractType');
+
+        this.jobForm.patchValue({
+            company: company?.value?.trim() ? company.value : draft.company,
+            position: position?.value?.trim() ? position.value : draft.position,
+            offerUrl: draft.offerUrl ?? '',
+            contractType: contractType?.dirty ? contractType.value : draft.contractType,
+            notes: notes?.value?.trim() ? notes.value : draft.notes
+        });
+        this.jobForm.markAsDirty();
+    }
+
     private initForm(): void {
         this.jobForm = this.fb.group({
             company: ['', Validators.required],
