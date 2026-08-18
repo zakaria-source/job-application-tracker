@@ -14,6 +14,21 @@
 
     <div class="studio-body">
       <main class="studio-main">
+        @if (!editMode && availableDraft) {
+          <section class="draft-resume" aria-label="Brouillon disponible">
+            <span class="draft-resume-icon"><mat-icon>history</mat-icon></span>
+            <div class="draft-resume-copy">
+              <span>BROUILLON DISPONIBLE · {{ draftAgeLabel }}</span>
+              <strong>{{ draftSummary }}</strong>
+              <small>Reprenez exactement où vous vous étiez arrêté sur cet appareil.</small>
+            </div>
+            <div class="draft-resume-actions">
+              <button mat-stroked-button type="button" (click)="deleteAvailableDraft()">Supprimer</button>
+              <button mat-flat-button color="primary" type="button" (click)="resumeDraft()"><mat-icon>restore</mat-icon>Reprendre</button>
+            </div>
+          </section>
+        }
+
         @if (!editMode) {
           <section class="smart-capture" [class.detected]="jobUrlPreview">
             <div class="capture-heading">
@@ -71,6 +86,7 @@
             [application]="application"
             [embedded]="true"
             [hideOfferUrl]="!editMode"
+            (draftChange)="onFormDraftChange()"
             (formSubmit)="onFormSubmit($event)" />
         </section>
       </main>
@@ -112,7 +128,12 @@
     </div>
 
     <footer class="studio-footer">
-      <div class="footer-hint"><kbd>⌘</kbd><kbd>↵</kbd><span>{{ editMode ? 'Enregistrer' : 'Ajouter au pipeline' }}</span></div>
+      <div class="footer-meta">
+        <div class="footer-hint"><kbd>⌘</kbd><kbd>↵</kbd><span>{{ editMode ? 'Enregistrer' : 'Ajouter au pipeline' }}</span></div>
+        @if (!editMode && draftSavedAt) {
+          <div class="draft-saved" role="status"><mat-icon>cloud_done</mat-icon><span>{{ draftSavedLabel }}</span></div>
+        }
+      </div>
       <div class="footer-actions">
         <button mat-stroked-button type="button" (click)="requestClose()">Annuler</button>
         <button mat-flat-button color="primary" type="button" (click)="submit()">
@@ -126,12 +147,16 @@
   @if (showDiscardConfirm) {
     <div class="discard-backdrop" role="presentation" (click)="keepEditing()">
       <section class="discard-dialog" role="alertdialog" aria-modal="true" aria-labelledby="discard-title" (click)="$event.stopPropagation()">
-        <span class="discard-icon"><mat-icon>edit_note</mat-icon></span>
-        <h3 id="discard-title">Abandonner les modifications ?</h3>
-        <p>Les informations saisies dans ce Studio ne sont pas encore enregistrées.</p>
+        <span class="discard-icon"><mat-icon>{{ editMode ? 'edit_note' : 'cloud_done' }}</mat-icon></span>
+        <h3 id="discard-title">{{ editMode ? 'Abandonner les modifications ?' : 'Fermer le Studio ?' }}</h3>
+        <p>{{ editMode ? 'Les modifications de cette candidature ne sont pas encore enregistrées.' : 'Votre brouillon est sauvegardé localement sur cet appareil. Vous pourrez le reprendre à la prochaine ouverture.' }}</p>
         <div class="discard-actions">
           <button mat-stroked-button type="button" (click)="keepEditing()">Continuer l’édition</button>
-          <button mat-flat-button color="warn" type="button" (click)="discardAndClose()">Abandonner</button>
+          @if (editMode) {
+            <button mat-flat-button color="warn" type="button" (click)="confirmClose()">Abandonner</button>
+          } @else {
+            <button mat-flat-button color="primary" type="button" (click)="confirmClose()">Fermer et garder</button>
+          }
         </div>
       </section>
     </div>
