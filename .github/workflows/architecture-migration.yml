@@ -1,0 +1,287 @@
+name: One-shot architecture migration
+
+on:
+  push:
+    branches:
+      - agent/feature-first-architecture
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Restructure repository
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Frontend: feature-first organization.
+          mkdir -p src/app/core/api src/app/core/auth src/app/core/workspace src/app/core/notifications
+          mkdir -p src/app/features/applications/components src/app/features/applications/pages src/app/features/applications/data-access src/app/features/applications/domain src/app/features/applications/models src/app/features/applications/testing
+          mkdir -p src/app/features/account src/app/features/dashboard src/app/features/profile src/app/shared/ui
+
+          git mv src/app/cloud/auth.interceptor.ts src/app/core/auth/auth.interceptor.ts
+          git mv src/app/cloud/auth.service.ts src/app/core/auth/auth.service.ts
+          git mv src/app/cloud/cloud-session.store.ts src/app/core/auth/session.store.ts
+          git mv src/app/cloud/cloud-session.store.spec.ts src/app/core/auth/session.store.spec.ts
+          git mv src/app/guards/auth-required.guard.ts src/app/core/auth/auth-required.guard.ts
+          git mv src/app/cloud/cloud-api.service.ts src/app/core/api/jobtrackr-api.service.ts
+          git mv src/app/cloud/cloud-workspace.service.ts src/app/core/workspace/workspace.service.ts
+          git mv src/app/services/notification.service.ts src/app/core/notifications/notification.service.ts
+
+          git mv src/app/components/account/* src/app/features/account/
+          git mv src/app/components/dashboard/* src/app/features/dashboard/
+          git mv src/app/components/profile-editor/* src/app/features/profile/
+          git mv src/app/models/user-profile.model.ts src/app/features/profile/user-profile.model.ts
+          git mv src/app/services/user-profile.service.ts src/app/features/profile/user-profile.service.ts
+          git mv src/app/services/user-profile.service.spec.ts src/app/features/profile/user-profile.service.spec.ts
+
+          for feature in application-details application-filters application-kanban application-list; do
+            mkdir -p "src/app/features/applications/components/$feature"
+            git mv "src/app/components/$feature"/* "src/app/features/applications/components/$feature/"
+          done
+
+          mkdir -p src/app/features/applications/components/application-form
+          git mv src/app/components/job-form/* src/app/features/applications/components/application-form/
+          for ext in ts html css; do
+            if [ -f "src/app/features/applications/components/application-form/job-form.component.$ext" ]; then
+              git mv "src/app/features/applications/components/application-form/job-form.component.$ext" "src/app/features/applications/components/application-form/application-form.component.$ext"
+            fi
+          done
+
+          mkdir -p src/app/features/applications/pages/applications-page
+          git mv src/app/components/job-list/job-list.component.ts src/app/features/applications/pages/applications-page/applications-page.component.ts
+          git mv src/app/components/job-list/job-list.component.html src/app/features/applications/pages/applications-page/applications-page.component.html
+          git mv src/app/components/job-list/job-list.component.css src/app/features/applications/pages/applications-page/applications-page.component.css
+
+          git mv src/app/services/storage.service.ts src/app/features/applications/data-access/application.store.ts
+          git mv src/app/services/storage.service.spec.ts src/app/features/applications/data-access/application.store.spec.ts
+          git mv src/app/services/application-analytics.service.ts src/app/features/applications/domain/application-analytics.service.ts
+          git mv src/app/services/application-analytics.service.spec.ts src/app/features/applications/domain/application-analytics.service.spec.ts
+          git mv src/app/services/follow-up.service.ts src/app/features/applications/domain/follow-up.service.ts
+          git mv src/app/services/follow-up.service.spec.ts src/app/features/applications/domain/follow-up.service.spec.ts
+          git mv src/app/domain/application-workflow.service.ts src/app/features/applications/domain/application-workflow.service.ts
+          git mv src/app/domain/application-workflow.service.spec.ts src/app/features/applications/domain/application-workflow.service.spec.ts
+          git mv src/app/models/job-application.model.ts src/app/features/applications/models/application.model.ts
+          git mv src/app/services/demo-data.service.ts src/app/features/applications/testing/demo-data.service.ts
+          git mv src/app/services/demo-data.service.spec.ts src/app/features/applications/testing/demo-data.service.spec.ts
+
+          git mv src/app/components/ui/brand-mark src/app/shared/ui/brand-mark
+
+          # Remove now-empty frontend folders.
+          rmdir src/app/cloud src/app/guards src/app/models src/app/domain src/app/services 2>/dev/null || true
+          rmdir src/app/components/account src/app/components/dashboard src/app/components/profile-editor src/app/components/job-form src/app/components/job-list 2>/dev/null || true
+          rmdir src/app/components/application-details src/app/components/application-filters src/app/components/application-kanban src/app/components/application-list src/app/components/ui 2>/dev/null || true
+          rmdir src/app/components 2>/dev/null || true
+
+          # Backend: keep domain concepts with the feature that owns them.
+          mkdir -p backend/src/main/java/dev/jobtrackr/application/domain backend/src/main/java/dev/jobtrackr/application/interview backend/src/main/java/dev/jobtrackr/common/domain
+          for type in ApplicationPriority ApplicationStatus ContractType RecruitmentStage SalaryPeriod; do
+            git mv "backend/src/main/java/dev/jobtrackr/domain/$type.java" "backend/src/main/java/dev/jobtrackr/application/domain/$type.java"
+          done
+          git mv backend/src/main/java/dev/jobtrackr/domain/InterviewType.java backend/src/main/java/dev/jobtrackr/application/interview/InterviewType.java
+          git mv backend/src/main/java/dev/jobtrackr/domain/EnumSupport.java backend/src/main/java/dev/jobtrackr/common/domain/EnumSupport.java
+          git mv backend/src/main/java/dev/jobtrackr/domain/LabelledEnum.java backend/src/main/java/dev/jobtrackr/common/domain/LabelledEnum.java
+          git mv backend/src/main/java/dev/jobtrackr/interview/InterviewEntity.java backend/src/main/java/dev/jobtrackr/application/interview/InterviewEntity.java
+          git mv backend/src/main/java/dev/jobtrackr/interview/dto backend/src/main/java/dev/jobtrackr/application/interview/dto
+          rmdir backend/src/main/java/dev/jobtrackr/interview backend/src/main/java/dev/jobtrackr/domain 2>/dev/null || true
+
+          git mv backend/src/main/java/dev/jobtrackr/user backend/src/main/java/dev/jobtrackr/identity
+
+          # Monorepo symmetry: frontend gets its own root.
+          mkdir -p frontend
+          git mv src frontend/src
+          git mv public frontend/public
+          git mv angular.json frontend/angular.json
+          git mv package.json frontend/package.json
+          git mv package-lock.json frontend/package-lock.json
+          git mv proxy.conf.json frontend/proxy.conf.json
+          git mv tsconfig.json frontend/tsconfig.json
+          git mv tsconfig.app.json frontend/tsconfig.app.json
+          git mv tsconfig.spec.json frontend/tsconfig.spec.json
+          git mv .nvmrc frontend/.nvmrc
+          git mv scripts frontend/scripts
+
+      - name: Rewrite imports, packages and configuration
+        shell: python
+        run: |
+          from pathlib import Path
+          import json
+          import re
+
+          root = Path('.')
+          frontend = root / 'frontend'
+          app = frontend / 'src' / 'app'
+
+          # Stable application alias prevents deep relative import chains after feature moves.
+          tsconfig_path = frontend / 'tsconfig.json'
+          raw = tsconfig_path.read_text()
+          data = json.loads(re.sub(r'/\*.*?\*/', '', raw, flags=re.S))
+          compiler = data.setdefault('compilerOptions', {})
+          compiler['baseUrl'] = '.'
+          compiler['paths'] = {'@app/*': ['src/app/*']}
+          tsconfig_path.write_text(json.dumps(data, indent=2) + '\n')
+
+          replacements = {
+              'CloudApiService': 'JobTrackrApiService',
+              'CloudSessionStore': 'SessionStore',
+              'CloudWorkspaceService': 'WorkspaceService',
+              'CloudWorkspaceState': 'WorkspaceState',
+              'StorageService': 'ApplicationStore',
+              'JobListComponent': 'ApplicationsPageComponent',
+              'JobFormComponent': 'ApplicationFormComponent',
+              "'./components/account/account.component'": "'@app/features/account/account.component'",
+              "'./components/dashboard/dashboard.component'": "'@app/features/dashboard/dashboard.component'",
+              "'./components/job-list/job-list.component'": "'@app/features/applications/pages/applications-page/applications-page.component'",
+              "'./components/profile-editor/profile-editor.component'": "'@app/features/profile/profile-editor.component'",
+              "'./guards/auth-required.guard'": "'@app/core/auth/auth-required.guard'",
+          }
+
+          module_patterns = [
+              (r"from ['\"](?:\.\./)+cloud/auth\.service['\"]", "from '@app/core/auth/auth.service'"),
+              (r"from ['\"](?:\.\./)+cloud/auth\.interceptor['\"]", "from '@app/core/auth/auth.interceptor'"),
+              (r"from ['\"](?:\.\./)+cloud/cloud-session\.store['\"]", "from '@app/core/auth/session.store'"),
+              (r"from ['\"](?:\.\./)+cloud/cloud-api\.service['\"]", "from '@app/core/api/jobtrackr-api.service'"),
+              (r"from ['\"](?:\.\./)+cloud/cloud-workspace\.service['\"]", "from '@app/core/workspace/workspace.service'"),
+              (r"from ['\"](?:\.\./)+guards/auth-required\.guard['\"]", "from '@app/core/auth/auth-required.guard'"),
+              (r"from ['\"](?:\.\./)+models/job-application\.model['\"]", "from '@app/features/applications/models/application.model'"),
+              (r"from ['\"](?:\.\./)+models/user-profile\.model['\"]", "from '@app/features/profile/user-profile.model'"),
+              (r"from ['\"](?:\.\./)+services/storage\.service['\"]", "from '@app/features/applications/data-access/application.store'"),
+              (r"from ['\"](?:\.\./)+services/application-analytics\.service['\"]", "from '@app/features/applications/domain/application-analytics.service'"),
+              (r"from ['\"](?:\.\./)+services/follow-up\.service['\"]", "from '@app/features/applications/domain/follow-up.service'"),
+              (r"from ['\"](?:\.\./)+domain/application-workflow\.service['\"]", "from '@app/features/applications/domain/application-workflow.service'"),
+              (r"from ['\"](?:\.\./)+services/user-profile\.service['\"]", "from '@app/features/profile/user-profile.service'"),
+              (r"from ['\"](?:\.\./)+services/demo-data\.service['\"]", "from '@app/features/applications/testing/demo-data.service'"),
+              (r"from ['\"](?:\.\./)+components/ui/brand-mark/brand-mark\.component['\"]", "from '@app/shared/ui/brand-mark/brand-mark.component'"),
+              (r"from ['\"]\.\./application-details/application-details\.component['\"]", "from '@app/features/applications/components/application-details/application-details.component'"),
+              (r"from ['\"]\.\./application-filters/application-filters\.component['\"]", "from '@app/features/applications/components/application-filters/application-filters.component'"),
+              (r"from ['\"]\.\./application-kanban/application-kanban\.component['\"]", "from '@app/features/applications/components/application-kanban/application-kanban.component'"),
+              (r"from ['\"]\.\./application-list/application-list\.component['\"]", "from '@app/features/applications/components/application-list/application-list.component'"),
+              (r"from ['\"]\.\./job-form/job-form\.component['\"]", "from '@app/features/applications/components/application-form/application-form.component'"),
+          ]
+
+          # Additional local references inside moved service/model areas.
+          basename_aliases = {
+              'job-application.model': '@app/features/applications/models/application.model',
+              'user-profile.model': '@app/features/profile/user-profile.model',
+              'storage.service': '@app/features/applications/data-access/application.store',
+              'application-analytics.service': '@app/features/applications/domain/application-analytics.service',
+              'follow-up.service': '@app/features/applications/domain/follow-up.service',
+              'application-workflow.service': '@app/features/applications/domain/application-workflow.service',
+              'cloud-api.service': '@app/core/api/jobtrackr-api.service',
+              'cloud-session.store': '@app/core/auth/session.store',
+              'cloud-workspace.service': '@app/core/workspace/workspace.service',
+              'auth.service': '@app/core/auth/auth.service',
+              'notification.service': '@app/core/notifications/notification.service',
+              'user-profile.service': '@app/features/profile/user-profile.service',
+              'demo-data.service': '@app/features/applications/testing/demo-data.service',
+          }
+
+          for path in app.rglob('*.ts'):
+              text = path.read_text()
+              for old, new in replacements.items():
+                  text = text.replace(old, new)
+              for pattern, replacement in module_patterns:
+                  text = re.sub(pattern, replacement, text)
+              for basename, alias in basename_aliases.items():
+                  text = re.sub(r"from ['\"][^'\"]*" + re.escape(basename) + r"['\"]", f"from '{alias}'", text)
+              text = text.replace("templateUrl: './job-form.component.html'", "templateUrl: './application-form.component.html'")
+              text = text.replace("styleUrl: './job-form.component.css'", "styleUrl: './application-form.component.css'")
+              text = text.replace("selector: 'app-job-form'", "selector: 'app-application-form'")
+              text = text.replace("templateUrl: './job-list.component.html'", "templateUrl: './applications-page.component.html'")
+              text = text.replace("styleUrl: './job-list.component.css'", "styleUrl: './applications-page.component.css'")
+              text = text.replace("selector: 'app-job-list'", "selector: 'app-applications-page'")
+              path.write_text(text)
+
+          # Component spec import names changed with their production class names.
+          for path in app.rglob('*.spec.ts'):
+              text = path.read_text().replace("./job-form.component", "./application-form.component").replace("./job-list.component", "./applications-page.component")
+              path.write_text(text)
+
+          # App root may contain direct legacy imports not covered by relative regexes.
+          routes = app / 'app.routes.ts'
+          text = routes.read_text()
+          for old, new in replacements.items():
+              text = text.replace(old, new)
+          routes.write_text(text)
+
+          # Java package moves.
+          java_root = root / 'backend' / 'src' / 'main' / 'java'
+          java_replacements = {
+              'dev.jobtrackr.domain.ApplicationPriority': 'dev.jobtrackr.application.domain.ApplicationPriority',
+              'dev.jobtrackr.domain.ApplicationStatus': 'dev.jobtrackr.application.domain.ApplicationStatus',
+              'dev.jobtrackr.domain.ContractType': 'dev.jobtrackr.application.domain.ContractType',
+              'dev.jobtrackr.domain.RecruitmentStage': 'dev.jobtrackr.application.domain.RecruitmentStage',
+              'dev.jobtrackr.domain.SalaryPeriod': 'dev.jobtrackr.application.domain.SalaryPeriod',
+              'dev.jobtrackr.domain.InterviewType': 'dev.jobtrackr.application.interview.InterviewType',
+              'dev.jobtrackr.domain.EnumSupport': 'dev.jobtrackr.common.domain.EnumSupport',
+              'dev.jobtrackr.domain.LabelledEnum': 'dev.jobtrackr.common.domain.LabelledEnum',
+              'dev.jobtrackr.interview.InterviewEntity': 'dev.jobtrackr.application.interview.InterviewEntity',
+              'dev.jobtrackr.interview.dto': 'dev.jobtrackr.application.interview.dto',
+              'dev.jobtrackr.user.': 'dev.jobtrackr.identity.',
+          }
+          for path in java_root.rglob('*.java'):
+              text = path.read_text()
+              for old, new in java_replacements.items():
+                  text = text.replace(old, new)
+              path.write_text(text)
+
+          # Package declarations for moved Java files.
+          for path in (java_root / 'dev/jobtrackr/application/domain').glob('*.java'):
+              path.write_text(path.read_text().replace('package dev.jobtrackr.domain;', 'package dev.jobtrackr.application.domain;'))
+          p = java_root / 'dev/jobtrackr/application/interview/InterviewType.java'
+          p.write_text(p.read_text().replace('package dev.jobtrackr.domain;', 'package dev.jobtrackr.application.interview;'))
+          for path in (java_root / 'dev/jobtrackr/common/domain').glob('*.java'):
+              path.write_text(path.read_text().replace('package dev.jobtrackr.domain;', 'package dev.jobtrackr.common.domain;'))
+          p = java_root / 'dev/jobtrackr/application/interview/InterviewEntity.java'
+          p.write_text(p.read_text().replace('package dev.jobtrackr.interview;', 'package dev.jobtrackr.application.interview;'))
+          for path in (java_root / 'dev/jobtrackr/application/interview/dto').glob('*.java'):
+              path.write_text(path.read_text().replace('package dev.jobtrackr.interview.dto;', 'package dev.jobtrackr.application.interview.dto;'))
+          for path in (java_root / 'dev/jobtrackr/identity').glob('*.java'):
+              path.write_text(path.read_text().replace('package dev.jobtrackr.user;', 'package dev.jobtrackr.identity;'))
+
+          # Netlify now builds from frontend/ while config remains discoverable at repo root.
+          netlify = Path('netlify.toml')
+          text = netlify.read_text()
+          if 'base = "frontend"' not in text:
+              text = text.replace('[build]\n', '[build]\n  base = "frontend"\n', 1)
+          netlify.write_text(text)
+
+          # GitHub Actions frontend job runs from frontend/.
+          ci = Path('.github/workflows/ci.yml')
+          text = ci.read_text()
+          text = text.replace('node-version-file: .nvmrc', 'node-version-file: frontend/.nvmrc')
+          text = text.replace('cache: npm\n', 'cache: npm\n          cache-dependency-path: frontend/package-lock.json\n', 1)
+          text = text.replace('      - name: Install dependencies\n        run: npm ci', '      - name: Install dependencies\n        working-directory: frontend\n        run: npm ci')
+          text = text.replace('      - name: Audit production dependencies\n        run: npm audit --omit=dev', '      - name: Audit production dependencies\n        working-directory: frontend\n        run: npm audit --omit=dev')
+          text = text.replace('      - name: Run unit tests\n        run: npm run test:ci', '      - name: Run unit tests\n        working-directory: frontend\n        run: npm run test:ci')
+          text = text.replace('      - name: Build Netlify application\n        run: npm run build:netlify', '      - name: Build Netlify application\n        working-directory: frontend\n        run: npm run build:netlify')
+          text = text.replace('test -f dist/', 'test -f frontend/dist/')
+          ci.write_text(text)
+
+          # Keep docs accurate after monorepo split.
+          for doc_name in ['README.md', 'DEPLOYMENT.md']:
+              doc = Path(doc_name)
+              if not doc.exists():
+                  continue
+              text = doc.read_text()
+              text = text.replace('npm ci\n', 'cd frontend\nnpm ci\n', 1)
+              text = text.replace('npm install\n', 'cd frontend\nnpm install\n', 1)
+              doc.write_text(text)
+
+      - name: Commit migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/architecture-migration.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "refactor: organize repository by feature"
+          git push origin HEAD:agent/feature-first-architecture
