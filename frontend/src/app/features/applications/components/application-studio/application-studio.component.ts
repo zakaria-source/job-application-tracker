@@ -25,7 +25,7 @@ import {JobImportPreview} from '@app/features/applications/models/job-import.mod
   standalone: true,
   imports: [MatButtonModule, MatIconModule, ApplicationFormComponent],
   templateUrl: './application-studio.component.html',
-  styleUrl: './application-studio.component.css'
+  styleUrls: ['./application-studio.component.css', './application-studio-draft.css']
 })
 export class ApplicationStudioComponent implements OnChanges, AfterViewInit, OnDestroy {
   @Input() editMode = false;
