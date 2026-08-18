@@ -33,6 +33,7 @@ public class FollowUpEntity {
     public void snooze(LocalDate date, Instant now) { scheduledFor = date; status = FollowUpStatus.PLANNED; completedAt = null; updatedAt = now; }
     public void cancel(Instant now) { status = FollowUpStatus.CANCELLED; updatedAt = now; }
     public UUID getId() { return id; }
+    public UUID getApplicationId() { return application.getId(); }
     public LocalDate getScheduledFor() { return scheduledFor; }
     public FollowUpStatus getStatus() { return status; }
     public Instant getCompletedAt() { return completedAt; }
