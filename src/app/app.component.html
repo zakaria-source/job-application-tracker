@@ -1,40 +1,48 @@
 <div class="app-shell">
   <header class="topbar">
     <div class="topbar-inner">
-      <a class="brand" routerLink="/dashboard" aria-label="JobTrackr - Dashboard">
+      <a class="brand" routerLink="/dashboard" aria-label="JobTrackr - Tableau de bord">
         <div class="brand-mark"><mat-icon>work_outline</mat-icon></div>
         <div class="brand-copy">
           <strong>JobTrackr</strong>
-          <span>Votre espace de suivi de candidatures</span>
+          <span>Votre recherche, structurée</span>
         </div>
       </a>
-      <div class="product-status" title="Les données sont conservées localement dans ce navigateur">
-        <span class="status-dot"></span><span>Local-first</span>
+
+      @if (!isOnboarding) {
+        <nav class="topbar-nav" aria-label="Navigation principale">
+          <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+            <mat-icon>space_dashboard</mat-icon><span>Dashboard</span>
+          </a>
+          <a routerLink="/applications" routerLinkActive="active">
+            <mat-icon>view_kanban</mat-icon><span>Candidatures</span>
+          </a>
+          <a routerLink="/settings/profile" routerLinkActive="active">
+            <mat-icon>manage_accounts</mat-icon><span>Profil</span>
+          </a>
+        </nav>
+      }
+
+      <div class="product-status" title="Les données restent dans ce navigateur">
+        <mat-icon>lock</mat-icon>
+        <span>Local & privé</span>
       </div>
     </div>
   </header>
 
-  <main class="workspace">
-    <section class="page-heading">
-      <div>
-        <span class="eyebrow">JOB SEARCH OS</span>
-        <h1>{{ pageTitle }}</h1>
-        <p>{{ pageDescription }}</p>
-      </div>
-    </section>
+  <main class="workspace" [class.onboarding-workspace]="isOnboarding">
+    @if (!isOnboarding) {
+      <section class="page-heading">
+        <div>
+          <span class="eyebrow">JOB SEARCH WORKSPACE</span>
+          <h1>{{ pageTitle }}</h1>
+          <p>{{ pageDescription }}</p>
+        </div>
+      </section>
+    }
 
-    <nav class="workspace-nav" aria-label="Navigation principale">
-      <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
-        <mat-icon>space_dashboard</mat-icon><span>Dashboard</span>
-      </a>
-      <a routerLink="/applications" routerLinkActive="active">
-        <mat-icon>view_list</mat-icon><span>Candidatures</span>
-      </a>
-      <a routerLink="/settings/profile" routerLinkActive="active">
-        <mat-icon>manage_accounts</mat-icon><span>Profil</span>
-      </a>
-    </nav>
-
-    <div class="route-content"><router-outlet></router-outlet></div>
+    <div class="route-content" [class.onboarding-content]="isOnboarding">
+      <router-outlet></router-outlet>
+    </div>
   </main>
 </div>
