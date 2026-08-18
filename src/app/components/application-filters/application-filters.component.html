@@ -1,69 +1,54 @@
-<div class="filters-bar">
-  <mat-form-field appearance="outline" class="search-field" subscriptSizing="dynamic">
-    <mat-icon matPrefix>search</mat-icon>
-    <input
-      matInput
-      [(ngModel)]="searchTerm"
-      (input)="emitFilters()"
-      aria-label="Rechercher une candidature"
-      placeholder="Rechercher une entreprise, un poste ou un recruteur">
-    @if (searchTerm) {
-      <button
-        matSuffix
-        mat-icon-button
-        type="button"
-        aria-label="Effacer la recherche"
-        (click)="clearSearch()">
-        <mat-icon>close</mat-icon>
-      </button>
-    }
-  </mat-form-field>
-
-  <details class="filters-menu">
-    <summary>
-      <mat-icon>tune</mat-icon>
-      <span>Filtres</span>
-      @if (advancedFilterCount > 0) {
-        <strong>{{ advancedFilterCount }}</strong>
+<div class="filters-stack">
+  <div class="filters-bar">
+    <mat-form-field appearance="outline" class="search-field" subscriptSizing="dynamic">
+      <mat-icon matPrefix>search</mat-icon>
+      <input
+        #searchInput
+        matInput
+        [(ngModel)]="searchTerm"
+        (input)="emitFilters()"
+        aria-label="Rechercher une candidature"
+        placeholder="Rechercher entreprise, poste ou recruteur">
+      @if (searchTerm) {
+        <button matSuffix mat-icon-button type="button" aria-label="Effacer la recherche" (click)="clearSearch()"><mat-icon>close</mat-icon></button>
       }
-    </summary>
+    </mat-form-field>
 
-    <div class="advanced-filters">
-      <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>Statut</mat-label>
-        <mat-select [(ngModel)]="status" (selectionChange)="emitFilters()">
-          <mat-option value="">Tous</mat-option>
-          <mat-option value="Envoyé">Envoyé</mat-option>
-          <mat-option value="Entretien">Entretien</mat-option>
-          <mat-option value="Accepté">Accepté</mat-option>
-          <mat-option value="Refusé">Refusé</mat-option>
-        </mat-select>
-      </mat-form-field>
+    <details class="filters-menu">
+      <summary>
+        <mat-icon>tune</mat-icon><span>Filtres</span>
+        @if (advancedFilterCount > 0) { <strong>{{ advancedFilterCount }}</strong> }
+      </summary>
+      <div class="advanced-filters">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Statut</mat-label>
+          <mat-select [(ngModel)]="status" (selectionChange)="emitFilters()">
+            <mat-option value="">Tous</mat-option><mat-option value="Envoyé">Envoyé</mat-option><mat-option value="Entretien">Entretien</mat-option><mat-option value="Accepté">Accepté</mat-option><mat-option value="Refusé">Refusé</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Contrat</mat-label>
+          <mat-select [(ngModel)]="contractType" (selectionChange)="emitFilters()">
+            <mat-option value="">Tous</mat-option><mat-option value="CDI">CDI</mat-option><mat-option value="CDD">CDD</mat-option><mat-option value="Freelance">Freelance</mat-option><mat-option value="Stage">Stage</mat-option><mat-option value="Alternance">Alternance</mat-option><mat-option value="Autre">Autre</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Priorité</mat-label>
+          <mat-select [(ngModel)]="priority" (selectionChange)="emitFilters()">
+            <mat-option value="">Toutes</mat-option><mat-option value="Haute">Haute</mat-option><mat-option value="Moyenne">Moyenne</mat-option><mat-option value="Basse">Basse</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <button mat-button type="button" class="reset-button" (click)="resetFilters()">Réinitialiser</button>
+      </div>
+    </details>
+  </div>
 
-      <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>Contrat</mat-label>
-        <mat-select [(ngModel)]="contractType" (selectionChange)="emitFilters()">
-          <mat-option value="">Tous</mat-option>
-          <mat-option value="CDI">CDI</mat-option>
-          <mat-option value="CDD">CDD</mat-option>
-          <mat-option value="Freelance">Freelance</mat-option>
-          <mat-option value="Stage">Stage</mat-option>
-          <mat-option value="Alternance">Alternance</mat-option>
-          <mat-option value="Autre">Autre</mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>Priorité</mat-label>
-        <mat-select [(ngModel)]="priority" (selectionChange)="emitFilters()">
-          <mat-option value="">Toutes</mat-option>
-          <mat-option value="Haute">Haute</mat-option>
-          <mat-option value="Moyenne">Moyenne</mat-option>
-          <mat-option value="Basse">Basse</mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <button mat-button type="button" class="reset-button" (click)="resetFilters()">Réinitialiser</button>
+  @if (advancedFilterCount > 0) {
+    <div class="active-filters" aria-label="Filtres actifs">
+      @if (status) { <button type="button" (click)="clearStatus()">Statut · {{ status }} <mat-icon>close</mat-icon></button> }
+      @if (contractType) { <button type="button" (click)="clearContractType()">Contrat · {{ contractType }} <mat-icon>close</mat-icon></button> }
+      @if (priority) { <button type="button" (click)="clearPriority()">Priorité · {{ priority }} <mat-icon>close</mat-icon></button> }
+      <button type="button" class="clear-all" (click)="resetFilters()">Tout effacer</button>
     </div>
-  </details>
+  }
 </div>
