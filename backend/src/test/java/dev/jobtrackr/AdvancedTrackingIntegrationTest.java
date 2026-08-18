@@ -75,6 +75,17 @@ class AdvancedTrackingIntegrationTest {
             .andReturn().getResponse().getContentAsString();
         assertThat(activityBefore).contains("APPLICATION_CREATED", "FOLLOW_UP_SCHEDULED", "INTERVIEWS_UPDATED");
 
+        mockMvc.perform(get("/api/v1/applications/{id}/activity", applicationId)
+                .queryParam("limit", "1")
+                .header("Authorization", "Bearer " + token))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.length()").value(1));
+
+        mockMvc.perform(get("/api/v1/applications/{id}/activity", applicationId)
+                .queryParam("limit", "101")
+                .header("Authorization", "Bearer " + token))
+            .andExpect(status().isBadRequest());
+
         mockMvc.perform(get("/api/v1/applications/{id}/follow-ups", applicationId)
                 .header("Authorization", "Bearer " + token))
             .andExpect(status().isOk())
