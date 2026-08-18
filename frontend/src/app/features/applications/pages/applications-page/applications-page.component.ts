@@ -295,7 +295,14 @@ export class ApplicationsPageComponent implements OnInit {
   }
 
   extractionSourceLabel(source: JobImportPreview['extractionSource']): string {
-    return source === 'JSON_LD' ? 'Données structurées' : 'HTML public';
+    switch (source) {
+      case 'GREENHOUSE_API': return 'Greenhouse · API publique';
+      case 'LEVER_API': return 'Lever · API publique';
+      case 'WORKDAY': return 'Workday · page publique';
+      case 'WELCOME_TO_THE_JUNGLE': return 'Welcome to the Jungle · page publique';
+      case 'JSON_LD': return 'Données structurées';
+      default: return 'HTML public';
+    }
   }
 
   private showFeedback(message: string): void {
