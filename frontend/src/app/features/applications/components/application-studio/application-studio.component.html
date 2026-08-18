@@ -33,7 +33,7 @@
                   autocomplete="url"
                   placeholder="https://careers.company.com/jobs/..."
                   [value]="jobUrl"
-                  (input)="jobUrl = $any($event.target).value"
+                  (input)="onJobUrlInput($any($event.target).value)"
                   (paste)="onJobUrlPaste($event)">
               </div>
               <button mat-stroked-button type="button" [disabled]="jobUrlLoading || !jobUrl.trim()" (click)="analyzeJobUrl()">
