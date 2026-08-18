@@ -20,6 +20,7 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -53,14 +54,21 @@ public class ApplicationService {
 
     @Transactional
     public ApplicationResponse create(UUID userId, ApplicationRequest request) {
-        JobApplicationEntity application = createEntity(userId, request, true);
+        UserAccountEntity user = requireUser(userId);
+        JobApplicationEntity application = createEntity(user, request, true);
         log.info("application_event action=create userId={} applicationId={} stage={}", userId, application.getId(), application.getStage());
         return ApplicationMapper.toResponse(application);
     }
 
     @Transactional
-    public ApplicationResponse update(UUID userId, UUID applicationId, ApplicationRequest request) {
+    public ApplicationResponse update(
+        UUID userId,
+        UUID applicationId,
+        ApplicationRequest request,
+        Long expectedVersion
+    ) {
         JobApplicationEntity application = requireOwned(userId, applicationId);
+        requireVersion(application, expectedVersion);
         RecruitmentStage previousStage = application.getStage();
         LocalDate previousFollowUp = application.getFollowUpDate();
         Instant now = Instant.now();
@@ -74,8 +82,9 @@ public class ApplicationService {
             tracking.recordInterviewsUpdated(application, now);
         }
         tracking.syncLegacyFollowUp(application, previousFollowUp, now);
+        applications.flush();
 
-        log.info("application_event action=update userId={} applicationId={} stage={}", userId, applicationId, application.getStage());
+        log.info("application_event action=update userId={} applicationId={} stage={} version={}", userId, applicationId, application.getStage(), application.getVersion());
         return ApplicationMapper.toResponse(application);
     }
 
@@ -87,7 +96,8 @@ public class ApplicationService {
 
         application.moveTo(stage, now);
         tracking.recordStageChanged(application, previous, now);
-        log.info("application_event action=move userId={} applicationId={} stage={}", userId, applicationId, stage);
+        applications.flush();
+        log.info("application_event action=move userId={} applicationId={} stage={} version={}", userId, applicationId, stage, application.getVersion());
         return ApplicationMapper.toResponse(application);
     }
 
@@ -99,22 +109,54 @@ public class ApplicationService {
 
     @Transactional
     public ImportSummary importApplications(UUID userId, List<ApplicationRequest> requests) {
+        UserAccountEntity user = requireUser(userId);
+        List<JobApplicationEntity> existing = applications.findAllByOwner_Id(userId);
+        Set<String> offerUrls = new HashSet<>();
+        Set<String> applicationKeys = new HashSet<>();
+
+        for (JobApplicationEntity application : existing) {
+            if (application.getOfferUrl() != null) {
+                offerUrls.add(normalize(application.getOfferUrl()));
+            }
+            applicationKeys.add(applicationKey(
+                application.getCompany(),
+                application.getPosition(),
+                application.getApplicationDate()
+            ));
+        }
+
         int imported = 0;
         int skipped = 0;
         for (ApplicationRequest request : requests) {
-            if (isDuplicate(userId, request)) {
+            String offerUrl = request.offerUrl() == null || request.offerUrl().isBlank()
+                ? null
+                : normalize(request.offerUrl());
+            String applicationKey = applicationKey(request.company(), request.position(), request.applicationDate());
+            boolean duplicate = (offerUrl != null && offerUrls.contains(offerUrl))
+                || applicationKeys.contains(applicationKey);
+
+            if (duplicate) {
                 skipped++;
-            } else {
-                createEntity(userId, request, true);
-                imported++;
+                continue;
             }
+
+            createEntity(user, request, true);
+            imported++;
+            if (offerUrl != null) {
+                offerUrls.add(offerUrl);
+            }
+            applicationKeys.add(applicationKey);
         }
+
         log.info("application_event action=import userId={} imported={} skipped={}", userId, imported, skipped);
         return new ImportSummary(imported, skipped);
     }
 
-    private JobApplicationEntity createEntity(UUID userId, ApplicationRequest request, boolean recordEvent) {
-        UserAccountEntity user = users.findById(userId).orElseThrow(ResourceNotFoundException::new);
+    private JobApplicationEntity createEntity(
+        UserAccountEntity user,
+        ApplicationRequest request,
+        boolean recordEvent
+    ) {
         JobApplicationEntity application = new JobApplicationEntity(UUID.randomUUID(), user);
         Instant now = Instant.now();
 
@@ -195,18 +237,22 @@ public class ApplicationService {
         );
     }
 
-    private boolean isDuplicate(UUID userId, ApplicationRequest request) {
-        if (request.offerUrl() != null
-            && !request.offerUrl().isBlank()
-            && applications.existsByOwner_IdAndOfferUrlIgnoreCase(userId, request.offerUrl().trim())) {
-            return true;
+    private static void requireVersion(JobApplicationEntity application, Long expectedVersion) {
+        if (expectedVersion != null && application.getVersion() != expectedVersion) {
+            throw new StaleApplicationException();
         }
-        return applications.existsByOwner_IdAndCompanyIgnoreCaseAndPositionIgnoreCaseAndApplicationDate(
-            userId,
-            request.company().trim(),
-            request.position().trim(),
-            request.applicationDate()
-        );
+    }
+
+    private static String applicationKey(String company, String position, LocalDate applicationDate) {
+        return normalize(company) + '\u0000' + normalize(position) + '\u0000' + applicationDate;
+    }
+
+    private static String normalize(String value) {
+        return value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private UserAccountEntity requireUser(UUID userId) {
+        return users.findById(userId).orElseThrow(ResourceNotFoundException::new);
     }
 
     private JobApplicationEntity requireOwned(UUID userId, UUID applicationId) {

@@ -1,12 +1,13 @@
 import {Injectable} from '@angular/core';
-import {JobApplication} from '@app/features/applications/models/application.model';
+import {Observable} from 'rxjs';
 import {ApplicationStore} from '@app/features/applications/data-access/application.store';
+import {JobApplication} from '@app/features/applications/models/application.model';
 
 @Injectable({providedIn: 'root'})
 export class DemoDataService {
   constructor(private readonly storageService: ApplicationStore) {}
 
-  load(): number {
+  load(): Observable<number> {
     return this.storageService.mergeApplications(this.buildDemoApplications());
   }
 

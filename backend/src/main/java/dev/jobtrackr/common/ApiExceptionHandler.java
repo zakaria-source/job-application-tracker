@@ -1,5 +1,6 @@
 package dev.jobtrackr.common;
 
+import dev.jobtrackr.application.StaleApplicationException;
 import dev.jobtrackr.auth.exception.DuplicateEmailException;
 import dev.jobtrackr.common.exception.ResourceNotFoundException;
 import dev.jobtrackr.jobimport.JobImportException;
@@ -30,6 +31,16 @@ public class ApiExceptionHandler {
     ResponseEntity<ProblemDetail> notFound() {
         log.warn("api_error type=resource_not_found status=404");
         return problem(HttpStatus.NOT_FOUND, "Resource not found", "The requested resource does not exist.");
+    }
+
+    @ExceptionHandler(StaleApplicationException.class)
+    ResponseEntity<ProblemDetail> staleApplication() {
+        log.warn("api_error type=stale_application status=412");
+        return problem(
+            HttpStatus.PRECONDITION_FAILED,
+            "Application changed",
+            "This application was modified after it was loaded. Reload the latest version before saving again."
+        );
     }
 
     @ExceptionHandler({DuplicateEmailException.class, DataIntegrityViolationException.class})
