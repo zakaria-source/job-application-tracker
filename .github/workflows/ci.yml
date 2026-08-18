@@ -65,3 +65,13 @@ jobs:
 
       - name: Build production Docker image
         run: docker build -t jobtrackr-api-ci backend
+
+      - name: Verify free Render + Neon blueprint
+        run: |
+          grep -F '    plan: free' render.yaml
+          grep -F '      - key: DATABASE_HOST' render.yaml
+          grep -F '        sync: false' render.yaml
+          if grep -q '^databases:' render.yaml; then
+            echo 'Render-managed database must not be provisioned in the free Neon baseline.'
+            exit 1
+          fi
