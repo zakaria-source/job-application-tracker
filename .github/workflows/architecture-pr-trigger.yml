@@ -1,0 +1,56 @@
+name: Trigger architecture migration
+
+on:
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    if: github.head_ref == 'agent/feature-first-architecture'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Extract migration commands
+        shell: python
+        run: |
+          from pathlib import Path
+
+          lines = Path('.github/workflows/architecture-migration.yml').read_text().splitlines()
+
+          def extract(step_name: str, destination: str):
+              start = next(i for i, line in enumerate(lines) if f'- name: {step_name}' in line)
+              run = next(i for i in range(start + 1, len(lines)) if lines[i].strip() == 'run: |')
+              body = []
+              for line in lines[run + 1:]:
+                  if line.startswith('      - name:'):
+                      break
+                  body.append(line[10:] if line.startswith('          ') else line)
+              Path(destination).write_text('\n'.join(body) + '\n')
+
+          extract('Restructure repository', '/tmp/restructure.sh')
+          extract('Rewrite imports, packages and configuration', '/tmp/rewrite.py')
+
+      - name: Run architecture migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash /tmp/restructure.sh
+          python /tmp/rewrite.py
+          rm .github/workflows/architecture-migration.yml .github/workflows/architecture-pr-trigger.yml
+
+      - name: Commit migrated tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "refactor: organize repository by feature"
+          git push origin HEAD:${{ github.head_ref }}
