@@ -1,8 +1,8 @@
 package dev.jobtrackr.application;
 
 import dev.jobtrackr.application.dto.ApplicationResponse;
-import dev.jobtrackr.interview.InterviewEntity;
-import dev.jobtrackr.interview.dto.InterviewResponse;
+import dev.jobtrackr.application.interview.InterviewEntity;
+import dev.jobtrackr.application.interview.dto.InterviewResponse;
 
 public final class ApplicationMapper {
 

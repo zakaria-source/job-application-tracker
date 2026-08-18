@@ -3,8 +3,8 @@ package dev.jobtrackr.profile;
 import dev.jobtrackr.common.exception.ResourceNotFoundException;
 import dev.jobtrackr.profile.dto.ProfileRequest;
 import dev.jobtrackr.profile.dto.ProfileResponse;
-import dev.jobtrackr.user.UserAccountEntity;
-import dev.jobtrackr.user.UserAccountRepository;
+import dev.jobtrackr.identity.UserAccountEntity;
+import dev.jobtrackr.identity.UserAccountRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

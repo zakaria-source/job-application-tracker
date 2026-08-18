@@ -1,6 +1,6 @@
 package dev.jobtrackr.security;
 
-import dev.jobtrackr.user.UserAccountEntity;
+import dev.jobtrackr.identity.UserAccountEntity;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;

@@ -1,11 +1,11 @@
 package dev.jobtrackr.application.dto;
 
-import dev.jobtrackr.domain.ApplicationPriority;
-import dev.jobtrackr.domain.ApplicationStatus;
-import dev.jobtrackr.domain.ContractType;
-import dev.jobtrackr.domain.RecruitmentStage;
-import dev.jobtrackr.domain.SalaryPeriod;
-import dev.jobtrackr.interview.dto.InterviewResponse;
+import dev.jobtrackr.application.domain.ApplicationPriority;
+import dev.jobtrackr.application.domain.ApplicationStatus;
+import dev.jobtrackr.application.domain.ContractType;
+import dev.jobtrackr.application.domain.RecruitmentStage;
+import dev.jobtrackr.application.domain.SalaryPeriod;
+import dev.jobtrackr.application.interview.dto.InterviewResponse;
 
 import java.math.BigDecimal;
 import java.time.Instant;

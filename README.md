@@ -1,6 +1,6 @@
 # JobTrackr
 
-JobTrackr is a simple cloud workspace for tracking job applications, follow-ups and interviews.
+JobTrackr is a cloud workspace for tracking job applications, follow-ups and interviews.
 
 **Live app:** https://trackmyjob-zakaria.netlify.app/
 
@@ -10,8 +10,8 @@ JobTrackr is a simple cloud workspace for tracking job applications, follow-ups 
 - application tracking with list and Kanban views
 - recruitment stages, priorities and follow-up dates
 - recruiter and interview tracking
-- dashboard with upcoming actions and pipeline metrics
-- JSON import/export
+- action-oriented dashboard and pipeline metrics
+- safe JSON backup import/export
 - synchronized data across devices
 
 ## Architecture
@@ -26,15 +26,68 @@ Render · Spring Boot
 Neon · PostgreSQL
 ```
 
-JobTrackr requires an account. Profile and application data are stored through the backend API and PostgreSQL; there is no LocalStorage data mode.
+JobTrackr requires an account. Profile and application data are stored through the backend API and PostgreSQL; there is no LocalStorage business-data mode.
 
-### Backend package structure
+### Repository structure
 
-The backend is organized by feature. API models and exceptions are kept out of controllers so each class has one clear responsibility.
+```text
+job-application-tracker/
+├── frontend/                 # Angular application
+│   ├── src/app/
+│   │   ├── core/             # app-wide API, auth, workspace and notifications
+│   │   ├── features/         # product features
+│   │   │   ├── applications/
+│   │   │   ├── dashboard/
+│   │   │   ├── account/
+│   │   │   └── profile/
+│   │   └── shared/           # reusable UI primitives
+│   ├── package.json
+│   └── angular.json
+├── backend/                  # Spring Boot API
+│   └── src/main/java/dev/jobtrackr/
+├── .github/workflows/        # CI
+├── netlify.toml
+├── render.yaml
+└── DEPLOYMENT.md
+```
+
+### Frontend organization
+
+The Angular codebase is feature-first. Product code lives next to the feature that owns it instead of being distributed across global `components`, `services` and `models` folders.
+
+```text
+frontend/src/app
+├── core
+│   ├── api
+│   ├── auth
+│   ├── notifications
+│   └── workspace
+├── features
+│   ├── applications
+│   │   ├── components
+│   │   ├── data-access
+│   │   ├── domain
+│   │   ├── models
+│   │   ├── pages
+│   │   └── testing
+│   ├── account
+│   ├── dashboard
+│   └── profile
+└── shared
+    └── ui
+```
+
+`ApplicationStore` owns application state and persistence coordination. Backup parsing/deduplication and serialization are isolated in `ApplicationImportService` and `ApplicationExportService`.
+
+### Backend organization
+
+The backend is organized by feature, while genuinely cross-cutting code stays under `common` and `security`.
 
 ```text
 dev.jobtrackr
 ├── application
+│   ├── domain
+│   ├── interview
 │   ├── dto
 │   ├── ApplicationController
 │   ├── ApplicationService
@@ -52,16 +105,15 @@ dev.jobtrackr
 │   ├── ProfileService
 │   ├── UserProfileEntity
 │   └── UserProfileRepository
-├── interview
-│   ├── dto
-│   └── InterviewEntity
+├── identity
+│   ├── UserAccountEntity
+│   └── UserAccountRepository
 ├── common
+│   ├── domain
 │   ├── exception
 │   ├── ApiExceptionHandler
 │   └── RequestLoggingFilter
-├── security
-├── domain
-└── user
+└── security
 ```
 
 Controllers handle HTTP concerns, services own use cases and transaction boundaries, entities own persistence state, DTOs define the API contract, and mappers translate persistence models to API responses.
@@ -112,9 +164,10 @@ cd backend
 mvn spring-boot:run
 ```
 
-Start Angular from the repository root:
+Start Angular:
 
 ```bash
+cd frontend
 npm ci
 npm start
 ```
@@ -126,6 +179,7 @@ Open `http://localhost:4200`, create an account, then use the application throug
 Frontend:
 
 ```bash
+cd frontend
 npm run test:ci
 npm run build -- --configuration production
 ```

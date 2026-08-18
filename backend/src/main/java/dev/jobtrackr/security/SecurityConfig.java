@@ -1,7 +1,7 @@
 package dev.jobtrackr.security;
 
 import dev.jobtrackr.common.RequestLoggingFilter;
-import dev.jobtrackr.user.UserAccountRepository;
+import dev.jobtrackr.identity.UserAccountRepository;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
