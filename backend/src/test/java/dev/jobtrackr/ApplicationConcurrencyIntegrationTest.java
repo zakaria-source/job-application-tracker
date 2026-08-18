@@ -1,5 +1,6 @@
 package dev.jobtrackr;
 
+import dev.jobtrackr.security.SessionCookieService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -13,6 +14,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import tools.jackson.databind.json.JsonMapper;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -67,7 +69,7 @@ class ApplicationConcurrencyIntegrationTest {
     }
 
     private String register() throws Exception {
-        String response = mockMvc.perform(post("/api/v1/auth/register")
+        var result = mockMvc.perform(post("/api/v1/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -77,8 +79,12 @@ class ApplicationConcurrencyIntegrationTest {
                     }
                     """))
             .andExpect(status().isCreated())
-            .andReturn().getResponse().getContentAsString();
-        return jsonMapper.readTree(response).path("accessToken").asText();
+            .andExpect(jsonPath("$.accessToken").doesNotExist())
+            .andReturn();
+
+        var cookie = result.getResponse().getCookie(SessionCookieService.COOKIE_NAME);
+        assertThat(cookie).isNotNull();
+        return cookie.getValue();
     }
 
     private String applicationJson(String notes) {
