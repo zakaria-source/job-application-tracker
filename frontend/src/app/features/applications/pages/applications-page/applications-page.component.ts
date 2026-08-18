@@ -20,7 +20,16 @@ const EMPTY_FILTERS: ApplicationFilterCriteria = {searchTerm: '', status: '', co
 @Component({
   selector: 'app-applications-page',
   standalone: true,
-  imports: [MatButtonModule, MatCardModule, MatIconModule, ApplicationFiltersComponent, ApplicationListComponent, ApplicationKanbanComponent, ApplicationDetailsComponent, ApplicationStudioComponent],
+  imports: [
+    MatButtonModule,
+    MatCardModule,
+    MatIconModule,
+    ApplicationFiltersComponent,
+    ApplicationListComponent,
+    ApplicationKanbanComponent,
+    ApplicationDetailsComponent,
+    ApplicationStudioComponent
+  ],
   templateUrl: './applications-page.component.html',
   styleUrl: './applications-page.component.css'
 })
@@ -54,7 +63,9 @@ export class ApplicationsPageComponent implements OnInit {
     private readonly workspace: WorkspaceService
   ) {
     this.workspaceState = workspace.state;
-    workspace.state$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(state => this.workspaceState = state);
+    workspace.state$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(state => this.workspaceState = state);
   }
 
   get hasActiveFilters(): boolean {
@@ -68,7 +79,8 @@ export class ApplicationsPageComponent implements OnInit {
         this.applications = applications;
         this.applyFilters(this.activeFilters);
         if (this.selectedApplication && !this.showForm) {
-          this.selectedApplication = applications.find(item => item.id === this.selectedApplication?.id) ?? this.selectedApplication;
+          this.selectedApplication = applications.find(item => item.id === this.selectedApplication?.id)
+            ?? this.selectedApplication;
         }
       });
   }
@@ -116,19 +128,31 @@ export class ApplicationsPageComponent implements OnInit {
   }
 
   onStageChange(change: ApplicationStageChange): void {
-    this.applicationStore.updateApplicationStage(change.applicationId, change.stage);
-    this.showFeedback(`Étape mise à jour · ${change.stage}`);
+    this.applicationStore.updateApplicationStage(change.applicationId, change.stage)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => this.showFeedback(`Étape mise à jour · ${change.stage}`),
+        error: () => this.showFeedback('Mise à jour impossible · le changement a été annulé')
+      });
   }
 
   advanceSelectedStage(stage: RecruitmentStage): void {
     if (!this.selectedApplication) return;
-    this.applicationStore.updateApplicationStage(this.selectedApplication.id, stage);
-    this.showFeedback(`Candidature avancée vers ${stage}`);
+    this.applicationStore.updateApplicationStage(this.selectedApplication.id, stage)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => this.showFeedback(`Candidature avancée vers ${stage}`),
+        error: () => this.showFeedback('Impossible de faire avancer la candidature')
+      });
   }
 
   completeFollowUp(application: JobApplication): void {
-    this.applicationStore.completeFollowUp(application.id);
-    this.showFeedback(`Relance marquée comme effectuée · ${application.company}`);
+    this.applicationStore.completeFollowUp(application.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => this.showFeedback(`Relance marquée comme effectuée · ${application.company}`),
+        error: () => this.showFeedback('Impossible de terminer la relance · le changement a été annulé')
+      });
   }
 
   showAddForm(): void {
@@ -163,26 +187,43 @@ export class ApplicationsPageComponent implements OnInit {
   confirmDelete(): void {
     const application = this.pendingDelete;
     if (!application) return;
-    this.applicationStore.deleteApplication(application.id);
-    this.pendingDelete = null;
-    if (this.selectedApplication?.id === application.id) this.closeDetails();
-    this.showFeedback(`Candidature supprimée · ${application.company}`);
+
+    this.applicationStore.deleteApplication(application.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.pendingDelete = null;
+          if (this.selectedApplication?.id === application.id) this.closeDetails();
+          this.showFeedback(`Candidature supprimée · ${application.company}`);
+        },
+        error: () => this.showFeedback('Suppression impossible · la candidature a été restaurée')
+      });
   }
 
   onFormSubmit(application: JobApplication): void {
     if (this.editMode) {
-      this.applicationStore.updateApplication(application);
-      this.showFeedback(`Candidature mise à jour · ${application.company}`);
-    } else {
-      this.applicationStore.addApplication(application, {
-        onSuccess: saved => {
+      this.applicationStore.updateApplication(application)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: saved => {
+            this.showFeedback(`Candidature mise à jour · ${saved.company}`);
+            this.cancelForm();
+          },
+          error: error => this.showFeedback(this.updateErrorMessage(error))
+        });
+      return;
+    }
+
+    this.applicationStore.addApplication(application)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: saved => {
           this.draftService.clear();
           this.showFeedback(`Candidature ajoutée au pipeline · ${saved.company}`);
+          this.cancelForm();
         },
-        onError: () => this.showFeedback('Ajout impossible · votre brouillon a été conservé')
+        error: () => this.showFeedback('Ajout impossible · votre brouillon a été conservé')
       });
-    }
-    this.cancelForm();
   }
 
   cancelForm(): void {
@@ -227,15 +268,34 @@ export class ApplicationsPageComponent implements OnInit {
 
   confirmImport(): void {
     if (!this.importPreview) return;
-    const count = this.applicationStore.mergeApplications(this.importPreview.applications);
-    this.closeImportPreview();
-    this.showFeedback(count > 0 ? `${count} candidature${count > 1 ? 's' : ''} importée${count > 1 ? 's' : ''}` : 'Aucune nouvelle candidature à importer');
+    const applications = this.importPreview.applications;
+
+    this.applicationStore.mergeApplications(applications)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: count => {
+          this.closeImportPreview();
+          this.showFeedback(count > 0
+            ? `${count} candidature${count > 1 ? 's' : ''} importée${count > 1 ? 's' : ''}`
+            : 'Aucune nouvelle candidature à importer');
+        },
+        error: () => {
+          this.importError = 'Import impossible pour le moment. Aucun succès n’est affiché avant confirmation serveur.';
+        }
+      });
   }
 
   closeImportPreview(): void {
     this.importPreview = null;
     this.importError = '';
     this.importFileName = '';
+  }
+
+  private updateErrorMessage(error: unknown): string {
+    const status = (error as {status?: number})?.status;
+    return status === 412
+      ? 'Cette candidature a été modifiée ailleurs · rechargez la version récente avant de réessayer'
+      : 'Mise à jour impossible · vos modifications restent ouvertes';
   }
 
   private showFeedback(message: string): void {
