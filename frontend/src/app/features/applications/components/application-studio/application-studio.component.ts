@@ -1,3 +1,4 @@
+import {A11yModule} from '@angular/cdk/a11y';
 import {
   AfterViewInit,
   Component,
@@ -23,7 +24,7 @@ import {JobImportPreview} from '@app/features/applications/models/job-import.mod
 @Component({
   selector: 'app-application-studio',
   standalone: true,
-  imports: [MatButtonModule, MatIconModule, ApplicationFormComponent],
+  imports: [A11yModule, MatButtonModule, MatIconModule, ApplicationFormComponent],
   templateUrl: './application-studio.component.html',
   styleUrls: ['./application-studio.component.css', './application-studio-draft.css']
 })
