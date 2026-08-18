@@ -39,7 +39,9 @@ describe('DemoDataService', () => {
   it('loads three fictional applications only when explicitly requested', () => {
     expect(storage.getApplicationById('demo-acme-cloud-backend')).toBeUndefined();
 
-    expect(demoData.load()).toBe(3);
+    let imported = -1;
+    demoData.load().subscribe(count => imported = count);
+    expect(imported).toBe(3);
 
     expect(storage.getApplicationById('demo-acme-cloud-backend')?.company).toBe('Acme Cloud');
     expect(storage.getApplicationById('demo-nova-payments-software')?.company).toBe('Nova Payments');
@@ -47,7 +49,9 @@ describe('DemoDataService', () => {
   });
 
   it('uses the existing merge semantics and does not duplicate demo applications', () => {
-    expect(demoData.load()).toBe(3);
-    expect(demoData.load()).toBe(0);
+    const results: number[] = [];
+    demoData.load().subscribe(count => results.push(count));
+    demoData.load().subscribe(count => results.push(count));
+    expect(results).toEqual([3, 0]);
   });
 });
