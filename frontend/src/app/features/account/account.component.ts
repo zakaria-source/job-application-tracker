@@ -3,7 +3,7 @@ import {Component, DestroyRef, inject} from '@angular/core';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import {MatIconModule} from '@angular/material/icon';
-import {Router, RouterLink} from '@angular/router';
+import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {switchMap} from 'rxjs';
 import {AuthService} from '@app/core/auth/auth.service';
 import {AuthSession, SessionStore} from '@app/core/auth/session.store';
@@ -26,6 +26,7 @@ export class AccountComponent {
   private readonly workspace = inject(WorkspaceService);
   private readonly profiles = inject(UserProfileService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   mode: 'login' | 'register' = 'login';
   session: AuthSession | null = this.sessions.current;
@@ -46,6 +47,15 @@ export class AccountComponent {
     this.workspace.state$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(state => this.workspaceState = state);
+    this.route.queryParamMap
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(params => {
+        const requestedMode = params.get('mode');
+        if (requestedMode === 'login' || requestedMode === 'register') {
+          this.setMode(requestedMode);
+          requestAnimationFrame(() => document.getElementById('auth')?.scrollIntoView({behavior: 'smooth', block: 'center'}));
+        }
+      });
   }
 
   setMode(mode: 'login' | 'register'): void {
@@ -62,8 +72,8 @@ export class AccountComponent {
     displayName.markAsUntouched();
   }
 
-  openAuth(mode: 'login' | 'register'): void {
-    this.setMode(mode);
+  openRegistration(): void {
+    this.setMode('register');
     requestAnimationFrame(() => document.getElementById('auth')?.scrollIntoView({behavior: 'smooth', block: 'center'}));
   }
 
