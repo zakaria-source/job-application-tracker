@@ -19,7 +19,7 @@
         </nav>
       } @else if (isPublicEntry) {
         <nav class="public-nav" aria-label="Navigation de présentation">
-          <a href="#product">Produit</a>
+          <a href="#capabilities">Fonctionnalités</a>
           <a href="#workflow">Workflow</a>
         </nav>
       }
@@ -43,8 +43,7 @@
             <span>Configuration sécurisée</span>
           </span>
         } @else {
-          <a class="signin-link" href="#auth">Connexion</a>
-          <a class="start-link" href="#auth">Commencer</a>
+          <a class="signin-link" routerLink="/account" [queryParams]="{mode: 'login'}" fragment="auth">Se connecter</a>
         }
       </div>
     </div>
