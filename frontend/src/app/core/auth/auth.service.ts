@@ -1,7 +1,7 @@
 import {HttpClient} from '@angular/common/http';
 import {Injectable} from '@angular/core';
 import {Observable, tap} from 'rxjs';
-import {CloudSession, SessionStore} from '@app/core/auth/session.store';
+import {AuthSession, SessionStore} from '@app/core/auth/session.store';
 
 @Injectable({providedIn: 'root'})
 export class AuthService {
@@ -12,13 +12,13 @@ export class AuthService {
     private readonly sessions: SessionStore
   ) {}
 
-  login(email: string, password: string): Observable<CloudSession> {
-    return this.http.post<CloudSession>(`${this.authUrl}/login`, {email, password})
+  login(email: string, password: string): Observable<AuthSession> {
+    return this.http.post<AuthSession>(`${this.authUrl}/login`, {email, password})
       .pipe(tap(session => this.sessions.save(session)));
   }
 
-  register(email: string, password: string, displayName: string): Observable<CloudSession> {
-    return this.http.post<CloudSession>(`${this.authUrl}/register`, {email, password, displayName})
+  register(email: string, password: string, displayName: string): Observable<AuthSession> {
+    return this.http.post<AuthSession>(`${this.authUrl}/register`, {email, password, displayName})
       .pipe(tap(session => this.sessions.save(session)));
   }
 
