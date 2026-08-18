@@ -73,14 +73,17 @@ describe('ApplicationStore', () => {
         return of({imported: items.length, skipped: 0});
       },
       completeCurrentFollowUp: (id: string) => {
-        serverApplications = serverApplications.map(item => item.id === id ? {...item, followUpDate: undefined} : item);
+        const completedAt = new Date('2026-08-18T12:00:00');
+        serverApplications = serverApplications.map(item => item.id === id
+          ? {...item, version: (item.version ?? 0) + 1, followUpDate: undefined, lastUpdated: completedAt}
+          : item);
         return of({
           id: 'follow-up-1',
           scheduledFor: new Date('2026-08-18T00:00:00'),
           status: 'COMPLETED',
-          completedAt: new Date('2026-08-18T12:00:00'),
+          completedAt,
           createdAt: new Date('2026-08-17T12:00:00'),
-          updatedAt: new Date('2026-08-18T12:00:00')
+          updatedAt: completedAt
         });
       }
     } as unknown as JobTrackrApiService;
@@ -148,12 +151,13 @@ describe('ApplicationStore', () => {
     expect(service.getApplicationById('1')?.responseDate).toEqual(firstResponse);
   });
 
-  it('completes a follow-up by clearing its due date and recording activity', () => {
+  it('completes a follow-up, refreshes the server version and clears its due date', () => {
     const completedAt = new Date('2026-08-18T12:00:00');
     service.addApplication({...application, followUpDate: new Date('2026-08-18T08:00:00')}).subscribe();
     service.completeFollowUp('1', completedAt).subscribe();
     expect(service.getApplicationById('1')?.followUpDate).toBeUndefined();
     expect(service.getApplicationById('1')?.lastUpdated).toEqual(completedAt);
+    expect(service.getApplicationById('1')?.version).toBe(1);
   });
 
   it('rolls back an optimistic edit when the backend rejects it', () => {
