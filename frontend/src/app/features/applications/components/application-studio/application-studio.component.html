@@ -52,13 +52,8 @@
                   (paste)="onJobUrlPaste($event)">
               </div>
               <button mat-stroked-button type="button" [disabled]="jobUrlLoading || !jobUrl.trim()" (click)="analyzeJobUrl()">
-                @if (jobUrlLoading) {
-                  <mat-icon class="spin">progress_activity</mat-icon>Analyse…
-                } @else if (jobUrlPreview) {
-                  <mat-icon>refresh</mat-icon>Réanalyser
-                } @else {
-                  <mat-icon>bolt</mat-icon>Préremplir
-                }
+                <mat-icon [class.spin]="jobUrlLoading">{{ analysisButtonIcon }}</mat-icon>
+                <span>{{ analysisButtonLabel }}</span>
               </button>
             </div>
 

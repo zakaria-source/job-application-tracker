@@ -158,6 +158,16 @@ export class ApplicationStudioComponent implements OnChanges, AfterViewInit, OnD
     ].filter(Boolean).length;
   }
 
+  get analysisButtonIcon(): string {
+    if (this.jobUrlLoading) return 'progress_activity';
+    return this.jobUrlPreview ? 'refresh' : 'bolt';
+  }
+
+  get analysisButtonLabel(): string {
+    if (this.jobUrlLoading) return 'Analyse…';
+    return this.jobUrlPreview ? 'Réanalyser' : 'Préremplir';
+  }
+
   onJobUrlInput(value: string): void {
     this.jobUrl = value;
     this.formComponent?.setOfferUrl(value);
