@@ -12,8 +12,7 @@
       <div class="applications-count"><strong>{{ applications.length }}</strong><span>candidature{{ applications.length > 1 ? 's' : '' }} suivie{{ applications.length > 1 ? 's' : '' }}</span></div>
       <div class="header-actions">
         <span class="shortcut-hint"><kbd>N</kbd> Nouvelle</span>
-        <button mat-stroked-button type="button" (click)="openUrlImport()"><mat-icon>link</mat-icon>Importer une offre</button>
-        <button mat-flat-button color="primary" type="button" (click)="showAddForm()"><mat-icon>add</mat-icon>Ajouter une candidature</button>
+        <button mat-flat-button color="primary" type="button" (click)="showAddForm()"><mat-icon>add</mat-icon>Nouvelle candidature</button>
       </div>
     </div>
 
@@ -37,7 +36,7 @@
     <input #importFile hidden type="file" accept="application/json,.json" (change)="importApplications($event)">
 
     @if (applications.length === 0) {
-      <div class="no-data onboarding-empty"><span class="empty-kicker">PIPELINE VIDE</span><h3>Ajoutez votre première opportunité.</h3><p>Collez l’URL d’une offre pour préremplir les informations, ou ajoutez-la manuellement.</p><div class="empty-actions"><button mat-flat-button color="primary" (click)="openUrlImport()"><mat-icon>link</mat-icon>Importer une offre</button><button mat-stroked-button (click)="showAddForm()">Saisie manuelle</button></div></div>
+      <div class="no-data onboarding-empty"><span class="empty-kicker">PIPELINE VIDE</span><h3>Capturez votre première opportunité.</h3><p>Ajoutez-la manuellement ou collez directement l’URL de l’offre dans le Studio pour préremplir les informations.</p><div class="empty-actions"><button mat-flat-button color="primary" (click)="showAddForm()"><mat-icon>add</mat-icon>Nouvelle candidature</button></div></div>
     }
 
     @if (applications.length > 0 && filteredApplications.length === 0) {
@@ -57,66 +56,12 @@
 </section>
 
 @if (showForm) {
-  <div class="secondary-panel" role="region" aria-label="Formulaire de candidature"><app-application-form [editMode]="editMode" [application]="selectedApplication" (formSubmit)="onFormSubmit($event)" (cancel)="cancelForm()" /></div>
+  <app-application-studio [editMode]="editMode" [application]="selectedApplication" (save)="onFormSubmit($event)" (closed)="cancelForm()" />
 }
 
 @if (selectedApplication && showDetails) {
   <div class="details-card" role="region" aria-label="Détail de candidature">
     <app-application-details [application]="selectedApplication" (close)="closeDetails()" (edit)="editApplication($event)" (delete)="deleteApplication($event)" (stageChange)="advanceSelectedStage($event)" (followUpComplete)="completeFollowUp($event)" />
-  </div>
-}
-
-@if (showUrlImport) {
-  <div class="dialog-backdrop" role="presentation" (click)="closeUrlImport()">
-    <section class="product-dialog url-import-dialog" role="dialog" aria-modal="true" aria-labelledby="url-import-title" (click)="$event.stopPropagation()">
-      <header>
-        <div><span>IMPORT DEPUIS LE WEB</span><h2 id="url-import-title">Analyser une offre publique</h2><p>JobTrackr lit uniquement la page que vous indiquez et vous laisse vérifier chaque champ.</p></div>
-        <button type="button" aria-label="Fermer" (click)="closeUrlImport()"><mat-icon>close</mat-icon></button>
-      </header>
-
-      <div class="url-import-body">
-        <form class="url-import-form" (submit)="$event.preventDefault(); analyzeJobUrl()">
-          <label for="job-url">URL de l’offre</label>
-          <div class="url-input-row">
-            <input id="job-url" type="url" maxlength="2048" autocomplete="url" placeholder="https://careers.example.com/jobs/backend-engineer" [value]="jobUrl" (input)="jobUrl = $any($event.target).value">
-            <button mat-flat-button color="primary" type="submit" [disabled]="jobUrlLoading || !jobUrl.trim()">
-              @if (jobUrlLoading) { <mat-icon class="spin">progress_activity</mat-icon>Analyser… } @else { <mat-icon>travel_explore</mat-icon>Analyser }
-            </button>
-          </div>
-          <small>HTTPS uniquement · pages publiques · aucun CAPTCHA ou contournement anti-bot.</small>
-        </form>
-
-        @if (jobUrlError) {
-          <div class="dialog-error"><mat-icon>error</mat-icon><span>{{ jobUrlError }}</span></div>
-        }
-
-        @if (jobUrlPreview) {
-          <div class="url-preview-heading">
-            <div><span>APERÇU DÉTECTÉ</span><strong>{{ extractionSourceLabel(jobUrlPreview.extractionSource) }}</strong></div>
-            <span class="confidence" [class.low]="jobUrlPreview.confidence === 'LOW'">Confiance {{ confidenceLabel(jobUrlPreview.confidence) }}</span>
-          </div>
-          <div class="url-preview-grid">
-            <div><small>Entreprise</small><strong>{{ jobUrlPreview.company || 'À compléter' }}</strong></div>
-            <div><small>Poste</small><strong>{{ jobUrlPreview.position || 'À compléter' }}</strong></div>
-            <div><small>Localisation</small><strong>{{ jobUrlPreview.location || 'Non détectée' }}</strong></div>
-            <div><small>Contrat</small><strong>{{ jobUrlPreview.contractType }}</strong></div>
-            @if (jobUrlPreview.salary) { <div><small>Rémunération annoncée</small><strong>{{ jobUrlPreview.salary }}</strong></div> }
-            @if (jobUrlPreview.datePosted) { <div><small>Publication</small><strong>{{ jobUrlPreview.datePosted }}</strong></div> }
-          </div>
-          @if (jobUrlPreview.description) {
-            <div class="url-description"><small>DESCRIPTION EXTRAITE</small><p>{{ jobUrlPreview.description }}</p></div>
-          }
-          @if (jobUrlPreview.warnings.length > 0) {
-            <div class="url-warnings">@for (warning of jobUrlPreview.warnings; track warning) { <div><mat-icon>info</mat-icon><span>{{ warning }}</span></div> }</div>
-          }
-        }
-      </div>
-
-      <footer>
-        <button mat-stroked-button type="button" (click)="closeUrlImport()">Annuler</button>
-        @if (jobUrlPreview) { <button mat-flat-button color="primary" type="button" (click)="useJobUrlPreview()"><mat-icon>edit_note</mat-icon>Vérifier dans le formulaire</button> }
-      </footer>
-    </section>
   </div>
 }
 
