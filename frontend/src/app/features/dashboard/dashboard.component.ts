@@ -45,6 +45,15 @@ interface StageSummary {
   count: number;
 }
 
+const SHORT_DATE = new Intl.DateTimeFormat('fr-FR', {day: '2-digit', month: 'short'});
+const INTERVIEW_DATE = new Intl.DateTimeFormat('fr-FR', {
+  weekday: 'short',
+  day: '2-digit',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit'
+});
+
 @Component({
   selector: 'app-dashboard',
   standalone: true,
@@ -108,7 +117,9 @@ export class DashboardComponent implements OnInit {
   }
 
   completeFollowUp(applicationId: string): void {
-    this.applicationStore.completeFollowUp(applicationId);
+    this.applicationStore.completeFollowUp(applicationId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({error: () => undefined});
   }
 
   stageShare(count: number): number {
@@ -118,7 +129,17 @@ export class DashboardComponent implements OnInit {
   private refreshDashboard(applications: JobApplication[]): void {
     const now = new Date();
     this.applications = [...applications].sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
-    this.activeApplications = applications.filter(app => app.status !== 'Accepté' && app.status !== 'Refusé').length;
+
+    const stageCounts = new Map<RecruitmentStage, number>();
+    let activeApplications = 0;
+    for (const application of applications) {
+      if (application.status !== 'Accepté' && application.status !== 'Refusé') {
+        activeApplications++;
+      }
+      stageCounts.set(application.stage, (stageCounts.get(application.stage) ?? 0) + 1);
+    }
+    this.activeApplications = activeApplications;
+
     this.statistics = this.applicationStore.calculateStatistics();
     this.interviewRate = this.statistics.totalApplications > 0
       ? Math.round((this.statistics.statusCounts.interview / this.statistics.totalApplications) * 100)
@@ -134,7 +155,7 @@ export class DashboardComponent implements OnInit {
     this.stageSummary = this.activeStages.map(({stage, label}) => ({
       stage,
       shortLabel: label,
-      count: applications.filter(application => application.stage === stage).length
+      count: stageCounts.get(stage) ?? 0
     }));
   }
 
@@ -203,21 +224,23 @@ export class DashboardComponent implements OnInit {
         position: item.application.position,
         label: item.state === 'overdue' ? 'Relance en retard' : 'Relancer aujourd’hui',
         detail: item.state === 'overdue'
-          ? `Prévue le ${new Intl.DateTimeFormat('fr-FR', {day: '2-digit', month: 'short'}).format(item.date)}`
+          ? `Prévue le ${SHORT_DATE.format(item.date)}`
           : 'Action prévue pour aujourd’hui',
         kind: 'follow-up',
         due: item.date
       });
     }
 
-    for (const interview of this.upcomingInterviews.filter(item => item.date.getTime() - Date.now() <= 3 * 24 * 60 * 60 * 1000)) {
+    const threeDays = 3 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    for (const interview of this.upcomingInterviews.filter(item => item.date.getTime() - now <= threeDays)) {
       actions.push({
         id: `interview-${interview.id}`,
         applicationId: interview.applicationId,
         company: interview.company,
         position: interview.position,
         label: 'Préparer l’entretien',
-        detail: `${new Intl.DateTimeFormat('fr-FR', {weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'}).format(interview.date)} · ${interview.type}`,
+        detail: `${INTERVIEW_DATE.format(interview.date)} · ${interview.type}`,
         kind: 'interview',
         due: interview.date
       });
@@ -236,6 +259,9 @@ export class DashboardComponent implements OnInit {
     }
 
     const priority = {'follow-up': 0, interview: 1, stale: 2} as const;
-    return actions.sort((a, b) => priority[a.kind] - priority[b.kind] || (a.due?.getTime() ?? Infinity) - (b.due?.getTime() ?? Infinity));
+    return actions.sort((a, b) =>
+      priority[a.kind] - priority[b.kind]
+      || (a.due?.getTime() ?? Infinity) - (b.due?.getTime() ?? Infinity)
+    );
   }
 }
