@@ -1,4 +1,4 @@
-import {HttpClient} from '@angular/common/http';
+import {HttpClient, HttpHeaders} from '@angular/common/http';
 import {Injectable} from '@angular/core';
 import {Observable, map} from 'rxjs';
 import {Interview, JobApplication, RecruitmentStage} from '@app/features/applications/models/application.model';
@@ -56,9 +56,13 @@ export class JobTrackrApiService {
   }
 
   updateApplication(application: JobApplication): Observable<JobApplication> {
+    const headers = application.version === undefined
+      ? undefined
+      : new HttpHeaders({'If-Match': `"${application.version}"`});
     return this.http.put<ApplicationDto>(
       `${this.applicationsUrl}/${encodeURIComponent(application.id)}`,
-      this.toApplicationRequest(application)
+      this.toApplicationRequest(application),
+      {headers}
     ).pipe(map(item => this.hydrateApplication(item)));
   }
 
