@@ -25,14 +25,18 @@ export class App {
       .subscribe(applications => notificationService.syncReminders(applications));
   }
 
+  get isOnboarding(): boolean {
+    return this.router.url.startsWith('/onboarding');
+  }
+
   get pageTitle(): string {
     if (this.router.url.startsWith('/applications')) {
-      return 'Pipeline de candidatures';
+      return 'Candidatures';
     }
     if (this.router.url.startsWith('/settings/profile')) {
       return 'Profil & préférences';
     }
-    if (this.router.url.startsWith('/onboarding')) {
+    if (this.isOnboarding) {
       return 'Bienvenue sur JobTrackr';
     }
     return 'Tableau de bord';
@@ -40,14 +44,14 @@ export class App {
 
   get pageDescription(): string {
     if (this.router.url.startsWith('/applications')) {
-      return 'Candidatures, relances, contacts et étapes de recrutement centralisés au même endroit.';
+      return 'Pilotez votre pipeline, vos relances et chaque étape du recrutement depuis un seul espace.';
     }
     if (this.router.url.startsWith('/settings/profile')) {
-      return 'Personnalisez le contexte affiché dans votre espace de recherche.';
+      return 'Ajustez votre positionnement et les informations affichées sur votre tableau de bord.';
     }
-    if (this.router.url.startsWith('/onboarding')) {
+    if (this.isOnboarding) {
       return 'Créez votre espace local en quelques informations, puis commencez à suivre vos candidatures.';
     }
-    return 'Priorités, relances, entretiens et progression de votre recherche d’emploi.';
+    return 'Voyez immédiatement ce qui mérite votre attention : relances, priorités, entretiens et progression.';
   }
 }
