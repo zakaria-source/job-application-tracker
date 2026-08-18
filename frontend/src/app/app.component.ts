@@ -1,12 +1,12 @@
 import {Component, DestroyRef, inject} from '@angular/core';
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {MatIconModule} from '@angular/material/icon';
 import {Router, RouterLink, RouterLinkActive, RouterOutlet} from '@angular/router';
-import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {SessionStore} from '@app/core/auth/session.store';
-import {WorkspaceService} from '@app/core/workspace/workspace.service';
-import {BrandMarkComponent} from './components/ui/brand-mark/brand-mark.component';
-import {ApplicationStore} from '@app/features/applications/data-access/application.store';
 import {NotificationService} from '@app/core/notifications/notification.service';
+import {WorkspaceService} from '@app/core/workspace/workspace.service';
+import {ApplicationStore} from '@app/features/applications/data-access/application.store';
+import {BrandMarkComponent} from '@app/shared/ui/brand-mark/brand-mark.component';
 
 @Component({
   selector: 'app-root',
@@ -21,12 +21,12 @@ export class App {
   constructor(
     readonly router: Router,
     readonly sessions: SessionStore,
-    storageService: ApplicationStore,
+    applicationStore: ApplicationStore,
     notificationService: NotificationService,
-    cloudWorkspace: WorkspaceService
+    workspace: WorkspaceService
   ) {
-    cloudWorkspace.bootstrap();
-    storageService.getApplications()
+    workspace.bootstrap();
+    applicationStore.getApplications()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(applications => notificationService.syncReminders(applications));
   }
