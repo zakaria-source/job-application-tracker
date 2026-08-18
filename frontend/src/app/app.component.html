@@ -1,7 +1,7 @@
 <div class="app-shell" [class.public-shell]="isPublicEntry">
   <header class="topbar">
     <div class="topbar-inner">
-      <a class="brand" [routerLink]="cloudConnected ? '/dashboard' : '/account'" aria-label="JobTrackr — Accueil">
+      <a class="brand" [routerLink]="isOnboarding ? '/onboarding' : cloudConnected ? '/dashboard' : '/account'" aria-label="JobTrackr — Accueil">
         <app-brand-mark [compact]="true" />
         <strong>JobTrackr</strong>
       </a>
