@@ -68,7 +68,7 @@ public class AuthController {
             now
         );
         users.save(user);
-        profiles.save(new UserProfileEntity(user, now));
+        profiles.save(new UserProfileEntity(user.getId(), now));
         return response(user);
     }
 
