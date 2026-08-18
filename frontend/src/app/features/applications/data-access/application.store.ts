@@ -111,7 +111,14 @@ export class ApplicationStore {
     this.replaceApplication(optimistic);
 
     return this.api.completeCurrentFollowUp(id).pipe(
-      map(followUp => followUp as FollowUp | null),
+      switchMap(followUp => this.refresh().pipe(
+        map(() => followUp as FollowUp | null),
+        catchError(() => {
+          const current = this.getApplicationById(id);
+          if (current) this.replaceApplication({...current, version: undefined});
+          return of(followUp as FollowUp | null);
+        })
+      )),
       catchError(error => {
         this.replaceApplication(application);
         return throwError(() => error);
