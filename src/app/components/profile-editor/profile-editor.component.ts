@@ -1,5 +1,6 @@
+import {HttpErrorResponse} from '@angular/common/http';
 import {Component, inject} from '@angular/core';
-import {ReactiveFormsModule, FormBuilder, Validators} from '@angular/forms';
+import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
 import {Router} from '@angular/router';
 import {UserProfile} from '../../models/user-profile.model';
 import {UserProfileService} from '../../services/user-profile.service';
@@ -8,87 +9,8 @@ import {UserProfileService} from '../../services/user-profile.service';
   selector: 'app-profile-editor',
   standalone: true,
   imports: [ReactiveFormsModule],
-  template: `
-    <section class="profile-editor">
-      <div class="editor-card">
-        <div class="editor-heading">
-          <span class="eyebrow">{{ isEditing ? 'PROFIL PROFESSIONNEL' : 'CONFIGURATION' }}</span>
-          <h1>{{ isEditing ? 'Informations principales' : 'Configurez votre espace' }}</h1>
-          <p>{{ isEditing ? 'Les informations utilisées pour personnaliser votre suivi.' : 'Renseignez uniquement l’essentiel pour démarrer.' }}</p>
-        </div>
-
-        <form [formGroup]="form" (ngSubmit)="save()">
-          <div class="form-grid">
-            <label>
-              <span>Nom *</span>
-              <input formControlName="name" autocomplete="name" placeholder="Alex Martin" />
-              @if (form.controls.name.touched && form.controls.name.invalid) {
-                <small class="field-error">Indiquez votre nom.</small>
-              }
-            </label>
-
-            <label>
-              <span>Poste recherché *</span>
-              <input formControlName="headline" placeholder="Backend Engineer" />
-              @if (form.controls.headline.touched && form.controls.headline.invalid) {
-                <small class="field-error">Indiquez le poste recherché.</small>
-              }
-            </label>
-
-            <label>
-              <span>Expérience</span>
-              <input formControlName="experienceLabel" placeholder="4 ans d’expérience" />
-            </label>
-
-            <label>
-              <span>Localisation</span>
-              <input formControlName="location" placeholder="Paris · Remote Europe" />
-            </label>
-
-            <label class="wide">
-              <span>Compétences principales</span>
-              <input formControlName="skills" placeholder="Java, Spring Boot, Kafka, Kubernetes" />
-              <small>Séparez les compétences par des virgules.</small>
-            </label>
-          </div>
-
-          <div class="form-actions">
-            @if (isEditing) {
-              <button type="button" class="secondary" (click)="cancel()">Annuler</button>
-            }
-            <button type="submit" class="primary" [disabled]="form.invalid">
-              {{ isEditing ? 'Enregistrer' : 'Continuer' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </section>
-  `,
-  styles: [`
-    :host { display: block; }
-    .profile-editor { max-width: 760px; margin: 0 auto; }
-    .editor-card { border: 1px solid var(--jt-border); border-radius: 12px; background: #fff; box-shadow: var(--jt-shadow-sm); overflow: hidden; }
-    .editor-heading { padding: 28px 30px 24px; border-bottom: 1px solid var(--jt-border); background: #fafafa; }
-    .eyebrow { display: block; margin-bottom: 8px; color: #8b93a3; font-size: 9px; font-weight: 720; letter-spacing: .14em; }
-    .editor-heading h1 { margin: 0; color: var(--jt-text); font-size: clamp(24px, 3vw, 29px); font-weight: 630; letter-spacing: -.04em; }
-    .editor-heading p { margin: 7px 0 0; color: var(--jt-text-muted); font-size: 12px; line-height: 1.55; }
-    form { padding: 28px 30px 26px; }
-    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-    label { display: flex; flex-direction: column; gap: 7px; color: #344054; font-size: 11px; font-weight: 620; }
-    label.wide { grid-column: 1 / -1; }
-    input { width: 100%; min-height: 43px; box-sizing: border-box; border: 1px solid var(--jt-border-strong); border-radius: 8px; padding: 0 12px; color: var(--jt-text); background: #fff; font: inherit; font-size: 12px; font-weight: 480; }
-    input:focus { outline: none; border-color: var(--jt-accent); box-shadow: 0 0 0 3px rgba(98,91,246,.11); }
-    input::placeholder { color: #a1a8b5; }
-    small { color: var(--jt-text-soft); font-size: 10px; font-weight: 500; line-height: 1.4; }
-    .field-error { color: var(--jt-danger); font-weight: 620; }
-    .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--jt-border); }
-    button { min-height: 39px; border-radius: 8px; padding: 0 16px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
-    button.primary { min-width: 116px; border: 0; color: #fff; background: var(--jt-primary); }
-    button.primary:hover { background: var(--jt-primary-strong); }
-    button.primary:disabled { opacity: .45; cursor: not-allowed; }
-    button.secondary { border: 1px solid var(--jt-border-strong); color: var(--jt-text-muted); background: #fff; }
-    @media (max-width: 620px) { .editor-heading, form { padding: 22px; } .form-grid { grid-template-columns: 1fr; } label.wide { grid-column: auto; } .form-actions { flex-direction: column-reverse; } .form-actions button { width: 100%; } }
-  `]
+  templateUrl: './profile-editor.component.html',
+  styleUrl: './profile-editor.component.css'
 })
 export class ProfileEditorComponent {
   private readonly fb = inject(FormBuilder);
@@ -97,6 +19,8 @@ export class ProfileEditorComponent {
   private readonly existingProfile = this.profileService.getProfile();
 
   readonly isEditing = this.profileService.hasProfile();
+  saving = false;
+  errorMessage = '';
 
   readonly form = this.fb.nonNullable.group({
     name: [this.existingProfile?.name ?? '', Validators.required],
@@ -107,7 +31,7 @@ export class ProfileEditorComponent {
   });
 
   save(): void {
-    if (this.form.invalid) {
+    if (this.form.invalid || this.saving) {
       this.form.markAllAsTouched();
       return;
     }
@@ -126,8 +50,18 @@ export class ProfileEditorComponent {
       targetCompensation: previous?.targetCompensation ?? ''
     };
 
-    this.profileService.saveProfile(profile);
-    void this.router.navigate(['/dashboard']);
+    this.saving = true;
+    this.errorMessage = '';
+    this.profileService.saveProfile(profile).subscribe({
+      next: () => {
+        this.saving = false;
+        void this.router.navigate(['/dashboard']);
+      },
+      error: error => {
+        this.saving = false;
+        this.errorMessage = this.readError(error);
+      }
+    });
   }
 
   cancel(): void {
@@ -139,5 +73,12 @@ export class ProfileEditorComponent {
       .split(',')
       .map(item => item.trim())
       .filter((item, index, all) => item.length > 0 && all.indexOf(item) === index);
+  }
+
+  private readError(error: unknown): string {
+    if (error instanceof HttpErrorResponse && error.status === 0) {
+      return 'Le service est momentanément indisponible. Votre profil n’a pas été modifié.';
+    }
+    return 'Impossible d’enregistrer le profil. Réessayez dans quelques instants.';
   }
 }
