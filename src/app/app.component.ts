@@ -38,29 +38,16 @@ export class App {
     return this.sessions.isAuthenticated();
   }
 
+  get accountInitials(): string {
+    const name = this.sessions.current?.user.displayName ?? 'JT';
+    return name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'JT';
+  }
+
   get pageTitle(): string {
     if (this.router.url.startsWith('/applications')) return 'Candidatures';
     if (this.router.url.startsWith('/settings/profile')) return 'Profil';
     if (this.router.url.startsWith('/account')) return 'Compte';
-    if (this.isOnboarding) return 'Bienvenue sur JobTrackr';
+    if (this.isOnboarding) return 'Bienvenue';
     return 'Vue d’ensemble';
-  }
-
-  get pageDescription(): string {
-    if (this.router.url.startsWith('/applications')) {
-      return 'Suivez chaque opportunité, relance et entretien.';
-    }
-    if (this.router.url.startsWith('/settings/profile')) {
-      return 'Adaptez votre espace à votre recherche.';
-    }
-    if (this.router.url.startsWith('/account')) {
-      return 'Gérez votre connexion et la synchronisation de vos données.';
-    }
-    if (this.isOnboarding) {
-      return this.cloudConnected
-        ? 'Complétez votre profil pour démarrer.'
-        : 'Quelques informations suffisent pour commencer.';
-    }
-    return 'Vos prochaines actions et l’état de votre recherche.';
   }
 }

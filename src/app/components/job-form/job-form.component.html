@@ -1,190 +1,190 @@
-<mat-card>
+<mat-card class="application-form-card">
   <mat-card-header>
-    <mat-card-title>{{ editMode ? 'Modifier la candidature' : 'Ajouter une candidature' }}</mat-card-title>
-    <mat-card-subtitle>Centralisez l'offre, le suivi recruteur et les prochaines actions.</mat-card-subtitle>
+    <mat-card-title>{{ editMode ? 'Modifier la candidature' : 'Nouvelle candidature' }}</mat-card-title>
   </mat-card-header>
   <mat-card-content>
     <form [formGroup]="jobForm" (ngSubmit)="onSubmit()">
-      <h3>Poste et offre</h3>
+      <section class="form-section primary-fields">
+        <div class="form-grid two-columns">
+          <mat-form-field appearance="outline">
+            <mat-label>Entreprise</mat-label>
+            <input matInput formControlName="company" required>
+            @if (jobForm.get('company')?.hasError('required')) {
+              <mat-error>L'entreprise est requise</mat-error>
+            }
+          </mat-form-field>
 
-      <div class="form-grid two-columns">
-        <mat-form-field>
-          <mat-label>Entreprise</mat-label>
-          <input matInput formControlName="company" required>
-          @if (jobForm.get('company')?.hasError('required')) {
-            <mat-error>L'entreprise est requise</mat-error>
-          }
-        </mat-form-field>
-
-        <mat-form-field>
-          <mat-label>Poste</mat-label>
-          <input matInput formControlName="position" required>
-          @if (jobForm.get('position')?.hasError('required')) {
-            <mat-error>Le poste est requis</mat-error>
-          }
-        </mat-form-field>
-      </div>
-
-      <mat-form-field class="full-width">
-        <mat-label>Lien de l'offre</mat-label>
-        <input matInput formControlName="offerUrl" type="url" placeholder="https://...">
-        <mat-icon matSuffix>link</mat-icon>
-        @if (jobForm.get('offerUrl')?.hasError('pattern')) {
-          <mat-error>Utilisez une URL commençant par http:// ou https://</mat-error>
-        }
-      </mat-form-field>
-
-      <div class="form-grid three-columns">
-        <mat-form-field>
-          <mat-label>Type de contrat</mat-label>
-          <mat-select formControlName="contractType">
-            <mat-option value="CDI">CDI</mat-option>
-            <mat-option value="CDD">CDD</mat-option>
-            <mat-option value="Freelance">Freelance</mat-option>
-            <mat-option value="Stage">Stage</mat-option>
-            <mat-option value="Alternance">Alternance</mat-option>
-            <mat-option value="Autre">Autre</mat-option>
-          </mat-select>
-        </mat-form-field>
-
-        <mat-form-field>
-          <mat-label>Salaire / TJM cible</mat-label>
-          <input matInput formControlName="salaryTarget" type="number" min="0">
-          @if (jobForm.get('salaryTarget')?.hasError('min')) {
-            <mat-error>La valeur doit être positive</mat-error>
-          }
-        </mat-form-field>
-
-        <mat-form-field>
-          <mat-label>Période</mat-label>
-          <mat-select formControlName="salaryPeriod">
-            <mat-option value="Annuel">Brut annuel</mat-option>
-            <mat-option value="Journalier">TJM</mat-option>
-          </mat-select>
-        </mat-form-field>
-      </div>
-
-      <mat-divider></mat-divider>
-      <h3>Suivi de candidature</h3>
-
-      <div class="form-grid two-columns">
-        <mat-form-field>
-          <mat-label>Date de candidature</mat-label>
-          <input matInput [matDatepicker]="applicationPicker" formControlName="applicationDate" required>
-          <mat-datepicker-toggle matIconSuffix [for]="applicationPicker"></mat-datepicker-toggle>
-          <mat-datepicker #applicationPicker></mat-datepicker>
-        </mat-form-field>
-
-        <mat-form-field>
-          <mat-label>Priorité</mat-label>
-          <mat-select formControlName="priority">
-            <mat-option value="Haute">Haute</mat-option>
-            <mat-option value="Moyenne">Moyenne</mat-option>
-            <mat-option value="Basse">Basse</mat-option>
-          </mat-select>
-        </mat-form-field>
-      </div>
-
-      <div class="form-grid two-columns">
-        <mat-form-field>
-          <mat-label>Étape de recrutement</mat-label>
-          <mat-select formControlName="stage">
-            <mat-option value="Candidature">Candidature</mat-option>
-            <mat-option value="Screening RH">Screening RH</mat-option>
-            <mat-option value="Entretien technique">Entretien technique</mat-option>
-            <mat-option value="Hiring Manager">Hiring Manager</mat-option>
-            <mat-option value="Entretien final">Entretien final</mat-option>
-            <mat-option value="Offre">Offre</mat-option>
-            <mat-option value="Clôturé">Clôturé</mat-option>
-          </mat-select>
-          <mat-hint>Le statut est calculé automatiquement depuis cette étape.</mat-hint>
-        </mat-form-field>
-
-        <mat-form-field>
-          <mat-label>Prochaine relance</mat-label>
-          <input matInput [matDatepicker]="followUpPicker" formControlName="followUpDate">
-          <mat-datepicker-toggle matIconSuffix [for]="followUpPicker"></mat-datepicker-toggle>
-          <mat-datepicker #followUpPicker></mat-datepicker>
-          <mat-hint>Laissez vide si aucune relance n'est prévue.</mat-hint>
-        </mat-form-field>
-      </div>
-
-      <mat-divider></mat-divider>
-      <h3>Recruteur / contact</h3>
-
-      <div class="form-grid three-columns">
-        <mat-form-field>
-          <mat-label>Nom du recruteur</mat-label>
-          <input matInput formControlName="recruiterName">
-        </mat-form-field>
-
-        <mat-form-field>
-          <mat-label>Email</mat-label>
-          <input matInput formControlName="recruiterEmail" type="email">
-          @if (jobForm.get('recruiterEmail')?.hasError('email')) {
-            <mat-error>Veuillez entrer un email valide</mat-error>
-          }
-        </mat-form-field>
-
-        <mat-form-field>
-          <mat-label>Téléphone</mat-label>
-          <input matInput formControlName="recruiterPhone">
-        </mat-form-field>
-      </div>
-
-      <mat-form-field class="full-width">
-        <mat-label>Notes</mat-label>
-        <textarea matInput formControlName="notes" rows="4" placeholder="Contexte, process, éléments à préparer, feedback..."></textarea>
-      </mat-form-field>
-
-      <mat-divider></mat-divider>
-      <div class="section-heading">
-        <div>
-          <h3>Entretiens</h3>
-          <p>Ajoutez les rendez-vous liés à cette candidature.</p>
+          <mat-form-field appearance="outline">
+            <mat-label>Poste</mat-label>
+            <input matInput formControlName="position" required>
+            @if (jobForm.get('position')?.hasError('required')) {
+              <mat-error>Le poste est requis</mat-error>
+            }
+          </mat-form-field>
         </div>
-        <button type="button" mat-stroked-button color="primary" (click)="addInterview()">
-          <mat-icon>add</mat-icon> Ajouter
-        </button>
-      </div>
 
-      <div formArrayName="interviews">
-        @for (interview of interviews.controls; track interview; let i = $index) {
-          <div [formGroupName]="i" class="interview-item">
-            <div class="form-grid two-columns">
-              <mat-form-field>
-                <mat-label>Date de l'entretien</mat-label>
-                <input matInput [matDatepicker]="interviewPicker" formControlName="date" required>
-                <mat-datepicker-toggle matIconSuffix [for]="interviewPicker"></mat-datepicker-toggle>
-                <mat-datepicker #interviewPicker></mat-datepicker>
-              </mat-form-field>
-              <mat-form-field>
-                <mat-label>Type</mat-label>
-                <mat-select formControlName="type" required>
-                  <mat-option value="Téléphone">Téléphone</mat-option>
-                  <mat-option value="Visioconférence">Visioconférence</mat-option>
-                  <mat-option value="En personne">En personne</mat-option>
-                </mat-select>
-              </mat-form-field>
-            </div>
-            <mat-form-field class="full-width">
-              <mat-label>Notes de l'entretien</mat-label>
-              <textarea matInput formControlName="notes" rows="2"></textarea>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Lien de l'offre</mat-label>
+          <input matInput formControlName="offerUrl" type="url" placeholder="https://...">
+          <mat-icon matSuffix>link</mat-icon>
+          @if (jobForm.get('offerUrl')?.hasError('pattern')) {
+            <mat-error>Utilisez une URL commençant par http:// ou https://</mat-error>
+          }
+        </mat-form-field>
+
+        <div class="form-grid two-columns">
+          <mat-form-field appearance="outline">
+            <mat-label>Date de candidature</mat-label>
+            <input matInput [matDatepicker]="applicationPicker" formControlName="applicationDate" required>
+            <mat-datepicker-toggle matIconSuffix [for]="applicationPicker"></mat-datepicker-toggle>
+            <mat-datepicker #applicationPicker></mat-datepicker>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Étape</mat-label>
+            <mat-select formControlName="stage">
+              <mat-option value="Candidature">Candidature</mat-option>
+              <mat-option value="Screening RH">Screening RH</mat-option>
+              <mat-option value="Entretien technique">Entretien technique</mat-option>
+              <mat-option value="Hiring Manager">Hiring Manager</mat-option>
+              <mat-option value="Entretien final">Entretien final</mat-option>
+              <mat-option value="Offre">Offre</mat-option>
+              <mat-option value="Clôturé">Clôturé</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+      </section>
+
+      <details class="advanced-section" [open]="editMode">
+        <summary>
+          <span><mat-icon>tune</mat-icon> Plus de détails</span>
+          <mat-icon class="chevron">expand_more</mat-icon>
+        </summary>
+
+        <div class="advanced-content">
+          <div class="form-grid three-columns">
+            <mat-form-field appearance="outline">
+              <mat-label>Contrat</mat-label>
+              <mat-select formControlName="contractType">
+                <mat-option value="CDI">CDI</mat-option>
+                <mat-option value="CDD">CDD</mat-option>
+                <mat-option value="Freelance">Freelance</mat-option>
+                <mat-option value="Stage">Stage</mat-option>
+                <mat-option value="Alternance">Alternance</mat-option>
+                <mat-option value="Autre">Autre</mat-option>
+              </mat-select>
             </mat-form-field>
-            <div class="interview-actions">
-              <mat-checkbox formControlName="reminderSet">Rappel 1 h avant</mat-checkbox>
-              <button type="button" mat-icon-button color="warn" (click)="removeInterview(i)" aria-label="Supprimer l'entretien">
-                <mat-icon>delete</mat-icon>
-              </button>
-            </div>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Salaire / TJM cible</mat-label>
+              <input matInput formControlName="salaryTarget" type="number" min="0">
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Période</mat-label>
+              <mat-select formControlName="salaryPeriod">
+                <mat-option value="Annuel">Brut annuel</mat-option>
+                <mat-option value="Journalier">TJM</mat-option>
+              </mat-select>
+            </mat-form-field>
           </div>
-        }
-      </div>
+
+          <div class="form-grid two-columns">
+            <mat-form-field appearance="outline">
+              <mat-label>Priorité</mat-label>
+              <mat-select formControlName="priority">
+                <mat-option value="Haute">Haute</mat-option>
+                <mat-option value="Moyenne">Moyenne</mat-option>
+                <mat-option value="Basse">Basse</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Prochaine relance</mat-label>
+              <input matInput [matDatepicker]="followUpPicker" formControlName="followUpDate">
+              <mat-datepicker-toggle matIconSuffix [for]="followUpPicker"></mat-datepicker-toggle>
+              <mat-datepicker #followUpPicker></mat-datepicker>
+            </mat-form-field>
+          </div>
+
+          <div class="subsection-heading">
+            <h3>Contact</h3>
+          </div>
+
+          <div class="form-grid three-columns">
+            <mat-form-field appearance="outline">
+              <mat-label>Recruteur</mat-label>
+              <input matInput formControlName="recruiterName">
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Email</mat-label>
+              <input matInput formControlName="recruiterEmail" type="email">
+              @if (jobForm.get('recruiterEmail')?.hasError('email')) {
+                <mat-error>Email invalide</mat-error>
+              }
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Téléphone</mat-label>
+              <input matInput formControlName="recruiterPhone">
+            </mat-form-field>
+          </div>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Notes</mat-label>
+            <textarea matInput formControlName="notes" rows="3" placeholder="Process, éléments à préparer, feedback..."></textarea>
+          </mat-form-field>
+
+          <div class="subsection-heading interview-heading">
+            <div>
+              <h3>Entretiens</h3>
+              <p>Ajoutez uniquement les rendez-vous déjà planifiés.</p>
+            </div>
+            <button type="button" mat-stroked-button (click)="addInterview()">
+              <mat-icon>add</mat-icon> Ajouter
+            </button>
+          </div>
+
+          <div formArrayName="interviews">
+            @for (interview of interviews.controls; track interview; let i = $index) {
+              <div [formGroupName]="i" class="interview-item">
+                <div class="form-grid two-columns">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Date</mat-label>
+                    <input matInput [matDatepicker]="interviewPicker" formControlName="date" required>
+                    <mat-datepicker-toggle matIconSuffix [for]="interviewPicker"></mat-datepicker-toggle>
+                    <mat-datepicker #interviewPicker></mat-datepicker>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Type</mat-label>
+                    <mat-select formControlName="type" required>
+                      <mat-option value="Téléphone">Téléphone</mat-option>
+                      <mat-option value="Visioconférence">Visioconférence</mat-option>
+                      <mat-option value="En personne">En personne</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                </div>
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Notes</mat-label>
+                  <textarea matInput formControlName="notes" rows="2"></textarea>
+                </mat-form-field>
+                <div class="interview-actions">
+                  <mat-checkbox formControlName="reminderSet">Rappel 1 h avant</mat-checkbox>
+                  <button type="button" mat-icon-button color="warn" (click)="removeInterview(i)" aria-label="Supprimer l'entretien">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </details>
 
       <div class="form-actions">
         <button type="button" mat-stroked-button (click)="onCancel()">Annuler</button>
-        <button type="submit" mat-raised-button color="primary" [disabled]="jobForm.invalid">
-          {{ editMode ? 'Mettre à jour' : 'Ajouter la candidature' }}
+        <button type="submit" mat-flat-button color="primary" [disabled]="jobForm.invalid">
+          {{ editMode ? 'Enregistrer' : 'Ajouter' }}
         </button>
       </div>
     </form>

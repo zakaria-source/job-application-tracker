@@ -40,6 +40,10 @@ export class ApplicationFiltersComponent {
     contractType: ContractType | '' = '';
     priority: ApplicationPriority | '' = '';
 
+    get advancedFilterCount(): number {
+        return [this.status, this.contractType, this.priority].filter(Boolean).length;
+    }
+
     emitFilters(): void {
         this.filtersChange.emit(this.currentCriteria());
     }

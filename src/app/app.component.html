@@ -3,36 +3,32 @@
     <div class="topbar-inner">
       <a class="brand" [routerLink]="cloudConnected ? '/dashboard' : '/account'" aria-label="JobTrackr">
         <div class="brand-mark"><mat-icon>work_outline</mat-icon></div>
-        <div class="brand-copy">
-          <strong>JobTrackr</strong>
-          <span>Suivi de candidatures</span>
-        </div>
+        <strong>JobTrackr</strong>
       </a>
 
       @if (cloudConnected && !isOnboarding) {
         <nav class="topbar-nav" aria-label="Navigation principale">
           <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
-            <mat-icon>space_dashboard</mat-icon><span>Vue d’ensemble</span>
+            <span>Vue d’ensemble</span>
           </a>
           <a routerLink="/applications" routerLinkActive="active">
-            <mat-icon>view_kanban</mat-icon><span>Candidatures</span>
-          </a>
-          <a routerLink="/settings/profile" routerLinkActive="active">
-            <mat-icon>person_outline</mat-icon><span>Profil</span>
-          </a>
-          <a routerLink="/account" routerLinkActive="active">
-            <mat-icon>manage_accounts</mat-icon><span>Compte</span>
+            <span>Candidatures</span>
           </a>
         </nav>
       }
 
-      <div
-        class="product-status"
-        [class.cloud]="cloudConnected"
-        [title]="cloudConnected ? 'Vos données sont sauvegardées en ligne' : 'Connectez-vous pour utiliser JobTrackr'">
-        <mat-icon>{{ cloudConnected ? 'cloud_done' : 'login' }}</mat-icon>
-        <span>{{ cloudConnected ? 'Synchronisé' : 'Connexion requise' }}</span>
-      </div>
+      <a
+        class="account-link"
+        routerLink="/account"
+        routerLinkActive="active"
+        [attr.aria-label]="cloudConnected ? 'Ouvrir le compte' : 'Se connecter'">
+        @if (cloudConnected) {
+          <span class="avatar">{{ accountInitials }}</span>
+        } @else {
+          <mat-icon>login</mat-icon>
+          <span>Connexion</span>
+        }
+      </a>
     </div>
   </header>
 
@@ -40,7 +36,6 @@
     @if (!isOnboarding) {
       <section class="page-heading">
         <h1>{{ pageTitle }}</h1>
-        <p>{{ pageDescription }}</p>
       </section>
     }
 

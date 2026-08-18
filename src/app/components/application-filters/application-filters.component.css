@@ -1,26 +1,107 @@
-.filters {
+.filters-bar {
   display: grid;
-  grid-template-columns: minmax(260px, 2fr) repeat(3, minmax(145px, 1fr));
-  gap: 12px;
-  margin: 20px 0 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
 }
 
-@media (max-width: 950px) {
-  .filters {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .search-field {
-    grid-column: 1 / -1;
-  }
+.search-field {
+  width: 100%;
 }
 
-@media (max-width: 600px) {
-  .filters {
+.filters-menu {
+  position: relative;
+}
+
+.filters-menu summary {
+  min-height: 56px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 14px;
+  border: 1px solid var(--jt-border-strong);
+  border-radius: 12px;
+  color: var(--jt-text-muted);
+  background: #fff;
+  font-size: 13px;
+  font-weight: 650;
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+
+.filters-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.filters-menu summary:hover,
+.filters-menu[open] summary {
+  color: var(--jt-text);
+  border-color: #cbd5e1;
+  background: var(--jt-surface-muted);
+}
+
+.filters-menu summary mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+}
+
+.filters-menu summary strong {
+  min-width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  padding: 0 5px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--jt-primary);
+  font-size: 10px;
+}
+
+.advanced-filters {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  width: min(560px, calc(100vw - 40px));
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--jt-border);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, .12);
+}
+
+.reset-button {
+  grid-column: 1 / -1;
+  justify-self: end;
+}
+
+@media (max-width: 680px) {
+  .filters-bar {
+    grid-template-columns: 1fr auto;
+  }
+
+  .filters-menu summary {
+    width: 52px;
+    padding: 0;
+  }
+
+  .filters-menu summary > span {
+    display: none;
+  }
+
+  .advanced-filters {
+    position: fixed;
+    left: 14px;
+    right: 14px;
+    bottom: 84px;
+    top: auto;
+    width: auto;
     grid-template-columns: 1fr;
-  }
-
-  .search-field {
-    grid-column: auto;
   }
 }
