@@ -234,7 +234,7 @@ export class DashboardComponent implements OnInit {
       });
     }
 
-    const priority = {follow-up: 0, interview: 1, stale: 2} as const;
+    const priority = {'follow-up': 0, interview: 1, stale: 2} as const;
     return actions.sort((a, b) => priority[a.kind] - priority[b.kind] || (a.due?.getTime() ?? Infinity) - (b.due?.getTime() ?? Infinity));
   }
 }
