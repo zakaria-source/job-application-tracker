@@ -15,49 +15,63 @@ import {UserProfileService} from '../../services/user-profile.service';
   standalone: true,
   imports: [ReactiveFormsModule, MatIconModule, RouterLink],
   template: `
-    <section class="account-layout">
+    <section class="account-layout" [class.signed-out]="!session">
       @if (!session) {
-        <article class="account-card auth-card">
-          <div class="card-icon"><mat-icon>work_outline</mat-icon></div>
-          <h2>{{ mode === 'login' ? 'Bon retour' : 'Créer votre compte' }}</h2>
-          <p class="lead">Retrouvez vos candidatures sur tous vos appareils.</p>
+        <article class="auth-shell">
+          <aside class="auth-intro">
+            <span class="auth-monogram">JT</span>
+            <div>
+              <span class="eyebrow">JOBTRACKR</span>
+              <h2>Votre recherche,<br>au même endroit.</h2>
+              <p>Candidatures, relances et entretiens restent organisés dans un espace privé.</p>
+            </div>
+            <small>Suivi de candidatures · Cloud</small>
+          </aside>
 
-          <div class="mode-switch" role="tablist" aria-label="Authentification">
-            <button type="button" [class.active]="mode === 'login'" (click)="setMode('login')">Connexion</button>
-            <button type="button" [class.active]="mode === 'register'" (click)="setMode('register')">Inscription</button>
-          </div>
+          <div class="auth-form-panel">
+            <div class="auth-heading">
+              <h3>{{ mode === 'login' ? 'Se connecter' : 'Créer un compte' }}</h3>
+              <p>{{ mode === 'login' ? 'Accédez à votre espace JobTrackr.' : 'Créez votre espace en quelques secondes.' }}</p>
+            </div>
 
-          <form [formGroup]="form" (ngSubmit)="submit()">
-            @if (mode === 'register') {
+            <div class="mode-switch" role="tablist" aria-label="Authentification">
+              <button type="button" [class.active]="mode === 'login'" (click)="setMode('login')">Connexion</button>
+              <button type="button" [class.active]="mode === 'register'" (click)="setMode('register')">Inscription</button>
+            </div>
+
+            <form [formGroup]="form" (ngSubmit)="submit()">
+              @if (mode === 'register') {
+                <label>
+                  <span>Nom</span>
+                  <input formControlName="displayName" autocomplete="name" placeholder="Alex Martin">
+                </label>
+              }
               <label>
-                <span>Nom</span>
-                <input formControlName="displayName" autocomplete="name" placeholder="Alex Martin">
+                <span>Email</span>
+                <input formControlName="email" type="email" autocomplete="email" placeholder="alex@example.com">
               </label>
-            }
-            <label>
-              <span>Email</span>
-              <input formControlName="email" type="email" autocomplete="email" placeholder="alex@example.com">
-            </label>
-            <label>
-              <span>Mot de passe</span>
-              <input formControlName="password" type="password" [attr.autocomplete]="mode === 'login' ? 'current-password' : 'new-password'" placeholder="10 caractères minimum">
-            </label>
+              <label>
+                <span>Mot de passe</span>
+                <input formControlName="password" type="password" [attr.autocomplete]="mode === 'login' ? 'current-password' : 'new-password'" placeholder="10 caractères minimum">
+              </label>
 
-            @if (errorMessage) {
-              <div class="feedback error"><mat-icon>error_outline</mat-icon><span>{{ errorMessage }}</span></div>
-            }
+              @if (errorMessage) {
+                <div class="feedback error"><mat-icon>error_outline</mat-icon><span>{{ errorMessage }}</span></div>
+              }
 
-            <button class="primary" type="submit" [disabled]="submitting || form.invalid || (mode === 'register' && !form.controls.displayName.value.trim())">
-              @if (submitting) { <mat-icon class="spin">progress_activity</mat-icon> }
-              {{ submitting ? 'Connexion…' : mode === 'login' ? 'Se connecter' : 'Créer mon compte' }}
-            </button>
-          </form>
+              <button class="primary" type="submit" [disabled]="submitting || form.invalid || (mode === 'register' && !form.controls.displayName.value.trim())">
+                @if (submitting) { <mat-icon class="spin">progress_activity</mat-icon> }
+                {{ submitting ? 'Connexion…' : mode === 'login' ? 'Se connecter' : 'Créer mon compte' }}
+              </button>
+            </form>
+          </div>
         </article>
       } @else {
         <article class="account-card connected-card">
           <div class="connected-heading">
             <div class="avatar">{{ initials(session.user.displayName) }}</div>
             <div>
+              <span class="eyebrow">COMPTE</span>
               <h2>{{ session.user.displayName }}</h2>
               <p>{{ session.user.email }}</p>
             </div>
@@ -76,8 +90,8 @@ import {UserProfileService} from '../../services/user-profile.service';
 
           <div class="settings-list">
             <a routerLink="/settings/profile">
-              <span><mat-icon>person_outline</mat-icon><strong>Profil</strong></span>
-              <mat-icon>chevron_right</mat-icon>
+              <span><mat-icon>person_outline</mat-icon><strong>Profil professionnel</strong></span>
+              <mat-icon>arrow_forward</mat-icon>
             </a>
           </div>
 
@@ -92,44 +106,51 @@ import {UserProfileService} from '../../services/user-profile.service';
     </section>
   `,
   styles: [`
-    .account-layout { max-width: 560px; margin: 0 auto; }
-    .account-card { border: 1px solid var(--jt-border); border-radius: 16px; padding: 28px; background: #fff; }
-    .auth-card { margin-top: 18px; }
-    .card-icon { width: 44px; height: 44px; display: grid; place-items: center; margin-bottom: 18px; border-radius: 12px; color: #fff; background: var(--jt-primary); }
-    h2 { margin: 0; color: var(--jt-text); font-size: 26px; font-weight: 780; letter-spacing: -.04em; }
-    p { color: var(--jt-text-muted); line-height: 1.5; }
-    .lead { margin: 7px 0 22px; font-size: 13px; }
-    .mode-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin-bottom: 18px; padding: 3px; border-radius: 11px; background: #f1f5f9; }
-    .mode-switch button { min-height: 38px; border: 0; border-radius: 8px; color: var(--jt-text-muted); background: transparent; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
-    .mode-switch button.active { color: var(--jt-text); background: #fff; box-shadow: 0 1px 3px rgba(15,23,42,.08); }
+    .account-layout { max-width: 640px; margin: 0 auto; }
+    .account-layout.signed-out { max-width: 920px; }
+    .auth-shell { min-height: 540px; display: grid; grid-template-columns: minmax(280px,.85fr) minmax(360px,1.15fr); overflow: hidden; border: 1px solid var(--jt-border); border-radius: 12px; background: #fff; box-shadow: var(--jt-shadow-md); }
+    .auth-intro { display: flex; flex-direction: column; justify-content: space-between; padding: 34px; color: #d4d4d8; background: #151518; }
+    .auth-monogram { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid #3f3f46; border-radius: 8px; color: #d7d3ff; background: #242429; font-size: 10px; font-weight: 760; }
+    .eyebrow { display: block; margin-bottom: 9px; color: #8b93a3; font-size: 9px; font-weight: 720; letter-spacing: .15em; }
+    .auth-intro h2 { margin: 0; color: #fff; font-size: 29px; font-weight: 590; letter-spacing: -.045em; line-height: 1.08; }
+    .auth-intro p { max-width: 300px; margin: 14px 0 0; color: #a1a1aa; font-size: 12px; line-height: 1.65; }
+    .auth-intro small { color: #71717a; font-size: 10px; }
+    .auth-form-panel { display: flex; flex-direction: column; justify-content: center; padding: 42px; }
+    .auth-heading h3 { margin: 0; color: var(--jt-text); font-size: 23px; font-weight: 640; letter-spacing: -.035em; }
+    .auth-heading p { margin: 6px 0 22px; color: var(--jt-text-muted); font-size: 12px; line-height: 1.5; }
+    .mode-switch { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 20px; border-bottom: 1px solid var(--jt-border); }
+    .mode-switch button { min-height: 39px; border: 0; border-bottom: 2px solid transparent; color: var(--jt-text-muted); background: transparent; font: inherit; font-size: 11px; font-weight: 620; cursor: pointer; }
+    .mode-switch button.active { color: var(--jt-text); border-bottom-color: var(--jt-accent); }
     form { display: grid; gap: 14px; }
-    label { display: grid; gap: 7px; color: #334155; font-size: 12px; font-weight: 680; }
-    input { min-height: 44px; padding: 0 12px; border: 1px solid var(--jt-border-strong); border-radius: 10px; color: var(--jt-text); background: #fff; font: inherit; font-size: 13px; }
-    input:focus { outline: none; border-color: var(--jt-primary); box-shadow: 0 0 0 3px rgba(79,70,229,.1); }
-    button.primary, button.secondary { display: inline-flex; align-items: center; justify-content: center; gap: 7px; border-radius: 10px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
-    button.primary { min-height: 44px; margin-top: 2px; border: 0; color: #fff; background: var(--jt-primary); }
+    label { display: grid; gap: 7px; color: #344054; font-size: 11px; font-weight: 620; }
+    input { min-height: 43px; padding: 0 12px; border: 1px solid var(--jt-border-strong); border-radius: 8px; color: var(--jt-text); background: #fff; font: inherit; font-size: 12px; }
+    input:focus { outline: none; border-color: var(--jt-accent); box-shadow: 0 0 0 3px rgba(98,91,246,.11); }
+    button.primary, button.secondary { display: inline-flex; align-items: center; justify-content: center; gap: 7px; border-radius: 8px; font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
+    button.primary { min-height: 43px; margin-top: 2px; border: 0; color: #fff; background: var(--jt-primary); }
     button.primary:hover { background: var(--jt-primary-strong); }
     button.primary:disabled, button.secondary:disabled { opacity: .5; cursor: not-allowed; }
-    button mat-icon { width: 17px; height: 17px; font-size: 17px; }
-    .connected-heading { display: flex; align-items: center; gap: 13px; padding-bottom: 22px; border-bottom: 1px solid var(--jt-border); }
-    .avatar { width: 48px; height: 48px; display: grid; place-items: center; flex: 0 0 48px; border-radius: 50%; color: #fff; background: var(--jt-text); font-size: 13px; font-weight: 800; }
-    .connected-heading h2 { font-size: 20px; }
-    .connected-heading p { margin: 3px 0 0; font-size: 12px; }
-    .settings-list { margin-top: 14px; }
-    .settings-list a { min-height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-radius: 10px; color: var(--jt-text); text-decoration: none; }
-    .settings-list a:hover { background: var(--jt-surface-muted); }
+    button mat-icon { width: 16px; height: 16px; font-size: 16px; }
+    .account-card { border: 1px solid var(--jt-border); border-radius: 12px; padding: 28px; background: #fff; box-shadow: var(--jt-shadow-sm); }
+    .connected-heading { display: flex; align-items: center; gap: 14px; padding-bottom: 22px; border-bottom: 1px solid var(--jt-border); }
+    .avatar { width: 46px; height: 46px; display: grid; place-items: center; flex: 0 0 46px; border: 1px solid #35353c; border-radius: 9px; color: #fff; background: #202024; font-size: 12px; font-weight: 720; }
+    .connected-heading h2 { margin: 0; color: var(--jt-text); font-size: 19px; font-weight: 640; letter-spacing: -.025em; }
+    .connected-heading p { margin: 4px 0 0; color: var(--jt-text-muted); font-size: 11px; }
+    .settings-list { margin-top: 12px; }
+    .settings-list a { min-height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 9px; border-radius: 7px; color: var(--jt-text); text-decoration: none; }
+    .settings-list a:hover { background: #f7f7f8; }
     .settings-list a > span { display: inline-flex; align-items: center; gap: 9px; }
-    .settings-list mat-icon { width: 19px; height: 19px; color: var(--jt-text-muted); font-size: 19px; }
-    .settings-list strong { font-size: 13px; }
-    button.secondary { min-height: 40px; padding: 0 13px; border: 1px solid var(--jt-border-strong); color: var(--jt-text-muted); background: #fff; }
+    .settings-list mat-icon { width: 18px; height: 18px; color: var(--jt-text-muted); font-size: 18px; }
+    .settings-list strong { font-size: 12px; font-weight: 620; }
+    button.secondary { min-height: 39px; padding: 0 12px; border: 1px solid var(--jt-border-strong); color: var(--jt-text-muted); background: #fff; }
     button.secondary.danger { color: var(--jt-danger); }
-    .account-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--jt-border); }
-    .feedback { display: flex; align-items: center; gap: 8px; margin-top: 14px; padding: 10px 11px; border-radius: 10px; font-size: 12px; line-height: 1.4; }
-    .feedback mat-icon { width: 17px; height: 17px; flex: 0 0 17px; font-size: 17px; }
-    .feedback.error { color: #b91c1c; background: var(--jt-danger-soft); }
-    .feedback.neutral { color: #475569; background: #f8fafc; }
+    .account-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; padding-top: 17px; border-top: 1px solid var(--jt-border); }
+    .feedback { display: flex; align-items: center; gap: 8px; margin-top: 14px; padding: 10px 11px; border: 1px solid transparent; border-radius: 7px; font-size: 11px; line-height: 1.4; }
+    .feedback mat-icon { width: 16px; height: 16px; flex: 0 0 16px; font-size: 16px; }
+    .feedback.error { border-color: #fecaca; color: #b42318; background: var(--jt-danger-soft); }
+    .feedback.neutral { border-color: var(--jt-border); color: #475467; background: #fafafa; }
     .spin { animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 760px) { .auth-shell { grid-template-columns: 1fr; } .auth-intro { min-height: 220px; padding: 26px; } .auth-intro small { display: none; } .auth-form-panel { padding: 28px; } }
     @media (max-width: 620px) { .account-card { padding: 22px; } .account-actions { flex-direction: column; } button.secondary { width: 100%; } }
   `]
 })
