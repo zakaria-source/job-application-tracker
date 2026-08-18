@@ -95,6 +95,13 @@ export class ApplicationFormComponent implements OnInit, OnChanges {
         return this.jobForm?.get('followUpDate')?.value ?? null;
     }
 
+    setOfferUrl(url: string): void {
+        const control = this.jobForm.get('offerUrl');
+        if (!control) return;
+        control.setValue(url);
+        if (url.trim()) control.markAsDirty();
+    }
+
     applyImportedDraft(draft: JobApplication): void {
         const company = this.jobForm.get('company');
         const position = this.jobForm.get('position');
