@@ -1,0 +1,129 @@
+.draft-resume {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 13px 14px;
+  border: 1px solid #d8d7ef;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #fcfbff 0%, #f8f7ff 100%);
+  box-shadow: 0 6px 20px rgba(80, 72, 160, .06);
+}
+
+.draft-resume-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #dedcf8;
+  border-radius: 9px;
+  color: var(--jt-accent);
+  background: #fff;
+}
+
+.draft-resume-icon mat-icon {
+  width: 17px;
+  height: 17px;
+  font-size: 17px;
+}
+
+.draft-resume-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.draft-resume-copy > span {
+  color: var(--jt-accent);
+  font-size: 7px;
+  font-weight: 760;
+  letter-spacing: .1em;
+}
+
+.draft-resume-copy strong {
+  overflow: hidden;
+  color: var(--jt-text);
+  font-size: 10px;
+  font-weight: 690;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.draft-resume-copy small {
+  color: var(--jt-text-muted);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.draft-resume-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.draft-resume-actions mat-icon {
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
+}
+
+.footer-meta {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.draft-saved {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #4c7157;
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.draft-saved mat-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--jt-success);
+  font-size: 14px;
+}
+
+@media (max-width: 720px) {
+  .draft-resume {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .draft-resume-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 620px) {
+  .draft-resume {
+    align-items: start;
+    padding: 12px;
+  }
+
+  .draft-resume-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .draft-resume-actions button {
+    width: 100%;
+  }
+
+  .footer-meta {
+    flex: 1;
+  }
+
+  .draft-saved {
+    overflow: hidden;
+    max-width: 170px;
+    text-overflow: ellipsis;
+  }
+}

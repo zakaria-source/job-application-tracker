@@ -1,9 +1,22 @@
-import {Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, ViewChild} from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  EventEmitter,
+  HostListener,
+  Input,
+  OnChanges,
+  OnDestroy,
+  Output,
+  SimpleChanges,
+  ViewChild
+} from '@angular/core';
 import {MatButtonModule} from '@angular/material/button';
 import {MatIconModule} from '@angular/material/icon';
 import {JobTrackrApiService} from '@app/core/api/jobtrackr-api.service';
 import {ApplicationFormComponent} from '@app/features/applications/components/application-form/application-form.component';
+import {ApplicationDraftService} from '@app/features/applications/data-access/application-draft.service';
 import {ApplicationUrlImportService} from '@app/features/applications/data-access/application-url-import.service';
+import {ApplicationStudioDraft} from '@app/features/applications/models/application-draft.model';
 import {JobApplication} from '@app/features/applications/models/application.model';
 import {JobImportPreview} from '@app/features/applications/models/job-import.model';
 
@@ -12,9 +25,9 @@ import {JobImportPreview} from '@app/features/applications/models/job-import.mod
   standalone: true,
   imports: [MatButtonModule, MatIconModule, ApplicationFormComponent],
   templateUrl: './application-studio.component.html',
-  styleUrl: './application-studio.component.css'
+  styleUrls: ['./application-studio.component.css', './application-studio-draft.css']
 })
-export class ApplicationStudioComponent implements OnChanges {
+export class ApplicationStudioComponent implements OnChanges, AfterViewInit, OnDestroy {
   @Input() editMode = false;
   @Input() application: JobApplication | null = null;
   @Output() save = new EventEmitter<JobApplication>();
@@ -27,10 +40,15 @@ export class ApplicationStudioComponent implements OnChanges {
   jobUrlError = '';
   jobUrlPreview: JobImportPreview | null = null;
   showDiscardConfirm = false;
+  availableDraft: ApplicationStudioDraft | null = null;
+  draftSavedAt: Date | null = null;
+
+  private draftTimer?: ReturnType<typeof setTimeout>;
 
   constructor(
     private readonly api: JobTrackrApiService,
-    private readonly urlImportService: ApplicationUrlImportService
+    private readonly urlImportService: ApplicationUrlImportService,
+    private readonly draftService: ApplicationDraftService
   ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -39,7 +57,21 @@ export class ApplicationStudioComponent implements OnChanges {
       this.jobUrlError = '';
       this.jobUrlPreview = null;
       this.showDiscardConfirm = false;
+      this.availableDraft = null;
+      this.draftSavedAt = null;
     }
+  }
+
+  ngAfterViewInit(): void {
+    if (this.editMode) return;
+    queueMicrotask(() => {
+      const draft = this.draftService.load();
+      if (draft) this.availableDraft = draft;
+    });
+  }
+
+  ngOnDestroy(): void {
+    if (this.draftTimer) clearTimeout(this.draftTimer);
   }
 
   @HostListener('document:keydown', ['$event'])
@@ -84,6 +116,31 @@ export class ApplicationStudioComponent implements OnChanges {
 
   get companyInitial(): string {
     return (this.company || '?').charAt(0).toUpperCase();
+  }
+
+  get draftSummary(): string {
+    const draft = this.availableDraft?.form;
+    if (!draft) return '';
+    const company = draft.company.trim() || 'Entreprise à compléter';
+    const position = draft.position.trim();
+    return position ? `${company} · ${position}` : company;
+  }
+
+  get draftAgeLabel(): string {
+    const updatedAt = this.availableDraft?.updatedAt;
+    if (!updatedAt) return '';
+    const elapsedMinutes = Math.max(0, Math.floor((Date.now() - new Date(updatedAt).getTime()) / 60000));
+    if (elapsedMinutes < 1) return 'à l’instant';
+    if (elapsedMinutes < 60) return `il y a ${elapsedMinutes} min`;
+    const hours = Math.floor(elapsedMinutes / 60);
+    if (hours < 24) return `il y a ${hours} h`;
+    const days = Math.floor(hours / 24);
+    return `il y a ${days} j`;
+  }
+
+  get draftSavedLabel(): string {
+    if (!this.draftSavedAt) return '';
+    return `Brouillon enregistré à ${this.draftSavedAt.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}`;
   }
 
   get detectedFields(): number {
@@ -135,16 +192,44 @@ export class ApplicationStudioComponent implements OnChanges {
     });
   }
 
+  onFormDraftChange(): void {
+    if (this.editMode) return;
+    if (this.availableDraft) {
+      this.draftService.clear();
+      this.availableDraft = null;
+      this.draftSavedAt = null;
+    }
+    if (this.draftTimer) clearTimeout(this.draftTimer);
+    this.draftTimer = setTimeout(() => this.persistDraftNow(), 500);
+  }
+
+  resumeDraft(): void {
+    const draft = this.availableDraft;
+    if (!draft || !this.formComponent) return;
+    this.jobUrl = draft.jobUrl || draft.form.offerUrl;
+    this.formComponent.restoreDraft(draft.form);
+    this.draftSavedAt = new Date(draft.updatedAt);
+    this.availableDraft = null;
+  }
+
+  deleteAvailableDraft(): void {
+    this.draftService.clear();
+    this.availableDraft = null;
+    this.draftSavedAt = null;
+  }
+
   submit(): void {
     void this.formComponent?.onSubmit();
   }
 
   onFormSubmit(application: JobApplication): void {
+    this.persistDraftNow();
     this.save.emit(application);
   }
 
   requestClose(): void {
     if (this.formComponent?.isDirty) {
+      if (!this.editMode) this.persistDraftNow();
       this.showDiscardConfirm = true;
       return;
     }
@@ -155,7 +240,8 @@ export class ApplicationStudioComponent implements OnChanges {
     this.showDiscardConfirm = false;
   }
 
-  discardAndClose(): void {
+  confirmClose(): void {
+    if (!this.editMode) this.persistDraftNow();
     this.showDiscardConfirm = false;
     this.closed.emit();
   }
@@ -173,5 +259,16 @@ export class ApplicationStudioComponent implements OnChanges {
 
   confidenceLabel(confidence: JobImportPreview['confidence']): string {
     return confidence === 'HIGH' ? 'Confiance élevée' : confidence === 'MEDIUM' ? 'Confiance moyenne' : 'À vérifier';
+  }
+
+  private persistDraftNow(): void {
+    if (this.draftTimer) {
+      clearTimeout(this.draftTimer);
+      this.draftTimer = undefined;
+    }
+    if (this.editMode || this.availableDraft || !this.formComponent?.isDirty) return;
+
+    const saved = this.draftService.save(this.formComponent.exportDraft(), this.jobUrl);
+    if (saved) this.draftSavedAt = new Date(saved.updatedAt);
   }
 }

@@ -1,4 +1,4 @@
-import {Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges} from '@angular/core';
+import {Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges} from '@angular/core';
 import {FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
 import {MatCardModule} from '@angular/material/card';
@@ -10,8 +10,10 @@ import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatIconModule} from '@angular/material/icon';
 import {MatInputModule} from '@angular/material/input';
 import {MatSelectModule} from '@angular/material/select';
+import {Subscription} from 'rxjs';
 import {NotificationService} from '@app/core/notifications/notification.service';
 import {ApplicationWorkflowService} from '@app/features/applications/domain/application-workflow.service';
+import {ApplicationFormDraft} from '@app/features/applications/models/application-draft.model';
 import {Interview, JobApplication} from '@app/features/applications/models/application.model';
 
 @Component({
@@ -33,15 +35,17 @@ import {Interview, JobApplication} from '@app/features/applications/models/appli
     templateUrl: './application-form.component.html',
     styleUrl: './application-form.component.css'
 })
-export class ApplicationFormComponent implements OnInit, OnChanges {
+export class ApplicationFormComponent implements OnInit, OnChanges, OnDestroy {
     @Input() editMode = false;
     @Input() application: JobApplication | null = null;
     @Input() embedded = false;
     @Input() hideOfferUrl = false;
     @Output() formSubmit = new EventEmitter<JobApplication>();
     @Output() cancel = new EventEmitter<void>();
+    @Output() draftChange = new EventEmitter<void>();
 
     jobForm!: FormGroup;
+    private formChangesSubscription?: Subscription;
 
     constructor(
         private readonly fb: FormBuilder,
@@ -57,6 +61,10 @@ export class ApplicationFormComponent implements OnInit, OnChanges {
         if (this.jobForm && (changes['application'] || changes['editMode'])) {
             this.initForm();
         }
+    }
+
+    ngOnDestroy(): void {
+        this.formChangesSubscription?.unsubscribe();
     }
 
     get interviews(): FormArray {
@@ -118,7 +126,64 @@ export class ApplicationFormComponent implements OnInit, OnChanges {
         this.jobForm.markAsDirty();
     }
 
+    exportDraft(): ApplicationFormDraft {
+        const value = this.jobForm.getRawValue();
+        return {
+            company: String(value.company ?? ''),
+            position: String(value.position ?? ''),
+            offerUrl: String(value.offerUrl ?? ''),
+            contractType: value.contractType,
+            salaryTarget: value.salaryTarget === null || value.salaryTarget === '' ? null : Number(value.salaryTarget),
+            salaryPeriod: value.salaryPeriod,
+            applicationDate: this.toIso(value.applicationDate) ?? new Date().toISOString(),
+            stage: value.stage,
+            priority: value.priority,
+            followUpDate: this.toIso(value.followUpDate),
+            recruiterName: String(value.recruiterName ?? ''),
+            recruiterEmail: String(value.recruiterEmail ?? ''),
+            recruiterPhone: String(value.recruiterPhone ?? ''),
+            notes: String(value.notes ?? ''),
+            interviews: (value.interviews ?? []).map((interview: Interview) => ({
+                id: interview.id,
+                date: this.toIso(interview.date) ?? new Date().toISOString(),
+                type: interview.type,
+                notes: interview.notes ?? '',
+                reminderSet: !!interview.reminderSet
+            }))
+        };
+    }
+
+    restoreDraft(draft: ApplicationFormDraft): void {
+        this.jobForm.patchValue({
+            company: draft.company,
+            position: draft.position,
+            offerUrl: draft.offerUrl,
+            contractType: draft.contractType,
+            salaryTarget: draft.salaryTarget,
+            salaryPeriod: draft.salaryPeriod,
+            applicationDate: new Date(draft.applicationDate),
+            stage: draft.stage,
+            priority: draft.priority,
+            followUpDate: draft.followUpDate ? new Date(draft.followUpDate) : null,
+            recruiterName: draft.recruiterName,
+            recruiterEmail: draft.recruiterEmail,
+            recruiterPhone: draft.recruiterPhone,
+            notes: draft.notes
+        }, {emitEvent: false});
+
+        this.interviews.clear({emitEvent: false});
+        draft.interviews.forEach(interview => {
+            this.interviews.push(this.createInterviewFormGroup({
+                ...interview,
+                date: new Date(interview.date)
+            }), {emitEvent: false});
+        });
+        this.jobForm.markAsDirty();
+        this.jobForm.updateValueAndValidity({emitEvent: false});
+    }
+
     private initForm(): void {
+        this.formChangesSubscription?.unsubscribe();
         this.jobForm = this.fb.group({
             company: ['', Validators.required],
             position: ['', Validators.required],
@@ -137,30 +202,30 @@ export class ApplicationFormComponent implements OnInit, OnChanges {
             interviews: this.fb.array([])
         });
 
-        if (!this.application) {
-            return;
+        if (this.application) {
+            this.jobForm.patchValue({
+                company: this.application.company,
+                position: this.application.position,
+                offerUrl: this.application.offerUrl ?? '',
+                contractType: this.application.contractType,
+                salaryTarget: this.application.salaryTarget ?? null,
+                salaryPeriod: this.application.salaryPeriod,
+                applicationDate: this.application.applicationDate,
+                stage: this.application.stage,
+                priority: this.application.priority,
+                followUpDate: this.application.followUpDate ?? null,
+                recruiterName: this.application.recruiterName ?? this.application.contactPerson ?? '',
+                recruiterEmail: this.application.recruiterEmail ?? this.application.contactEmail ?? '',
+                recruiterPhone: this.application.recruiterPhone ?? this.application.contactPhone ?? '',
+                notes: this.application.notes
+            });
+
+            (this.application.interviews ?? []).forEach(interview => {
+                this.interviews.push(this.createInterviewFormGroup(interview));
+            });
         }
 
-        this.jobForm.patchValue({
-            company: this.application.company,
-            position: this.application.position,
-            offerUrl: this.application.offerUrl ?? '',
-            contractType: this.application.contractType,
-            salaryTarget: this.application.salaryTarget ?? null,
-            salaryPeriod: this.application.salaryPeriod,
-            applicationDate: this.application.applicationDate,
-            stage: this.application.stage,
-            priority: this.application.priority,
-            followUpDate: this.application.followUpDate ?? null,
-            recruiterName: this.application.recruiterName ?? this.application.contactPerson ?? '',
-            recruiterEmail: this.application.recruiterEmail ?? this.application.contactEmail ?? '',
-            recruiterPhone: this.application.recruiterPhone ?? this.application.contactPhone ?? '',
-            notes: this.application.notes
-        });
-
-        (this.application.interviews ?? []).forEach(interview => {
-            this.interviews.push(this.createInterviewFormGroup(interview));
-        });
+        this.formChangesSubscription = this.jobForm.valueChanges.subscribe(() => this.draftChange.emit());
     }
 
     private createInterviewFormGroup(interview?: Interview): FormGroup {
@@ -232,6 +297,12 @@ export class ApplicationFormComponent implements OnInit, OnChanges {
     private focusFirstInvalidField(): void {
         const invalid = document.querySelector<HTMLElement>('.application-studio .ng-invalid[formControlName]');
         invalid?.focus();
+    }
+
+    private toIso(value: Date | string | null | undefined): string | null {
+        if (!value) return null;
+        const date = value instanceof Date ? value : new Date(value);
+        return Number.isNaN(date.getTime()) ? null : date.toISOString();
     }
 
     private getResponseDate(status: JobApplication['status']): Date | undefined {
