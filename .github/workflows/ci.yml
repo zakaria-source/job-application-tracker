@@ -10,14 +10,14 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    name: Production build
+  frontend:
+    name: Frontend production build
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -34,5 +34,44 @@ jobs:
       - name: Run unit tests
         run: npm run test:ci
 
-      - name: Build application
-        run: npm run build -- --configuration production
+      - name: Build Netlify application
+        env:
+          JOBTRACKR_API_ORIGIN: https://api.example.com
+        run: npm run build:netlify
+
+      - name: Verify Netlify routing
+        run: |
+          grep -F '/api/*  https://api.example.com/api/:splat  200' dist/demo/browser/_redirects
+          grep -F '/*  /index.html  200' dist/demo/browser/_redirects
+
+  backend:
+    name: Backend verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Verify backend
+        run: mvn -B -f backend/pom.xml verify
+
+      - name: Build production Docker image
+        run: docker build -t jobtrackr-api-ci backend
+
+      - name: Verify free Render + Neon blueprint
+        run: |
+          grep -F '    plan: free' render.yaml
+          grep -F '      - key: DATABASE_HOST' render.yaml
+          grep -F '        sync: false' render.yaml
+          if grep -q '^databases:' render.yaml; then
+            echo 'Render-managed database must not be provisioned in the free Neon baseline.'
+            exit 1
+          fi

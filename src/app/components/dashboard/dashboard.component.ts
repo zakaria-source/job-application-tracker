@@ -32,7 +32,7 @@ interface UpcomingInterview {
 export class DashboardComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly profile: UserProfile;
+  profile: UserProfile = EMPTY_USER_PROFILE;
   applications: JobApplication[] = [];
   statistics: JobStatistics = {
     totalApplications: 0,
@@ -75,12 +75,14 @@ export class DashboardComponent implements OnInit {
 
   constructor(
     private readonly storageService: StorageService,
-    profileService: UserProfileService
-  ) {
-    this.profile = profileService.getProfile() ?? EMPTY_USER_PROFILE;
-  }
+    private readonly profileService: UserProfileService
+  ) {}
 
   ngOnInit(): void {
+    this.profileService.profileChanges()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(profile => this.profile = profile ?? EMPTY_USER_PROFILE);
+
     combineLatest([
       this.storageService.getApplications(),
       timer(0, 60_000)

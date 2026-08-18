@@ -5,6 +5,10 @@ node_modules/
 dist/
 .angular/
 
+# Java / Maven build output
+backend/target/
+*.class
+
 # IDEs
 .idea/
 .vscode/

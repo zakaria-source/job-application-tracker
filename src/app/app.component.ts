@@ -2,6 +2,8 @@ import {Component, DestroyRef, inject} from '@angular/core';
 import {MatIconModule} from '@angular/material/icon';
 import {Router, RouterLink, RouterLinkActive, RouterOutlet} from '@angular/router';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
+import {CloudSessionStore} from './cloud/cloud-session.store';
+import {CloudWorkspaceService} from './cloud/cloud-workspace.service';
 import {StorageService} from './services/storage.service';
 import {NotificationService} from './services/notification.service';
 
@@ -17,9 +19,12 @@ export class App {
 
   constructor(
     readonly router: Router,
+    readonly sessions: CloudSessionStore,
     storageService: StorageService,
-    notificationService: NotificationService
+    notificationService: NotificationService,
+    cloudWorkspace: CloudWorkspaceService
   ) {
+    cloudWorkspace.bootstrap();
     storageService.getApplications()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(applications => notificationService.syncReminders(applications));
@@ -29,29 +34,33 @@ export class App {
     return this.router.url.startsWith('/onboarding');
   }
 
+  get cloudConnected(): boolean {
+    return this.sessions.isAuthenticated();
+  }
+
   get pageTitle(): string {
-    if (this.router.url.startsWith('/applications')) {
-      return 'Candidatures';
-    }
-    if (this.router.url.startsWith('/settings/profile')) {
-      return 'Profil & préférences';
-    }
-    if (this.isOnboarding) {
-      return 'Bienvenue sur JobTrackr';
-    }
-    return 'Tableau de bord';
+    if (this.router.url.startsWith('/applications')) return 'Candidatures';
+    if (this.router.url.startsWith('/settings/profile')) return 'Profil';
+    if (this.router.url.startsWith('/account')) return 'Compte';
+    if (this.isOnboarding) return 'Bienvenue sur JobTrackr';
+    return 'Vue d’ensemble';
   }
 
   get pageDescription(): string {
     if (this.router.url.startsWith('/applications')) {
-      return 'Pilotez votre pipeline, vos relances et chaque étape du recrutement depuis un seul espace.';
+      return 'Suivez chaque opportunité, relance et entretien.';
     }
     if (this.router.url.startsWith('/settings/profile')) {
-      return 'Ajustez votre positionnement et les informations affichées sur votre tableau de bord.';
+      return 'Adaptez votre espace à votre recherche.';
+    }
+    if (this.router.url.startsWith('/account')) {
+      return 'Gérez votre connexion et la synchronisation de vos données.';
     }
     if (this.isOnboarding) {
-      return 'Créez votre espace local en quelques informations, puis commencez à suivre vos candidatures.';
+      return this.cloudConnected
+        ? 'Complétez votre profil pour démarrer.'
+        : 'Quelques informations suffisent pour commencer.';
     }
-    return 'Voyez immédiatement ce qui mérite votre attention : relances, priorités, entretiens et progression.';
+    return 'Vos prochaines actions et l’état de votre recherche.';
   }
 }
