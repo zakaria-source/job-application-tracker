@@ -53,7 +53,7 @@
 </section>
 
 @if (showForm) {
-  <div class="secondary-panel" role="region" aria-label="Formulaire de candidature"><app-job-form [editMode]="editMode" [application]="selectedApplication" (formSubmit)="onFormSubmit($event)" (cancel)="cancelForm()" /></div>
+  <div class="secondary-panel" role="region" aria-label="Formulaire de candidature"><app-application-form [editMode]="editMode" [application]="selectedApplication" (formSubmit)="onFormSubmit($event)" (cancel)="cancelForm()" /></div>
 }
 
 @if (selectedApplication && showDetails) {
