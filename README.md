@@ -28,6 +28,44 @@ Neon · PostgreSQL
 
 JobTrackr requires an account. Profile and application data are stored through the backend API and PostgreSQL; there is no LocalStorage data mode.
 
+### Backend package structure
+
+The backend is organized by feature. API models and exceptions are kept out of controllers so each class has one clear responsibility.
+
+```text
+dev.jobtrackr
+├── application
+│   ├── dto
+│   ├── ApplicationController
+│   ├── ApplicationService
+│   ├── ApplicationMapper
+│   ├── JobApplicationEntity
+│   └── JobApplicationRepository
+├── auth
+│   ├── dto
+│   ├── exception
+│   ├── AuthController
+│   └── AuthService
+├── profile
+│   ├── dto
+│   ├── ProfileController
+│   ├── ProfileService
+│   ├── UserProfileEntity
+│   └── UserProfileRepository
+├── interview
+│   ├── dto
+│   └── InterviewEntity
+├── common
+│   ├── exception
+│   ├── ApiExceptionHandler
+│   └── RequestLoggingFilter
+├── security
+├── domain
+└── user
+```
+
+Controllers handle HTTP concerns, services own use cases and transaction boundaries, entities own persistence state, DTOs define the API contract, and mappers translate persistence models to API responses.
+
 ## Stack
 
 ### Frontend
@@ -107,7 +145,7 @@ The API writes concise structured logs to stdout so they are visible directly in
 - every API request receives an `X-Request-Id`
 - request logs include method, path, HTTP status and duration
 - authentication success events log only the user UUID
-- application and interview mutations log only resource UUIDs and workflow metadata
+- application mutations log only resource UUIDs and workflow metadata
 - handled API errors are logged with the same request correlation ID
 - passwords, JWTs, request bodies, recruiter details and notes are never logged
 - `/actuator/health` and `OPTIONS` requests are excluded from request logs to avoid noise
