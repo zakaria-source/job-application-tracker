@@ -265,6 +265,7 @@ export class ApplicationFormComponent implements OnInit, OnChanges, OnDestroy {
 
         const jobApplication: JobApplication = {
             id: this.application?.id ?? this.generateId(),
+            version: this.application?.version,
             company: formValue.company.trim(),
             position: formValue.position.trim(),
             offerUrl: formValue.offerUrl?.trim() || undefined,
