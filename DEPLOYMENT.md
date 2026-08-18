@@ -1,6 +1,6 @@
 # JobTrackr production deployment
 
-This repository is prepared for a two-platform production deployment:
+JobTrackr uses a three-platform deployment that keeps the portfolio baseline at $0 under the providers' current free plans:
 
 ```text
 Browser
@@ -10,129 +10,175 @@ Netlify (Angular)
   |
   | /api/* reverse proxy
   v
-Render Web Service (Spring Boot)
+Render Free Web Service (Spring Boot)
   |
-  | private network only
+  | TLS PostgreSQL connection
   v
-Render PostgreSQL
+Neon Free Postgres
 ```
 
-## Production baseline
+## Zero-cost portfolio baseline
 
-`render.yaml` defines a paid baseline intended for durable use:
-
-- Render web service: `starter`
-- Render PostgreSQL: `basic-256mb`
-- Region: Frankfurt
-- PostgreSQL major version: 17
-- database public IP allow list: empty
+- Netlify: existing Angular frontend
+- Render web service: `free`, region Frankfurt
+- Neon Postgres: Free plan, preferably AWS Europe (Frankfurt / `aws-eu-central-1`)
 - backend auto-deploy: only after repository checks pass
 - generated 256-bit `JWT_SECRET`
-- health check: `/actuator/health`
+- API health check: `/actuator/health`
+- Neon connection requires TLS (`sslmode=require`)
+- Hikari pool is intentionally small (`max=5`, `minimumIdle=0`) so an idle portfolio does not keep unnecessary database connections alive
 
-Review Render's current pricing before creating the Blueprint. Do not downgrade the database to Render's free Postgres tier for production: free databases expire and do not provide production durability guarantees.
+Provider free-plan limits and pricing can change. This configuration is a zero-cost baseline under the current plans, not a contractual guarantee that either provider will remain free forever.
 
-## 1. Deploy the backend and PostgreSQL on Render
+Render Free is appropriate for a portfolio/demo workload but can spin down when idle and is subject to monthly free-instance, bandwidth and build limits. Neon Free scales database compute to zero after inactivity and is designed for intermittent workloads.
 
-1. Merge the deployment PR to `master`.
-2. In Render, create a new **Blueprint** from this GitHub repository.
-3. Use the repository-root `render.yaml`.
-4. Review the resources and paid plans before applying them.
-5. Deploy the Blueprint.
-6. Wait for the `jobtrackr-api` service health check to become healthy.
-7. Copy the public HTTPS origin assigned to the API, for example `https://<service>.onrender.com`.
+## 1. Create the Neon database
 
-The Blueprint injects database host, port, name, username and password from the managed PostgreSQL resource. It also generates the JWT signing secret. No database password or JWT secret is committed to GitHub.
+1. Create or sign in to a Neon account.
+2. Create a project named `jobtrackr` on the Free plan.
+3. Choose AWS Europe (Frankfurt / `aws-eu-central-1`) when available so the database is close to the Render Frankfurt service.
+4. Keep the default production branch.
+5. In **Connect**, use a **direct / unpooled** PostgreSQL connection for the Spring Boot service. The application already uses HikariCP, and Flyway runs through the same datasource.
+6. Copy these values from the Neon connection details:
 
-The backend starts with the `production` Spring profile. `application-production.yml` requires production database credentials, JWT secret and CORS origins instead of falling back to development credentials.
+```text
+DATABASE_HOST=ep-...eu-central-1.aws.neon.tech
+DATABASE_PORT=5432
+DATABASE_NAME=neondb
+DATABASE_USERNAME=neondb_owner
+DATABASE_PASSWORD=<generated Neon password>
+```
 
-## 2. Connect Netlify to the Render API
+Do not commit any of these credentials.
 
-In the existing Netlify site, add this build environment variable:
+The production JDBC URL is assembled by Spring Boot as:
+
+```text
+jdbc:postgresql://${DATABASE_HOST}:5432/${DATABASE_NAME}?sslmode=require
+```
+
+## 2. Deploy the Spring Boot API on Render
+
+1. In Render, create a new **Blueprint** from this GitHub repository.
+2. Use the repository-root `render.yaml`.
+3. The Blueprint creates only one resource: the Free `jobtrackr-api` web service. It does **not** create a Render database.
+4. During the initial Blueprint creation, Render prompts for the `sync: false` variables. Paste the Neon values for:
+
+```text
+DATABASE_HOST
+DATABASE_NAME
+DATABASE_USERNAME
+DATABASE_PASSWORD
+```
+
+5. Apply the Blueprint.
+6. Wait for `/actuator/health` to report healthy.
+7. Copy the API HTTPS origin, for example:
+
+```text
+https://jobtrackr-api.onrender.com
+```
+
+Render generates `JWT_SECRET` automatically. The secret is not stored in GitHub.
+
+### Render Free behavior
+
+A Free web service can sleep when idle. The first request after a quiet period can therefore be slower while Render wakes the backend. Neon may also need to wake its compute after inactivity. This cold-start behavior is acceptable for the portfolio/free baseline.
+
+If the project later needs consistent low latency, upgrade only the bottleneck that matters; the application architecture does not require a migration away from Neon.
+
+## 3. Connect Netlify to Render
+
+In the existing Netlify site, add:
 
 ```text
 JOBTRACKR_API_ORIGIN=https://<service>.onrender.com
 ```
 
-Use only the HTTPS origin: no trailing API path, query string, credentials or fragment.
+Use only the HTTPS origin, with no trailing `/api`, query string, credentials or fragment.
 
-Trigger a new Netlify deploy. The `build:netlify` script writes the deploy-time `_redirects` file:
+Trigger a Netlify deploy. `npm run build:netlify` generates:
 
 ```text
 /api/*  https://<service>.onrender.com/api/:splat  200
 /*      /index.html                               200
 ```
 
-The first rule keeps Angular requests same-origin from the browser while Netlify proxies them to Render. The second rule preserves Angular client-side routing.
+The API rule keeps browser requests same-origin while Netlify proxies them to Render. The fallback preserves Angular client-side routing.
 
-If `JOBTRACKR_API_ORIGIN` is not set, the build still succeeds and writes only the SPA fallback. This intentionally preserves the existing local-only JobTrackr mode until the backend URL is configured.
+If `JOBTRACKR_API_ORIGIN` is absent, the build still succeeds and writes only the SPA fallback. Local-only JobTrackr therefore remains usable even before the cloud backend is connected.
 
-## 3. Smoke test production
+## 4. Smoke test
 
-After both deployments are healthy, verify:
+After Neon, Render and Netlify are connected:
 
-1. `GET https://<service>.onrender.com/actuator/health` returns a healthy response.
-2. Open the Netlify frontend and confirm local mode still works without an account.
+1. `GET https://<service>.onrender.com/actuator/health` returns `UP`.
+2. Open the Netlify frontend and confirm anonymous/local mode still works.
 3. Create a new cloud account from `/account`.
 4. Sign out and sign in again.
 5. Create a fictional test application.
-6. Move it in the Kanban and refresh the page; the stage must remain persisted.
-7. Add or edit an interview and refresh.
-8. Sign out; the original browser-local workspace must reappear unchanged.
-9. Sign back in and explicitly test **Importer mes données locales** only with non-sensitive test data first.
+6. Move it in Kanban and refresh; the stage remains persisted.
+7. Add/edit an interview and refresh.
+8. Sign out; the untouched LocalStorage workspace reappears.
+9. Sign back in and explicitly test **Importer mes données locales** with non-sensitive test data first.
 
-## 4. CORS and custom domains
+## 5. CORS and custom domains
 
-`render.yaml` currently allows the existing frontend origin:
+`render.yaml` currently allows:
 
 ```text
 https://trackmyjob-zakaria.netlify.app
 ```
 
-The Netlify proxy makes normal browser API calls same-origin, but the backend CORS allow list is still kept explicit for direct API access and development diagnostics.
+Normal API calls use the Netlify same-origin proxy, but keeping the backend CORS allow list explicit is useful for direct API diagnostics.
 
-If the frontend receives a custom domain later, add that exact HTTPS origin to `CORS_ALLOWED_ORIGINS` on Render and redeploy the API.
+When a custom frontend domain is introduced, add its exact HTTPS origin to `CORS_ALLOWED_ORIGINS` on Render and redeploy.
 
-## 5. Secrets
+## 6. Secrets
 
-Never commit any of these values:
+Never commit:
 
-- PostgreSQL password
+- Neon database password
 - `JWT_SECRET`
 - provider API tokens
 - future OAuth client secrets
 
-`JWT_SECRET` is generated by Render from the Blueprint. Database credentials come directly from the managed Postgres resource.
+Render generates the JWT secret. Neon owns the database password.
 
-For secret rotation, update the value in Render and redeploy. Rotating `JWT_SECRET` intentionally invalidates all existing access tokens.
+Rotating `JWT_SECRET` invalidates existing access tokens. Rotating the Neon database password requires updating `DATABASE_PASSWORD` in Render and redeploying.
 
-## 6. Database access
+## 7. Neon Free considerations
 
-The Blueprint sets:
+Neon Free automatically scales inactive compute to zero. The production datasource therefore uses:
 
 ```yaml
-ipAllowList: []
+hikari:
+  maximum-pool-size: 5
+  minimum-idle: 0
+  idle-timeout: 30000
 ```
 
-for PostgreSQL. This blocks public database connections. The Spring Boot web service connects over Render's private network using the injected database host and credentials.
+This is intentional for a low-traffic portfolio workload.
 
-For administrative access, prefer Render's managed database tooling rather than temporarily exposing PostgreSQL to the public internet.
+The application uses the direct Neon endpoint rather than the Neon PgBouncer endpoint because HikariCP already provides application-side pooling and Flyway shares the datasource. If traffic grows substantially, revisit pooling based on measured connection pressure.
 
-## 7. Rollback
+## 8. Rollback
 
-Frontend rollback:
+Frontend:
 
-- use Netlify's deploy history to restore a previous successful frontend deploy.
+- restore a prior successful Netlify deploy.
 
-Backend rollback:
+Backend:
 
-- use Render's deploy history to redeploy a previous healthy backend commit.
+- redeploy a previous healthy commit from Render deploy history.
 
-Database schema changes are managed by Flyway. A code rollback does not automatically reverse an already-applied migration, so future database migrations must remain backward-compatible during rolling deployments or include an explicit recovery procedure.
+Database:
+
+- Flyway owns schema changes. A code rollback does not automatically undo an applied migration, so future migrations should remain backward-compatible or include an explicit recovery procedure.
 
 ## CI deployment checks
 
-Every pull request validates both deployable artifacts:
+Every pull request validates deployable artifacts:
 
 ```text
 Frontend
@@ -148,4 +194,4 @@ Backend
   production Docker image build
 ```
 
-Render is configured with `autoDeployTrigger: checksPass`, so backend auto-deploys wait for repository checks before deployment.
+Render uses `autoDeployTrigger: checksPass`, so deployment waits for repository checks.

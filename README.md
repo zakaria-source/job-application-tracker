@@ -2,43 +2,33 @@
 
 JobTrackr is a **generic job-search workspace** for tracking applications, follow-ups, recruiters, interviews and pipeline analytics.
 
-The current V1 supports two operating modes:
+The V1 supports two operating modes:
 
 - **Local mode** — no account required; profile and applications stay in the browser.
-- **Cloud mode** — optional account backed by Spring Boot and PostgreSQL, with authenticated per-user data isolation.
+- **Cloud mode** — optional account backed by Spring Boot and PostgreSQL with authenticated per-user isolation.
 
-Existing local data is **never uploaded automatically** when a user signs in. Importing browser data into a cloud account requires an explicit action from the Account page.
+Existing browser data is **never uploaded automatically** when a user signs in. Local-to-cloud migration is an explicit action from the Account page.
 
-**Frontend deployment:** https://trackmyjob-zakaria.netlify.app/
+**Frontend:** https://trackmyjob-zakaria.netlify.app/
 
-> The repository now contains the cloud backend and frontend integration. A production backend/reverse-proxy deployment is still required before the hosted frontend can use cloud mode; local mode remains independent.
-
-## V1 product flow
+## Product flow
 
 ```text
-Without an account
-──────────────────
-Onboarding
-   ↓
-Local profile + LocalStorage applications
-   ↓
-Dashboard / List / Kanban / Interviews / Follow-ups
+Anonymous / local
+─────────────────
+Angular
+  ↓
+StorageService
+  ↓
+LocalStorage
 
-Optional cloud account
-──────────────────────
-Register / Login
-   ↓
-JWT-authenticated workspace
-   ↓
-Spring Boot REST API
-   ↓
+Authenticated / cloud
+─────────────────────
+Angular
+  ↓ REST + JWT
+Spring Boot
+  ↓
 PostgreSQL
-
-Existing browser data
-   ↓
-Explicit "Importer mes données locales"
-   ↓
-Duplicate-aware cloud import
 ```
 
 Routes:
@@ -51,34 +41,25 @@ Routes:
 /account
 ```
 
-## Product principles
-
-- **Generic by default** — no hard-coded candidate identity or real application seed.
-- **Local-first** — the application remains useful without signup or backend availability.
-- **Cloud is opt-in** — signing in does not silently upload existing browser data.
-- **Tenant isolation** — backend resources are resolved from the authenticated JWT user, never from a client-supplied `userId`.
-- **Workflow correctness** — recruitment stage remains the source of truth for derived status.
-- **Incremental architecture** — the existing Angular dashboard, forms, filters and Kanban continue to consume the same state facade in local and cloud modes.
-
 ## Features
 
-### Application tracking
+### Applications
 
 - company and position
-- original offer URL
+- original job-offer URL
 - CDI / CDD / freelance / internship / apprenticeship / other
 - annual salary or freelance daily-rate target
 - recruitment stage and derived status
 - high / medium / low priority
-- next follow-up date
+- follow-up date
 - recruiter name, email and phone
 - notes
-- interview tracking and browser reminders
+- interviews and browser reminders
 - JSON import/export
 
 ### Pipeline
 
-- search and filtering
+- search and filters
 - sortable/paginated table
 - Kanban with Angular CDK drag-and-drop
 - compact stage cards and visual progression
@@ -91,22 +72,21 @@ Routes:
 - candidate profile context
 - total applications
 - response rate
-- follow-ups requiring action
+- due follow-ups
 - interviews in the next 14 days
-- high-priority active applications
-- application-status distribution
+- high-priority applications
+- status distribution
 - weekly application activity
 
-### Optional cloud account
+### Cloud account
 
-- account registration and login
-- BCrypt password hashes server-side
-- bearer JWT authentication
-- authenticated profile persistence
-- authenticated application persistence
+- registration and login
+- BCrypt password hashes
+- stateless bearer JWT authentication
+- profile persistence
+- application persistence
 - interview persistence
-- explicit local-to-cloud import
-- duplicate-aware import
+- duplicate-aware local-to-cloud import
 - logout restores the untouched browser-local workspace
 
 ## Workflow invariant
@@ -130,14 +110,14 @@ The backend derives status from stage instead of trusting contradictory client v
 ```text
 Browser
 │
-├── Anonymous / local mode
+├── Local mode
 │      Angular
 │        ↓
 │      StorageService
 │        ↓
 │      LocalStorageJobApplicationRepository
 │
-└── Authenticated / cloud mode
+└── Cloud mode
        Angular
          ↓
        StorageService
@@ -153,28 +133,14 @@ Browser
        PostgreSQL
 ```
 
-The application is intentionally a **modular monolith** at V1. Backend packages separate authentication, users, profiles, applications, interviews, security and common API behavior without introducing premature distributed-system complexity.
+The backend is intentionally a **modular monolith** for V1. Authentication, users, profiles, applications, interviews and security are separated by package without introducing premature distributed-system complexity.
 
-### Frontend structure
+### Frontend
 
 ```text
 src/app
 ├── cloud
-│   ├── auth.interceptor.ts
-│   ├── auth.service.ts
-│   ├── cloud-api.service.ts
-│   ├── cloud-session.store.ts
-│   └── cloud-workspace.service.ts
 ├── components
-│   ├── account
-│   ├── application-details
-│   ├── application-filters
-│   ├── application-kanban
-│   ├── application-list
-│   ├── dashboard
-│   ├── job-form
-│   ├── job-list
-│   └── profile-editor
 ├── data
 ├── domain
 ├── guards
@@ -182,7 +148,7 @@ src/app
 └── services
 ```
 
-### Backend structure
+### Backend
 
 ```text
 backend/src/main/java/dev/jobtrackr
@@ -196,7 +162,7 @@ backend/src/main/java/dev/jobtrackr
 └── user
 ```
 
-Flyway owns the PostgreSQL schema; Hibernate runs with `ddl-auto=validate`.
+Flyway owns the PostgreSQL schema. Hibernate runs with `ddl-auto=validate`.
 
 ## Cloud API
 
@@ -239,28 +205,22 @@ GET    /api/v1/applications/follow-ups/due
 
 ## Tenant isolation
 
-The JWT subject contains the server-side user UUID. Controllers do not accept a user id in application payloads.
+The JWT subject contains the server-side user UUID. Controllers never accept a client-supplied `userId` for ownership.
 
-Repository lookups use the authenticated owner, for example conceptually:
-
-```text
-(application_id, authenticated_user_id)
-```
-
-Guessing another application UUID therefore does not bypass ownership checks.
+Application access is scoped by both resource id and authenticated owner id, preventing cross-account access by guessing UUIDs.
 
 ## Local-to-cloud migration
 
-Signing in switches the active workspace to cloud data but does not upload LocalStorage records.
+Signing in changes the active workspace to the authenticated cloud dataset but does not upload LocalStorage records.
 
-The Account page exposes an explicit import action. When chosen:
+The Account page provides an explicit **Importer mes données locales** action. When used:
 
-1. local profile data can be copied to the authenticated profile;
-2. local applications are posted through the duplicate-aware import endpoint;
-3. the cloud workspace is reloaded from the server;
+1. local profile data can be copied to the cloud profile;
+2. local applications go through duplicate-aware import;
+3. the cloud workspace reloads from the server;
 4. the original LocalStorage dataset remains untouched.
 
-Signing out switches the state facade back to that browser-local dataset.
+Signing out restores the local workspace.
 
 ## Tech stack
 
@@ -290,8 +250,39 @@ Signing out switches the state facade back to that browser-local dataset.
 ### Delivery
 
 - GitHub Actions
-- Docker / Docker Compose
-- Netlify for the existing frontend deployment
+- Docker
+- Netlify — Angular frontend
+- Render Free — Spring Boot API
+- Neon Free — PostgreSQL
+
+## Production topology
+
+The portfolio-oriented baseline is:
+
+```text
+Browser
+  ↓
+Netlify
+  ↓ /api/* proxy
+Render Free Web Service
+  ↓ TLS
+Neon Free Postgres
+```
+
+`render.yaml` provisions **only** the Render Free web service. Neon is external and its database credentials are supplied to Render as secret environment variables.
+
+The production datasource requires TLS and uses a deliberately small Hikari pool:
+
+```text
+maximumPoolSize = 5
+minimumIdle     = 0
+```
+
+This works well with a low-traffic database that scales to zero when idle.
+
+Provider free-plan limits and pricing can change. The repository is configured for a zero-cost baseline under the current Render, Neon and Netlify plans, not as a guarantee of permanent free hosting.
+
+See **`DEPLOYMENT.md`** for the complete production setup and smoke-test procedure.
 
 ## Run locally
 
@@ -307,14 +298,14 @@ Start PostgreSQL:
 docker compose -f backend/compose.yml up -d
 ```
 
-Start the backend:
+Start Spring Boot:
 
 ```bash
 cd backend
 mvn spring-boot:run
 ```
 
-In another terminal, start Angular:
+Start Angular in another terminal:
 
 ```bash
 nvm use
@@ -322,7 +313,7 @@ npm ci
 npm start
 ```
 
-`npm start` uses `proxy.conf.json`, forwarding `/api` and `/actuator` to `http://localhost:8080`.
+`npm start` proxies `/api` and `/actuator` to `http://localhost:8080`.
 
 Open:
 
@@ -330,21 +321,30 @@ Open:
 http://localhost:4200
 ```
 
-## Environment variables
+## Production environment variables
 
-Backend production configuration should provide at least:
+Render receives the Neon connection details as secrets:
 
 ```text
-DATABASE_URL
+DATABASE_HOST
+DATABASE_PORT=5432
+DATABASE_NAME
 DATABASE_USERNAME
 DATABASE_PASSWORD
 JWT_SECRET
+JWT_TTL=PT12H
 CORS_ALLOWED_ORIGINS
 ```
 
-`JWT_SECRET` must not use the development default in a deployed environment.
+`JWT_SECRET` is generated by Render. Neon credentials must never be committed.
 
-See `backend/README.md` for backend details.
+Netlify receives:
+
+```text
+JOBTRACKR_API_ORIGIN=https://<jobtrackr-api>.onrender.com
+```
+
+The Netlify build generates the `/api/*` reverse-proxy rule dynamically.
 
 ## Testing and CI
 
@@ -361,38 +361,50 @@ Backend:
 mvn -B -f backend/pom.xml verify
 ```
 
-Backend integration tests run against a real PostgreSQL Testcontainer and cover authentication, profile persistence, cross-user application isolation and interview replacement through the application update flow.
+CI validates:
 
-Every pull request and push to `master` runs independent frontend and backend jobs.
+```text
+Frontend
+  npm audit
+  Angular/Vitest tests
+  Netlify production build
+  /api reverse-proxy artifact
+  SPA fallback
+
+Backend
+  Maven verify
+  PostgreSQL Testcontainers
+  production Docker image
+  Render Free + external Neon blueprint guard
+```
 
 ## Current limitations
 
-Cloud V1 is implemented in the repository, but several production concerns intentionally remain outside this milestone:
-
-- no production backend hosting/reverse proxy has been configured in this repository yet;
-- access tokens currently use a single HMAC signing secret rather than an external OIDC identity provider;
-- no refresh-token/session-rotation flow yet;
-- no server-side email or push notification scheduler yet;
-- no Google Calendar / Outlook integration yet;
-- no billing or Free/Pro entitlements yet;
-- no end-to-end browser suite yet;
-- compensation formatting remains EUR-oriented;
-- browser reminders remain best-effort while the browser is open.
+- Free hosting can introduce backend/database cold-start latency after inactivity.
+- Access tokens use a single HMAC signing secret rather than an external OIDC provider.
+- No refresh-token/session-rotation flow yet.
+- No account recovery or email verification yet.
+- No server-side email/push scheduler yet.
+- No Google Calendar / Outlook integration yet.
+- No billing or Free/Pro entitlements yet.
+- No end-to-end browser suite yet.
+- Compensation formatting remains EUR-oriented.
+- Browser reminders remain best-effort while the browser is open.
 
 ## Next milestones
 
 ```text
-1. Production deployment
-   ├── managed PostgreSQL
-   ├── backend hosting
-   ├── reverse proxy / API routing
-   ├── secrets
-   └── HTTPS + health checks
+1. Apply production deployment
+   ├── create Neon project
+   ├── connect Render Blueprint
+   ├── configure Netlify API origin
+   └── production smoke tests
 
-2. Production auth hardening
-   ├── OIDC provider or asymmetric JWT signing
+2. Auth hardening
+   ├── OIDC or asymmetric JWT signing
    ├── refresh/session strategy
-   └── account recovery / email verification
+   ├── email verification
+   └── account recovery
 
 3. Durable follow-ups
    ├── server scheduler
@@ -404,9 +416,4 @@ Cloud V1 is implemented in the repository, but several production concerns inten
    ├── job URL importer
    ├── CSV / Excel
    └── browser extension
-
-5. Optional product layer
-   ├── AI job/CV assistance
-   ├── advanced analytics
-   └── subscriptions / Free-Pro plans
 ```
