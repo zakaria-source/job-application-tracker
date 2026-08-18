@@ -2,6 +2,8 @@ package dev.jobtrackr.common;
 
 import dev.jobtrackr.auth.exception.DuplicateEmailException;
 import dev.jobtrackr.common.exception.ResourceNotFoundException;
+import dev.jobtrackr.jobimport.JobImportException;
+import dev.jobtrackr.jobimport.UnsafeJobUrlException;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +42,18 @@ public class ApiExceptionHandler {
     ResponseEntity<ProblemDetail> badCredentials() {
         log.warn("api_error type=authentication_failed status=401");
         return problem(HttpStatus.UNAUTHORIZED, "Authentication failed", "Invalid email or password.");
+    }
+
+    @ExceptionHandler(UnsafeJobUrlException.class)
+    ResponseEntity<ProblemDetail> unsafeJobUrl(UnsafeJobUrlException exception) {
+        log.warn("api_error type=unsafe_job_url status=400");
+        return problem(HttpStatus.BAD_REQUEST, "URL non autorisée", exception.getMessage());
+    }
+
+    @ExceptionHandler(JobImportException.class)
+    ResponseEntity<ProblemDetail> jobImport(JobImportException exception) {
+        log.warn("api_error type=job_import_failed status=422 reason={}", exception.getMessage());
+        return problem(HttpStatus.UNPROCESSABLE_ENTITY, "Import impossible", exception.getMessage());
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)

@@ -3,6 +3,7 @@ import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {MatButtonModule} from '@angular/material/button';
 import {MatCardModule} from '@angular/material/card';
 import {MatIconModule} from '@angular/material/icon';
+import {JobTrackrApiService} from '@app/core/api/jobtrackr-api.service';
 import {WorkspaceService, WorkspaceState} from '@app/core/workspace/workspace.service';
 import {ApplicationDetailsComponent} from '@app/features/applications/components/application-details/application-details.component';
 import {ApplicationFilterCriteria, ApplicationFiltersComponent} from '@app/features/applications/components/application-filters/application-filters.component';
@@ -12,7 +13,9 @@ import {ApplicationListComponent} from '@app/features/applications/components/ap
 import {ApplicationExportService} from '@app/features/applications/data-access/application-export.service';
 import {ApplicationImportService, ImportPreview} from '@app/features/applications/data-access/application-import.service';
 import {ApplicationStore} from '@app/features/applications/data-access/application.store';
+import {ApplicationUrlImportService} from '@app/features/applications/data-access/application-url-import.service';
 import {JobApplication, RecruitmentStage} from '@app/features/applications/models/application.model';
+import {JobImportPreview} from '@app/features/applications/models/job-import.model';
 
 const EMPTY_FILTERS: ApplicationFilterCriteria = {searchTerm: '', status: '', contractType: '', priority: ''};
 
@@ -43,12 +46,20 @@ export class ApplicationsPageComponent implements OnInit {
   viewMode: 'list' | 'kanban' = 'list';
   workspaceState: WorkspaceState;
 
+  showUrlImport = false;
+  jobUrl = '';
+  jobUrlLoading = false;
+  jobUrlError = '';
+  jobUrlPreview: JobImportPreview | null = null;
+
   private activeFilters: ApplicationFilterCriteria = EMPTY_FILTERS;
 
   constructor(
     private readonly applicationStore: ApplicationStore,
     private readonly importService: ApplicationImportService,
     private readonly exportService: ApplicationExportService,
+    private readonly urlImportService: ApplicationUrlImportService,
+    private readonly api: JobTrackrApiService,
     private readonly workspace: WorkspaceService
   ) {
     this.workspaceState = workspace.state;
@@ -77,7 +88,8 @@ export class ApplicationsPageComponent implements OnInit {
     const typing = target?.matches('input, textarea, select, [contenteditable="true"]') ?? false;
 
     if (event.key === 'Escape') {
-      if (this.importPreview || this.importError) this.closeImportPreview();
+      if (this.showUrlImport) this.closeUrlImport();
+      else if (this.importPreview || this.importError) this.closeImportPreview();
       else if (this.pendingDelete) this.pendingDelete = null;
       else if (this.showDetails) this.closeDetails();
       else if (this.showForm) this.cancelForm();
@@ -129,10 +141,58 @@ export class ApplicationsPageComponent implements OnInit {
   }
 
   showAddForm(): void {
+    this.closeUrlImport();
     this.editMode = false;
     this.selectedApplication = null;
     this.showForm = true;
     this.showDetails = false;
+  }
+
+  openUrlImport(): void {
+    this.jobUrl = '';
+    this.jobUrlError = '';
+    this.jobUrlPreview = null;
+    this.jobUrlLoading = false;
+    this.showUrlImport = true;
+  }
+
+  closeUrlImport(): void {
+    this.showUrlImport = false;
+    this.jobUrl = '';
+    this.jobUrlError = '';
+    this.jobUrlPreview = null;
+    this.jobUrlLoading = false;
+  }
+
+  analyzeJobUrl(): void {
+    const url = this.jobUrl.trim();
+    if (!url || this.jobUrlLoading) return;
+
+    this.jobUrlLoading = true;
+    this.jobUrlError = '';
+    this.jobUrlPreview = null;
+    this.api.previewJobUrl(url).subscribe({
+      next: preview => {
+        this.jobUrlPreview = preview;
+        this.jobUrlLoading = false;
+      },
+      error: (error: {error?: {detail?: string}}) => {
+        this.jobUrlLoading = false;
+        this.jobUrlError = error?.error?.detail || 'Impossible d’analyser cette page. Vérifiez que l’offre est publique et accessible.';
+      }
+    });
+  }
+
+  useJobUrlPreview(): void {
+    const preview = this.jobUrlPreview;
+    if (!preview) return;
+    const draft = this.urlImportService.buildDraft(preview);
+    this.closeUrlImport();
+    this.editMode = false;
+    this.selectedApplication = draft;
+    this.showForm = true;
+    this.showDetails = false;
+    this.showFeedback('Offre analysée · vérifiez les champs avant d’ajouter la candidature');
   }
 
   editApplication(application: JobApplication): void {
@@ -228,6 +288,14 @@ export class ApplicationsPageComponent implements OnInit {
     this.importPreview = null;
     this.importError = '';
     this.importFileName = '';
+  }
+
+  confidenceLabel(confidence: JobImportPreview['confidence']): string {
+    return confidence === 'HIGH' ? 'Élevée' : confidence === 'MEDIUM' ? 'Moyenne' : 'À vérifier';
+  }
+
+  extractionSourceLabel(source: JobImportPreview['extractionSource']): string {
+    return source === 'JSON_LD' ? 'Données structurées' : 'HTML public';
   }
 
   private showFeedback(message: string): void {
