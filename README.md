@@ -1,51 +1,65 @@
 # JobTrackr
 
-JobTrackr is a personalized Angular job-search workspace built around **Zakaria Dbaba's current Backend Java / Cloud-Native search**. It combines a real recruiting pipeline, follow-ups, recruiter context, compensation targets, interview reminders and analytics in one local-first application.
+JobTrackr is a **local-first job application tracking workspace** for candidates who want to manage applications, follow-ups, recruiters, interviews and job-search analytics in one place.
 
-**Live demo:** https://trackmyjob-zakaria.netlify.app/
+The product is no longer tied to a specific candidate profile or a curated personal application dataset. A first-run onboarding creates a local user profile, and the workspace starts empty unless the user explicitly chooses to load fictional demo data.
 
-## Current profile represented in the product
+**Live application:** https://trackmyjob-zakaria.netlify.app/
 
-The dashboard is intentionally tied to the current professional profile rather than generic demo copy:
+## Product principles
 
-- **Zakaria Dbaba** — Ingénieur Backend Java / Cloud-Native
-- **4 years of professional experience**
-- Java 17/21, Spring Boot 3, Kafka, PostgreSQL, Kubernetes, Terraform, AWS and Testcontainers
-- CKA, AWS Developer – Associate and Terraform Associate
-- ENSEEIHT engineering degree in Computer Science & Telecommunications
-- France, with mobility to Paris / Luxembourg
-- current compensation target displayed in the workspace: **65 k€ CDI / 550 €/day freelance**
+- **Generic by default** — no hard-coded owner name, career target, compensation target or real applications.
+- **Local-first** — profile and application data stay in the browser in the current frontend-only version.
+- **Safe onboarding** — existing application data is never replaced when a user creates or edits a profile.
+- **Demo data is opt-in** — three fictional applications can be merged into the workspace to explore the product.
+- **Workflow correctness first** — recruitment stage remains the source of truth for derived application status.
+- **Backend-ready boundaries** — persistence is isolated behind a repository/state facade so LocalStorage can later be replaced by an HTTP implementation.
 
-The public UI intentionally does **not** expose private phone or email information.
-
-## Current application dataset
-
-On the first load of the current portfolio-data version, JobTrackr safely adds the applications currently tracked for:
-
-- Mirakl
-- Doctolib
-- triPica
-- Malt
-- Crédit Agricole CIB
-- Dassault Systèmes
-- leboncoin
-- Airbus Defence and Space
-
-These records include the real role title, application date, source offer URL, follow-up date, compensation target when known, primary recruiting contact when useful, priority and recruiting notes.
-
-The bootstrap is **merge-only**. It never overwrites an existing equivalent application. Matching uses stable IDs, normalized offer URLs and normalized company/role identity so an existing browser record keeps its manual edits.
-
-## Product scope
-
-- **Dashboard** — personalized profile context plus due follow-ups, high-priority opportunities, upcoming interviews and analytics.
-- **Applications** — operational workspace to create, filter, inspect, edit, back up and restore applications in list or Kanban mode.
-
-Angular Router exposes the workspace as real routes:
+## Current product flow
 
 ```text
+First visit
+   │
+   ▼
+Onboarding
+   │
+   ├── name / target role
+   ├── experience / location
+   ├── skills / certifications
+   ├── education / compensation target
+   └── optional fictional demo data
+   │
+   ▼
+Dashboard
+   │
+   ├── profile context
+   ├── KPIs
+   ├── follow-ups
+   ├── high-priority pipeline
+   ├── interview agenda
+   └── analytics
+   │
+   ▼
+Applications workspace
+   ├── table
+   ├── Kanban
+   ├── create / edit / delete
+   ├── filters
+   ├── recruiter context
+   ├── interviews
+   └── import / export
+```
+
+Routes:
+
+```text
+/onboarding
 /dashboard
 /applications
+/settings/profile
 ```
+
+Dashboard and Applications require a local profile. If none exists, JobTrackr redirects to onboarding.
 
 ## Features
 
@@ -54,7 +68,7 @@ Angular Router exposes the workspace as real routes:
 - Company and position
 - Original job-offer URL
 - Contract type: CDI, CDD, freelance, internship, apprenticeship or other
-- Target annual salary or freelance daily rate (TJM)
+- Target annual salary or freelance daily rate
 - Recruitment stage and derived application status
 - Priority: high, medium or low
 - Explicit next follow-up date
@@ -62,25 +76,25 @@ Angular Router exposes the workspace as real routes:
 - Free-form notes
 - Interview tracking and browser reminders
 
-The recruitment stage is the workflow source of truth. JobTrackr derives the broad status from it so impossible combinations such as `Envoyé + Offre` cannot be created.
+The recruitment stage is the workflow source of truth. JobTrackr derives the broad status from it so contradictory combinations such as `Envoyé + Offre` cannot be created.
 
 ### Pipeline management
 
 - Search by company, position, recruiter, stage or notes
 - Filter by status, contract type and priority
-- Switch between table and Kanban representations without losing filters
-- Sort and paginate the table view
-- Drag applications between recruitment stages in the Kanban using Angular CDK
-- Persist Kanban transitions through the state facade, including derived status and first-response metadata
-- Highlight follow-ups that are due on both representations
-- Keyboard-accessible application rows and Kanban cards
-- Open the original offer directly from the pipeline
-- Detailed application view with compensation, recruiter and interview context
-- Versioned JSON export/import for backup and device migration
+- Table and Kanban representations
+- Sort and pagination in table mode
+- Angular CDK drag-and-drop between recruitment stages
+- Persistent stage transitions through the state facade
+- Follow-up highlighting
+- Keyboard-accessible rows and Kanban cards
+- Direct access to original offer URLs
+- Detailed application view
+- Versioned JSON export/import
 
-### Job-search cockpit
+### Dashboard
 
-- Current Backend Java / Cloud-Native profile summary
+- User-configured profile summary
 - Total applications
 - Response rate
 - Follow-ups requiring action
@@ -89,6 +103,28 @@ The recruitment stage is the workflow source of truth. JobTrackr derives the bro
 - Application-status distribution
 - ISO-week application activity
 
+### Profile & onboarding
+
+The profile is stored separately from applications under its own LocalStorage key. Only the displayed job-search context is stored:
+
+- display name
+- target role / headline
+- experience label
+- location or mobility
+- summary
+- key skills
+- certifications
+- education
+- compensation target
+
+Only name and target role are required.
+
+### Optional demo mode
+
+Users can opt in to three fictional applications during onboarding or from profile settings. Demo records use fictional organizations and people and are merged through the same duplicate-protection logic used by the application state facade.
+
+Loading demo data never replaces existing applications.
+
 ## Tech stack
 
 - Angular 21
@@ -96,6 +132,7 @@ The recruitment stage is the workflow source of truth. JobTrackr derives the bro
 - Angular Material / CDK 21
 - Angular CDK Drag & Drop
 - Angular Router
+- Reactive Forms
 - RxJS
 - Chart.js / ng2-charts 10
 - Vitest + jsdom + V8 coverage
@@ -114,66 +151,50 @@ src/app
 │   ├── application-list
 │   ├── dashboard
 │   ├── job-form
-│   └── job-list          # Applications page orchestrator
+│   ├── job-list
+│   └── profile-editor
 ├── data
-│   ├── current-applications.data.ts
-│   ├── current-profile.data.ts
 │   └── local-storage-job-application.repository.ts
 ├── domain
 │   └── application-workflow.service.ts
+├── guards
+│   └── profile-required.guard.ts
 ├── models
-│   └── job-application.model.ts
+│   ├── job-application.model.ts
+│   └── user-profile.model.ts
 ├── services
 │   ├── application-analytics.service.ts
+│   ├── demo-data.service.ts
 │   ├── follow-up.service.ts
 │   ├── notification.service.ts
-│   ├── portfolio-bootstrap.service.ts
-│   └── storage.service.ts
+│   ├── storage.service.ts
+│   └── user-profile.service.ts
 ├── app.routes.ts
 ├── app.component.ts
 ├── app.component.html
 └── app.component.css
 ```
 
-### Applications workspace
-
-```text
-JobListComponent
-    │
-    ├── ApplicationFiltersComponent
-    │      └── emits typed filter criteria
-    │
-    ├── ApplicationListComponent
-    │      └── table / sort / pagination / row actions
-    │
-    ├── ApplicationKanbanComponent
-    │      └── CDK drag & drop / presentation / stage-change events
-    │
-    ├── ApplicationDetailsComponent
-    │      └── application detail presentation and actions
-    │
-    └── JobFormComponent
-           └── create / edit form
-```
-
-`JobListComponent` coordinates page state and CRUD operations. Presentation-specific logic remains inside focused standalone components.
-
 ### Responsibility boundaries
 
 ```text
-Current profile + application seed
-    │
-    ▼
-PortfolioBootstrapService
-    │ merge-only
-    ▼
-StorageService (state facade)
+UserProfileService
+    └── local profile persistence
+
+ProfileRequiredGuard
+    └── first-run onboarding protection
+
+DemoDataService
+    └── opt-in fictional examples
+          │
+          ▼
+StorageService
     │
     ├── LocalStorageJobApplicationRepository
     │      └── persistence / hydration / schema migration / import-export
     │
     ├── ApplicationAnalyticsService
-    │      └── response rates / ISO weekly activity / calendar response timing
+    │      └── response rates / ISO weekly activity / response timing
     │
     └── FollowUpService
            └── due actions / suggestions
@@ -182,11 +203,11 @@ ApplicationWorkflowService
     └── recruitment-stage and status invariants
 ```
 
-Kanban drag events carry only the application id and target recruitment stage. `StorageService` applies the state transition and delegates the stage-to-status rule to `ApplicationWorkflowService`. The Kanban never writes persistence directly.
+Kanban drag events carry only the application id and target recruitment stage. `StorageService` applies the state transition and delegates stage-to-status rules to `ApplicationWorkflowService`. Presentation components never write persistence directly.
 
 ## Local-first persistence
 
-Persistence uses a versioned envelope:
+Applications use a versioned envelope:
 
 ```json
 {
@@ -197,13 +218,24 @@ Persistence uses a versioned envelope:
 
 The repository remains backward compatible with the original array-only LocalStorage format. Hydration validates persisted enum-like fields, rebuilds dates, migrates legacy recruiter fields and normalizes workflow state before publishing data.
 
-The personalized bootstrap has its own version marker. When a new curated dataset is shipped, only applications missing from the browser are merged in. Existing notes, stages, priorities and manual edits are preserved.
+The user profile is persisted independently, so profile changes do not rewrite or reset applications.
 
-Users can export the complete dataset as JSON and import it later. Import intentionally replaces the current local dataset after confirmation.
+Users can export the complete application dataset as JSON and import it later. Import intentionally replaces the current application dataset after confirmation; it does not replace the local profile.
+
+## Migration from the personalized prototype
+
+The generic V1 deliberately removes:
+
+- the hard-coded owner career profile
+- the real owner application seed
+- automatic portfolio-data bootstrapping
+- personalized dashboard and shell copy
+
+Existing LocalStorage application data remains compatible. A returning browser with old application data is asked to complete the new onboarding profile, after which the existing pipeline remains available.
 
 ## Analytics correctness
 
-Weekly application activity uses the **ISO week-year**, including the correct year around New Year boundaries. Response times are calculated from calendar dates in UTC rather than raw elapsed milliseconds, avoiding daylight-saving-time distortions.
+Weekly application activity uses the **ISO week-year**, including year boundaries. Response times are calculated from calendar dates in UTC rather than raw elapsed milliseconds, avoiding daylight-saving-time distortions.
 
 ## Follow-up and reminder logic
 
@@ -211,18 +243,19 @@ Explicit follow-up dates drive the cockpit. Active applications whose follow-up 
 
 For older records without a follow-up date, a sent application older than seven days is flagged as needing a follow-up plan.
 
-Browser reminder permission is requested only after a user explicitly enables an interview reminder. Timers are rebuilt from persisted application state whenever the application collection is restored or changed, preventing duplicate timers and recovering reminders after a page refresh.
+Browser reminder permission is requested only after a user explicitly enables an interview reminder. Timers are rebuilt from persisted application state whenever the collection is restored or changed, preventing duplicate timers and recovering reminders after page refresh.
 
 A fully closed browser still cannot guarantee delivery; durable background notifications belong in the future backend/service-worker architecture.
 
 ## Testing
 
-Business-critical behavior is covered with Vitest:
+Business-critical behavior is covered with Vitest, including:
 
 - workflow/status normalization
 - legacy LocalStorage migration
 - versioned persistence
-- current-data merge bootstrap and duplicate protection
+- user-profile persistence and validation
+- opt-in demo-data merge and duplicate protection
 - follow-up eligibility
 - ISO week-year analytics and calendar-safe response timing
 - CRUD persistence
@@ -261,14 +294,6 @@ Then open `http://localhost:4200`.
 npm run build -- --configuration production
 ```
 
-## Dependency security
-
-The frontend was migrated from Angular 19 to Angular 21 using Angular's official sequential migrations rather than forcing npm to accept breaking dependency changes.
-
-The remediation deliberately avoids `npm audit fix --force` and `--legacy-peer-deps`.
-
-`npm audit --omit=dev` reports **0 production dependency vulnerabilities** and CI enforces that production boundary.
-
 ## CI/CD
 
 Every pull request and push to `master` executes:
@@ -282,35 +307,9 @@ npm run build -- --configuration production
 
 Netlify provides Deploy Previews for pull requests and production deployment from the default branch.
 
-## Engineering decisions
-
-### Why use real current data instead of generic demo records?
-
-The project doubles as a working job-search tool and a portfolio project. Real application context demonstrates an actual workflow and produces meaningful dashboard analytics. The curated dataset excludes the owner's private phone/email and uses merge-only bootstrapping to preserve browser edits.
-
-### Why local storage?
-
-The current version remains intentionally frontend-only. It demonstrates application modeling, reactive state, persistence, schema migration and data visualization while keeping deployment lightweight.
-
-### Why a repository boundary?
-
-Components and state services never manipulate browser storage directly. The LocalStorage repository can later be replaced by an HTTP implementation without rewriting the product workflow.
-
-### Why derive status from recruitment stage?
-
-`stage` contains the detailed recruiting workflow while `status` is a coarse reporting dimension. Deriving the latter removes contradictory state and makes drag-and-drop transitions deterministic.
-
-### Why keep Kanban ordering non-persistent?
-
-The current domain model defines recruitment stage but not a manual rank inside a stage. CDK therefore supports moving cards between columns while same-column sorting is intentionally disabled. Persisting arbitrary order later would require an explicit ordering field rather than hidden UI-only state.
-
-### Why Router instead of tabs?
-
-Dashboard and Applications have stable URLs, browser history and direct navigation. This also prepares the application for future application-detail and settings routes.
-
 ## Current limitations
 
-The remaining limitations are architectural rather than unresolved frontend correctness bugs:
+The remaining limitations are architectural rather than hidden frontend workarounds:
 
 - data is browser-local unless exported/imported
 - no authentication or user accounts
@@ -318,8 +317,7 @@ The remaining limitations are architectural rather than unresolved frontend corr
 - browser reminders cannot run reliably while the browser is completely closed
 - no end-to-end browser test suite yet
 - manual ordering of cards inside a single Kanban stage is intentionally not persisted
-
-These belong to the backend / platform phase rather than being hidden behind frontend workarounds.
+- compensation formatting is still oriented toward the current EUR-focused product version
 
 ## Full-stack roadmap
 
@@ -330,20 +328,23 @@ Angular
 Spring Boot
    │
    ├── PostgreSQL
-   ├── Spring Security / JWT or OIDC
+   ├── Spring Security / OIDC
    ├── OpenAPI
-   └── scheduled/event-driven reminders
+   ├── scheduled reminders
+   └── observability
 ```
 
 Next engineering milestones:
 
 1. Spring Boot REST API and PostgreSQL persistence
 2. Authentication with Spring Security and OAuth2/OIDC
-3. Docker Compose local environment
-4. Integration testing with Testcontainers
-5. OpenAPI documentation
-6. End-to-end browser testing
-7. Cloud deployment and observability
-8. Optional Kafka event flow where asynchronous events add real value
+3. Per-user ownership and authorization on every application resource
+4. Docker Compose local environment
+5. Integration testing with Testcontainers
+6. OpenAPI documentation
+7. End-to-end browser testing
+8. Cloud deployment and observability
+9. Durable email/push reminders
+10. Optional event-driven integrations where asynchronous events add real value
 
-The frontend is structured so browser persistence can later be replaced by an API-backed repository without redesigning the domain workflow.
+The current frontend remains intentionally structured so LocalStorage persistence can later be replaced by an API-backed repository without redesigning the application workflow.
