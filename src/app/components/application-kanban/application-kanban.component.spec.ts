@@ -54,4 +54,39 @@ describe('ApplicationKanbanComponent', () => {
 
         expect(emit).not.toHaveBeenCalled();
     });
+
+    it('exposes the adjacent active stages for quick navigation', () => {
+        const component = new ApplicationKanbanComponent();
+        const screening = {...application, stage: 'Screening RH' as const, status: 'Entretien' as const};
+
+        expect(component.previousStage(screening)).toBe('Candidature');
+        expect(component.nextStage(screening)).toBe('Entretien technique');
+    });
+
+    it('does not offer a quick next action from an accepted offer to the rejected closed stage', () => {
+        const component = new ApplicationKanbanComponent();
+        const offer = {...application, stage: 'Offre' as const, status: 'Accepté' as const};
+
+        expect(component.nextStage(offer)).toBeNull();
+    });
+
+    it('emits the next stage from the quick navigation action', () => {
+        const component = new ApplicationKanbanComponent();
+        const emit = vi.spyOn(component.stageChange, 'emit');
+        const event = {stopPropagation: vi.fn()} as unknown as Event;
+
+        component.moveNext(event, application);
+
+        expect(event.stopPropagation).toHaveBeenCalled();
+        expect(emit).toHaveBeenCalledWith({applicationId: '1', stage: 'Screening RH'});
+    });
+
+    it('calculates active-stage progress without treating closed as a forward step', () => {
+        const component = new ApplicationKanbanComponent();
+
+        expect(component.stageProgress('Candidature')).toBe(0);
+        expect(component.stageProgress('Entretien technique')).toBe(40);
+        expect(component.stageProgress('Offre')).toBe(100);
+        expect(component.stageStepLabel('Clôturé')).toBe('Clôturé');
+    });
 });
