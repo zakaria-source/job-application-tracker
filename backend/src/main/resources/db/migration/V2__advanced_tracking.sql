@@ -6,8 +6,11 @@ create table application_event (
     details text not null default '',
     created_at timestamptz not null
 );
-
 create index idx_application_event_application_created on application_event(application_id, created_at desc);
+
+insert into application_event(id, application_id, event_type, title, details, created_at)
+select gen_random_uuid(), id, 'APPLICATION_CREATED', 'Candidature créée', company || ' · ' || position, application_date::timestamptz
+from job_application;
 
 create table follow_up (
     id uuid primary key,
@@ -18,18 +21,14 @@ create table follow_up (
     created_at timestamptz not null,
     updated_at timestamptz not null
 );
-
 create index idx_follow_up_application on follow_up(application_id, scheduled_for desc);
 create index idx_follow_up_status_date on follow_up(status, scheduled_for);
 
 insert into follow_up(id, application_id, scheduled_for, status, completed_at, created_at, updated_at)
 select gen_random_uuid(), id, follow_up_date,
-       case when follow_up_date < current_date then 'OVERDUE'
-            when follow_up_date = current_date then 'DUE'
-            else 'PLANNED' end,
+       case when follow_up_date < current_date then 'OVERDUE' when follow_up_date = current_date then 'DUE' else 'PLANNED' end,
        null, last_updated, last_updated
-from job_application
-where follow_up_date is not null;
+from job_application where follow_up_date is not null;
 
 create table interview_debrief (
     id uuid primary key,
