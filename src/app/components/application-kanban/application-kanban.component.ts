@@ -55,6 +55,15 @@ export class ApplicationKanbanComponent {
         'Clôturé'
     ];
 
+    private readonly activeStages: readonly RecruitmentStage[] = [
+        'Candidature',
+        'Screening RH',
+        'Entretien technique',
+        'Hiring Manager',
+        'Entretien final',
+        'Offre'
+    ];
+
     get columns(): KanbanColumn[] {
         return this.stages.map(stage => ({
             stage,
@@ -71,6 +80,54 @@ export class ApplicationKanbanComponent {
         }
 
         this.stageChange.emit({applicationId: application.id, stage: targetStage});
+    }
+
+    movePrevious(event: Event, application: JobApplication): void {
+        event.stopPropagation();
+        const stage = this.previousStage(application);
+        if (stage) {
+            this.stageChange.emit({applicationId: application.id, stage});
+        }
+    }
+
+    moveNext(event: Event, application: JobApplication): void {
+        event.stopPropagation();
+        const stage = this.nextStage(application);
+        if (stage) {
+            this.stageChange.emit({applicationId: application.id, stage});
+        }
+    }
+
+    previousStage(application: JobApplication): RecruitmentStage | null {
+        const index = this.activeStages.indexOf(application.stage);
+        return index > 0 ? this.activeStages[index - 1] : null;
+    }
+
+    nextStage(application: JobApplication): RecruitmentStage | null {
+        const index = this.activeStages.indexOf(application.stage);
+        return index >= 0 && index < this.activeStages.length - 1
+            ? this.activeStages[index + 1]
+            : null;
+    }
+
+    stageStepLabel(stage: RecruitmentStage): string {
+        const index = this.activeStages.indexOf(stage);
+        return index < 0 ? 'Clôturé' : `Étape ${index + 1}/${this.activeStages.length}`;
+    }
+
+    stageProgress(stage: RecruitmentStage): number {
+        const index = this.activeStages.indexOf(stage);
+        if (index < 0) {
+            return 100;
+        }
+        if (index === 0) {
+            return 0;
+        }
+        return Math.round((index / (this.activeStages.length - 1)) * 100);
+    }
+
+    companyInitial(application: JobApplication): string {
+        return application.company.trim().charAt(0).toUpperCase() || '?';
     }
 
     isFollowUpDue(application: JobApplication, now = new Date()): boolean {
