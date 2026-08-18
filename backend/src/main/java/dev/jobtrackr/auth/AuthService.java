@@ -1,17 +1,16 @@
 package dev.jobtrackr.auth;
 
-import dev.jobtrackr.auth.dto.AuthResponse;
 import dev.jobtrackr.auth.dto.LoginRequest;
 import dev.jobtrackr.auth.dto.RegisterRequest;
 import dev.jobtrackr.auth.dto.UserResponse;
 import dev.jobtrackr.auth.exception.DuplicateEmailException;
 import dev.jobtrackr.common.exception.ResourceNotFoundException;
+import dev.jobtrackr.identity.UserAccountEntity;
+import dev.jobtrackr.identity.UserAccountRepository;
 import dev.jobtrackr.profile.UserProfileEntity;
 import dev.jobtrackr.profile.UserProfileRepository;
 import dev.jobtrackr.security.IssuedToken;
 import dev.jobtrackr.security.TokenService;
-import dev.jobtrackr.identity.UserAccountEntity;
-import dev.jobtrackr.identity.UserAccountRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -48,7 +47,7 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResponse register(RegisterRequest request) {
+    public AuthResult register(RegisterRequest request) {
         String email = normalizeEmail(request.email());
         if (users.existsByEmailIgnoreCase(email)) {
             throw new DuplicateEmailException();
@@ -66,15 +65,15 @@ public class AuthService {
         users.save(user);
         profiles.save(new UserProfileEntity(user.getId(), now));
         log.info("auth_event action=register_success userId={}", user.getId());
-        return createAuthResponse(user);
+        return createAuthResult(user);
     }
 
-    public AuthResponse login(LoginRequest request) {
+    public AuthResult login(LoginRequest request) {
         String email = normalizeEmail(request.email());
         authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email, request.password()));
         UserAccountEntity user = users.findByEmailIgnoreCase(email).orElseThrow(ResourceNotFoundException::new);
         log.info("auth_event action=login_success userId={}", user.getId());
-        return createAuthResponse(user);
+        return createAuthResult(user);
     }
 
     @Transactional(readOnly = true)
@@ -84,9 +83,9 @@ public class AuthService {
             .orElseThrow(ResourceNotFoundException::new);
     }
 
-    private AuthResponse createAuthResponse(UserAccountEntity user) {
+    private AuthResult createAuthResult(UserAccountEntity user) {
         IssuedToken token = tokenService.issue(user);
-        return new AuthResponse(token.value(), token.expiresAt(), toUserResponse(user));
+        return new AuthResult(token, toUserResponse(user));
     }
 
     private static UserResponse toUserResponse(UserAccountEntity user) {
