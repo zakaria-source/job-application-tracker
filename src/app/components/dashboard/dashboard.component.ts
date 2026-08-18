@@ -7,9 +7,10 @@ import {BaseChartDirective} from 'ng2-charts';
 import {ChartConfiguration, ChartData} from 'chart.js';
 import {combineLatest, timer} from 'rxjs';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
-import {CURRENT_CAREER_PROFILE} from '../../data/current-profile.data';
+import {EMPTY_USER_PROFILE, UserProfile} from '../../models/user-profile.model';
 import {JobApplication, JobStatistics, Suggestion} from '../../models/job-application.model';
 import {StorageService} from '../../services/storage.service';
+import {UserProfileService} from '../../services/user-profile.service';
 
 interface UpcomingInterview {
   id: string;
@@ -30,7 +31,7 @@ interface UpcomingInterview {
 export class DashboardComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly profile = CURRENT_CAREER_PROFILE;
+  readonly profile: UserProfile;
   applications: JobApplication[] = [];
   statistics: JobStatistics = {
     totalApplications: 0,
@@ -71,7 +72,12 @@ export class DashboardComponent implements OnInit {
     plugins: {legend: {display: false}}
   };
 
-  constructor(private readonly storageService: StorageService) {}
+  constructor(
+    private readonly storageService: StorageService,
+    profileService: UserProfileService
+  ) {
+    this.profile = profileService.getProfile() ?? EMPTY_USER_PROFILE;
+  }
 
   ngOnInit(): void {
     combineLatest([
