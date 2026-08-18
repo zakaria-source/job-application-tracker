@@ -1,5 +1,6 @@
 import {Injectable} from '@angular/core';
-import {JobApplication, JobStatistics} from '@app/features/applications/models/application.model';
+import {JobStatistics} from '@app/features/applications/models/application-analytics.model';
+import {JobApplication} from '@app/features/applications/models/application.model';
 
 @Injectable({providedIn: 'root'})
 export class ApplicationAnalyticsService {
