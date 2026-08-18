@@ -1,40 +1,58 @@
-<mat-card>
-  <mat-card-header>
-    <mat-card-title>Mes candidatures 2026</mat-card-title>
-    <mat-card-subtitle>Pipeline réel de Zakaria : offres suivies, prochaines relances, contacts et étapes de recrutement.</mat-card-subtitle>
-  </mat-card-header>
-
+<mat-card class="pipeline-card">
   <mat-card-content>
-    <div class="workspace-toolbar">
-      @if (applications.length > 0) {
-        <div class="view-switcher" role="group" aria-label="Mode d'affichage">
-          <button
-            mat-stroked-button
-            type="button"
-            [class.active]="viewMode === 'list'"
-            [attr.aria-pressed]="viewMode === 'list'"
-            (click)="viewMode = 'list'">
-            <mat-icon>view_list</mat-icon>
-            Liste
-          </button>
-          <button
-            mat-stroked-button
-            type="button"
-            [class.active]="viewMode === 'kanban'"
-            [attr.aria-pressed]="viewMode === 'kanban'"
-            (click)="viewMode = 'kanban'">
-            <mat-icon>view_kanban</mat-icon>
-            Kanban
-          </button>
+    <div class="pipeline-header">
+      <div class="pipeline-summary">
+        <div class="pipeline-title-row">
+          <h2>Pipeline</h2>
+          <span class="application-count">{{ applications.length }}</span>
         </div>
-      }
+        <p>Suivez chaque opportunité de la candidature jusqu’à la décision finale.</p>
+      </div>
+
+      <button mat-flat-button color="primary" type="button" (click)="showAddForm()">
+        <mat-icon>add</mat-icon>
+        Nouvelle candidature
+      </button>
+    </div>
+
+    <div class="workspace-toolbar">
+      <div class="view-area">
+        @if (applications.length > 0) {
+          <div class="view-switcher" role="group" aria-label="Mode d'affichage">
+            <button
+              mat-stroked-button
+              type="button"
+              [class.active]="viewMode === 'list'"
+              [attr.aria-pressed]="viewMode === 'list'"
+              (click)="viewMode = 'list'">
+              <mat-icon>view_list</mat-icon>
+              Liste
+            </button>
+            <button
+              mat-stroked-button
+              type="button"
+              [class.active]="viewMode === 'kanban'"
+              [attr.aria-pressed]="viewMode === 'kanban'"
+              (click)="viewMode = 'kanban'">
+              <mat-icon>view_kanban</mat-icon>
+              Kanban
+            </button>
+          </div>
+
+          <span class="filtered-count">
+            {{ filteredApplications.length }} affichée{{ filteredApplications.length > 1 ? 's' : '' }}
+          </span>
+        }
+      </div>
 
       <div class="data-actions">
-        <button mat-stroked-button type="button" (click)="exportApplications()">
-          <mat-icon>download</mat-icon> Exporter
+        <button mat-stroked-button type="button" (click)="exportApplications()" [disabled]="applications.length === 0">
+          <mat-icon>download</mat-icon>
+          Exporter
         </button>
         <button mat-stroked-button type="button" (click)="importFile.click()">
-          <mat-icon>upload</mat-icon> Importer
+          <mat-icon>upload</mat-icon>
+          Importer
         </button>
         <input
           #importFile
@@ -50,21 +68,29 @@
     }
 
     @if (applications.length === 0) {
-      <div class="no-data">
-        <mat-icon>work_outline</mat-icon>
-        <h3>Aucune candidature enregistrée</h3>
-        <p>Ajoutez une candidature ou importez une sauvegarde JobTrackr.</p>
-        <button mat-raised-button color="primary" (click)="showAddForm()">
-          <mat-icon>add</mat-icon> Ajouter une candidature
-        </button>
+      <div class="no-data onboarding-empty">
+        <div class="empty-icon"><mat-icon>work_outline</mat-icon></div>
+        <span class="empty-eyebrow">VOTRE PIPELINE EST PRÊT</span>
+        <h3>Ajoutez votre première candidature</h3>
+        <p>Centralisez l’offre, le recruteur, la prochaine relance et vos entretiens dès la première opportunité.</p>
+        <div class="empty-actions">
+          <button mat-flat-button color="primary" (click)="showAddForm()">
+            <mat-icon>add</mat-icon>
+            Ajouter une candidature
+          </button>
+          <button mat-stroked-button type="button" (click)="importFile.click()">
+            <mat-icon>upload</mat-icon>
+            Importer une sauvegarde
+          </button>
+        </div>
       </div>
     }
 
     @if (applications.length > 0 && filteredApplications.length === 0) {
       <div class="no-data">
-        <mat-icon>search_off</mat-icon>
+        <div class="empty-icon muted"><mat-icon>search_off</mat-icon></div>
         <h3>Aucun résultat</h3>
-        <p>Aucune candidature ne correspond à vos filtres.</p>
+        <p>Aucune candidature ne correspond aux filtres sélectionnés.</p>
         <button mat-stroked-button (click)="clearFilters()">Réinitialiser les filtres</button>
       </div>
     }
@@ -85,14 +111,6 @@
       }
     }
   </mat-card-content>
-
-  @if (applications.length > 0 && !showForm) {
-    <mat-card-actions>
-      <button mat-raised-button color="primary" (click)="showAddForm()">
-        <mat-icon>add</mat-icon> Ajouter une candidature
-      </button>
-    </mat-card-actions>
-  }
 </mat-card>
 
 @if (showForm) {
