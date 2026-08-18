@@ -3,21 +3,21 @@
     <div class="pipeline-header">
       <div class="pipeline-summary">
         <div class="pipeline-title-row">
-          <h2>Pipeline</h2>
-          <span class="application-count">{{ applications.length }}</span>
+          <strong>{{ applications.length }}</strong>
+          <span>candidature{{ applications.length > 1 ? 's' : '' }}</span>
         </div>
-        <p>Suivez chaque opportunité de la candidature jusqu’à la décision finale.</p>
+        <p>Centralisez vos opportunités et gardez la prochaine action visible.</p>
       </div>
 
       <button mat-flat-button color="primary" type="button" (click)="showAddForm()">
         <mat-icon>add</mat-icon>
-        Nouvelle candidature
+        Ajouter
       </button>
     </div>
 
-    <div class="workspace-toolbar">
-      <div class="view-area">
-        @if (applications.length > 0) {
+    @if (applications.length > 0) {
+      <div class="workspace-toolbar">
+        <div class="view-area">
           <div class="view-switcher" role="group" aria-label="Mode d'affichage">
             <button
               mat-stroked-button
@@ -42,37 +42,35 @@
           <span class="filtered-count">
             {{ filteredApplications.length }} affichée{{ filteredApplications.length > 1 ? 's' : '' }}
           </span>
-        }
+        </div>
+
+        <div class="data-actions">
+          <button mat-stroked-button type="button" (click)="exportApplications()">
+            <mat-icon>download</mat-icon>
+            Exporter
+          </button>
+          <button mat-stroked-button type="button" (click)="importFile.click()">
+            <mat-icon>upload</mat-icon>
+            Importer
+          </button>
+        </div>
       </div>
 
-      <div class="data-actions">
-        <button mat-stroked-button type="button" (click)="exportApplications()" [disabled]="applications.length === 0">
-          <mat-icon>download</mat-icon>
-          Exporter
-        </button>
-        <button mat-stroked-button type="button" (click)="importFile.click()">
-          <mat-icon>upload</mat-icon>
-          Importer
-        </button>
-        <input
-          #importFile
-          hidden
-          type="file"
-          accept="application/json,.json"
-          (change)="importApplications($event)">
-      </div>
-    </div>
-
-    @if (applications.length > 0) {
       <app-application-filters (filtersChange)="onFiltersChange($event)" />
     }
+
+    <input
+      #importFile
+      hidden
+      type="file"
+      accept="application/json,.json"
+      (change)="importApplications($event)">
 
     @if (applications.length === 0) {
       <div class="no-data onboarding-empty">
         <div class="empty-icon"><mat-icon>work_outline</mat-icon></div>
-        <span class="empty-eyebrow">VOTRE PIPELINE EST PRÊT</span>
-        <h3>Ajoutez votre première candidature</h3>
-        <p>Centralisez l’offre, le recruteur, la prochaine relance et vos entretiens dès la première opportunité.</p>
+        <h3>Votre pipeline est vide</h3>
+        <p>Ajoutez une candidature pour suivre son étape, votre prochaine relance et vos entretiens.</p>
         <div class="empty-actions">
           <button mat-flat-button color="primary" (click)="showAddForm()">
             <mat-icon>add</mat-icon>
@@ -80,7 +78,7 @@
           </button>
           <button mat-stroked-button type="button" (click)="importFile.click()">
             <mat-icon>upload</mat-icon>
-            Importer une sauvegarde
+            Importer
           </button>
         </div>
       </div>
@@ -90,7 +88,7 @@
       <div class="no-data">
         <div class="empty-icon muted"><mat-icon>search_off</mat-icon></div>
         <h3>Aucun résultat</h3>
-        <p>Aucune candidature ne correspond aux filtres sélectionnés.</p>
+        <p>Essayez de modifier ou de réinitialiser vos filtres.</p>
         <button mat-stroked-button (click)="clearFilters()">Réinitialiser les filtres</button>
       </div>
     }

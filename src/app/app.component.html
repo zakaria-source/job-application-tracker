@@ -1,24 +1,24 @@
 <div class="app-shell">
   <header class="topbar">
     <div class="topbar-inner">
-      <a class="brand" routerLink="/dashboard" aria-label="JobTrackr - Tableau de bord">
+      <a class="brand" routerLink="/dashboard" aria-label="JobTrackr - Vue d’ensemble">
         <div class="brand-mark"><mat-icon>work_outline</mat-icon></div>
         <div class="brand-copy">
           <strong>JobTrackr</strong>
-          <span>Votre recherche, structurée</span>
+          <span>Suivi de candidatures</span>
         </div>
       </a>
 
       @if (!isOnboarding) {
         <nav class="topbar-nav" aria-label="Navigation principale">
           <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
-            <mat-icon>space_dashboard</mat-icon><span>Dashboard</span>
+            <mat-icon>space_dashboard</mat-icon><span>Vue d’ensemble</span>
           </a>
           <a routerLink="/applications" routerLinkActive="active">
             <mat-icon>view_kanban</mat-icon><span>Candidatures</span>
           </a>
           <a routerLink="/settings/profile" routerLinkActive="active">
-            <mat-icon>manage_accounts</mat-icon><span>Profil</span>
+            <mat-icon>person_outline</mat-icon><span>Profil</span>
           </a>
           <a routerLink="/account" routerLinkActive="active">
             <mat-icon>{{ cloudConnected ? 'cloud_done' : 'cloud_outlined' }}</mat-icon><span>Compte</span>
@@ -29,9 +29,9 @@
       <div
         class="product-status"
         [class.cloud]="cloudConnected"
-        [title]="cloudConnected ? 'Les données actives sont synchronisées avec votre compte cloud' : 'Les données restent dans ce navigateur'">
-        <mat-icon>{{ cloudConnected ? 'cloud_done' : 'lock' }}</mat-icon>
-        <span>{{ cloudConnected ? 'Cloud connecté' : 'Local & privé' }}</span>
+        [title]="cloudConnected ? 'Vos données sont synchronisées avec votre compte' : 'Vos données restent dans ce navigateur'">
+        <mat-icon>{{ cloudConnected ? 'cloud_done' : 'lock_outline' }}</mat-icon>
+        <span>{{ cloudConnected ? 'Synchronisé' : 'Mode local' }}</span>
       </div>
     </div>
   </header>
@@ -39,11 +39,8 @@
   <main class="workspace" [class.onboarding-workspace]="isOnboarding">
     @if (!isOnboarding) {
       <section class="page-heading">
-        <div>
-          <span class="eyebrow">JOB SEARCH WORKSPACE</span>
-          <h1>{{ pageTitle }}</h1>
-          <p>{{ pageDescription }}</p>
-        </div>
+        <h1>{{ pageTitle }}</h1>
+        <p>{{ pageDescription }}</p>
       </section>
     }
 
