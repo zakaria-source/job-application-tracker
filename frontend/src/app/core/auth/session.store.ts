@@ -1,26 +1,27 @@
 import {Injectable} from '@angular/core';
 import {BehaviorSubject, Observable} from 'rxjs';
 
-export interface CloudUser {
+export interface AuthUser {
   id: string;
   email: string;
   displayName: string;
 }
 
-export interface CloudSession {
+export interface AuthSession {
   accessToken: string;
   expiresAt: string;
-  user: CloudUser;
+  user: AuthUser;
 }
 
 @Injectable({providedIn: 'root'})
 export class SessionStore {
+  // Keep the existing browser key to preserve active sessions across this internal refactor.
   private readonly storageKey = 'jobtrackr-cloud-session-v1';
-  private readonly sessionSubject = new BehaviorSubject<CloudSession | null>(this.restore());
+  private readonly sessionSubject = new BehaviorSubject<AuthSession | null>(this.restore());
 
-  readonly session$: Observable<CloudSession | null> = this.sessionSubject.asObservable();
+  readonly session$: Observable<AuthSession | null> = this.sessionSubject.asObservable();
 
-  get current(): CloudSession | null {
+  get current(): AuthSession | null {
     return this.sessionSubject.value;
   }
 
@@ -32,7 +33,7 @@ export class SessionStore {
     return this.current !== null;
   }
 
-  save(session: CloudSession): void {
+  save(session: AuthSession): void {
     localStorage.setItem(this.storageKey, JSON.stringify(session));
     this.sessionSubject.next(session);
   }
@@ -42,14 +43,14 @@ export class SessionStore {
     this.sessionSubject.next(null);
   }
 
-  private restore(): CloudSession | null {
+  private restore(): AuthSession | null {
     const raw = localStorage.getItem(this.storageKey);
     if (!raw) {
       return null;
     }
 
     try {
-      const session = JSON.parse(raw) as CloudSession;
+      const session = JSON.parse(raw) as AuthSession;
       if (!session.accessToken || !session.expiresAt || !session.user?.id || !session.user?.email) {
         this.removeStoredSession();
         return null;
