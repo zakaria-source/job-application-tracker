@@ -1,5 +1,6 @@
 package dev.jobtrackr;
 
+import dev.jobtrackr.security.SessionCookieService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -170,8 +171,35 @@ class CloudApiIntegrationTest {
             .andExpect(header().exists("X-Request-Id"));
     }
 
+    @Test
+    void authenticatesWithHttpOnlySessionCookieAndClearsItOnLogout() throws Exception {
+        var result = mockMvc.perform(post("/api/v1/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "email": "cookie@example.com",
+                      "password": "long-enough-password",
+                      "displayName": "Cookie User"
+                    }
+                    """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.accessToken").doesNotExist())
+            .andReturn();
+
+        var cookie = result.getResponse().getCookie(SessionCookieService.COOKIE_NAME);
+        assertThat(cookie).isNotNull();
+        assertThat(cookie.isHttpOnly()).isTrue();
+
+        mockMvc.perform(get("/api/v1/applications").cookie(cookie))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/auth/logout").cookie(cookie))
+            .andExpect(status().isNoContent())
+            .andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.containsString("Max-Age=0")));
+    }
+
     private String register(String email, String displayName) throws Exception {
-        String response = mockMvc.perform(post("/api/v1/auth/register")
+        var result = mockMvc.perform(post("/api/v1/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -182,14 +210,13 @@ class CloudApiIntegrationTest {
                     """.formatted(email, displayName)))
             .andExpect(status().isCreated())
             .andExpect(header().exists("X-Request-Id"))
-            .andReturn()
-            .getResponse()
-            .getContentAsString();
+            .andExpect(jsonPath("$.accessToken").doesNotExist())
+            .andReturn();
 
-        JsonNode json = jsonMapper.readTree(response);
-        String token = json.path("accessToken").asText();
-        assertThat(token).isNotBlank();
-        return token;
+        var cookie = result.getResponse().getCookie(SessionCookieService.COOKIE_NAME);
+        assertThat(cookie).isNotNull();
+        assertThat(cookie.getValue()).isNotBlank();
+        return cookie.getValue();
     }
 
     private String applicationJson(String company, String position, String interviews) {
