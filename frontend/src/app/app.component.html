@@ -1,7 +1,7 @@
 <div class="app-shell" [class.public-shell]="isPublicEntry">
   <header class="topbar">
     <div class="topbar-inner">
-      <a class="brand" [routerLink]="cloudConnected ? '/dashboard' : '/account'" aria-label="JobTrackr — Accueil">
+      <a class="brand" [routerLink]="isOnboarding ? '/onboarding' : cloudConnected ? '/dashboard' : '/account'" aria-label="JobTrackr — Accueil">
         <app-brand-mark [compact]="true" />
         <strong>JobTrackr</strong>
       </a>
@@ -25,7 +25,7 @@
       }
 
       <div class="topbar-actions">
-        @if (cloudConnected) {
+        @if (cloudConnected && !isOnboarding) {
           <a class="quick-add" routerLink="/applications" aria-label="Ajouter une candidature">
             <mat-icon>add</mat-icon>
             <span>Ajouter</span>
@@ -37,6 +37,11 @@
             aria-label="Ouvrir le compte">
             <span class="avatar">{{ accountInitials }}</span>
           </a>
+        } @else if (cloudConnected && isOnboarding) {
+          <span class="onboarding-status" aria-label="Configuration du profil en cours">
+            <mat-icon>lock</mat-icon>
+            <span>Configuration sécurisée</span>
+          </span>
         } @else {
           <a class="signin-link" href="#auth">Connexion</a>
           <a class="start-link" href="#auth">Commencer</a>

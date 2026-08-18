@@ -34,9 +34,9 @@ export class AccountComponent {
   errorMessage = '';
 
   readonly form = this.fb.nonNullable.group({
-    displayName: [''],
-    email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required, Validators.minLength(10)]]
+    displayName: ['', Validators.maxLength(100)],
+    email: ['', [Validators.required, Validators.email, Validators.maxLength(254)]],
+    password: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(200)]]
   });
 
   constructor() {
@@ -51,6 +51,15 @@ export class AccountComponent {
   setMode(mode: 'login' | 'register'): void {
     this.mode = mode;
     this.errorMessage = '';
+
+    const displayName = this.form.controls.displayName;
+    if (mode === 'register') {
+      displayName.setValidators([Validators.required, Validators.maxLength(100)]);
+    } else {
+      displayName.setValidators(Validators.maxLength(100));
+    }
+    displayName.updateValueAndValidity();
+    displayName.markAsUntouched();
   }
 
   openAuth(mode: 'login' | 'register'): void {
@@ -59,8 +68,11 @@ export class AccountComponent {
   }
 
   submit(): void {
-    if (this.form.invalid || (this.mode === 'register' && !this.form.controls.displayName.value.trim())) {
+    if (this.submitting) return;
+
+    if (this.form.invalid) {
       this.form.markAllAsTouched();
+      this.focusFirstInvalidField();
       return;
     }
 
@@ -101,6 +113,12 @@ export class AccountComponent {
 
   initials(name: string): string {
     return name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'JT';
+  }
+
+  private focusFirstInvalidField(): void {
+    requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>('#auth input.ng-invalid')?.focus();
+    });
   }
 
   private readError(error: unknown): string {

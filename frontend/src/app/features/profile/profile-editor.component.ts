@@ -1,6 +1,7 @@
 import {HttpErrorResponse} from '@angular/common/http';
 import {Component, inject} from '@angular/core';
 import {FormBuilder, ReactiveFormsModule, Validators} from '@angular/forms';
+import {MatIconModule} from '@angular/material/icon';
 import {Router} from '@angular/router';
 import {UserProfile} from '@app/features/profile/user-profile.model';
 import {UserProfileService} from '@app/features/profile/user-profile.service';
@@ -8,7 +9,7 @@ import {UserProfileService} from '@app/features/profile/user-profile.service';
 @Component({
   selector: 'app-profile-editor',
   standalone: true,
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, MatIconModule],
   templateUrl: './profile-editor.component.html',
   styleUrl: './profile-editor.component.css'
 })
@@ -23,16 +24,19 @@ export class ProfileEditorComponent {
   errorMessage = '';
 
   readonly form = this.fb.nonNullable.group({
-    name: [this.existingProfile?.name ?? '', Validators.required],
-    headline: [this.existingProfile?.headline ?? '', Validators.required],
-    experienceLabel: [this.existingProfile?.experienceLabel ?? ''],
-    location: [this.existingProfile?.location ?? ''],
-    skills: [this.existingProfile?.coreSkills.join(', ') ?? '']
+    name: [this.existingProfile?.name ?? '', [Validators.required, Validators.maxLength(100)]],
+    headline: [this.existingProfile?.headline ?? '', [Validators.required, Validators.maxLength(140)]],
+    experienceLabel: [this.existingProfile?.experienceLabel ?? '', Validators.maxLength(80)],
+    location: [this.existingProfile?.location ?? '', Validators.maxLength(100)],
+    skills: [this.existingProfile?.coreSkills.join(', ') ?? '', Validators.maxLength(500)]
   });
 
   save(): void {
-    if (this.form.invalid || this.saving) {
+    if (this.saving) return;
+
+    if (this.form.invalid) {
       this.form.markAllAsTouched();
+      this.focusFirstInvalidField();
       return;
     }
 
@@ -65,7 +69,15 @@ export class ProfileEditorComponent {
   }
 
   cancel(): void {
+    if (this.saving) return;
     void this.router.navigate(['/dashboard']);
+  }
+
+  private focusFirstInvalidField(): void {
+    requestAnimationFrame(() => {
+      const element = document.querySelector<HTMLElement>('.profile-editor input.ng-invalid');
+      element?.focus();
+    });
   }
 
   private splitList(value: string): string[] {
