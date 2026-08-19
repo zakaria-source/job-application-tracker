@@ -107,7 +107,7 @@ public class EmailTrackingService {
         RecruitmentStage suggested,
         List<EmailApplicationMatch> matches
     ) {
-        if (suggested == null || matches.isEmpty()) return suggested;
+        if (suggested == null || matches.isEmpty()) return null;
         RecruitmentStage current = matches.get(0).currentStage();
         if (suggested == RecruitmentStage.CLOTURE || suggested == RecruitmentStage.OFFRE) return suggested;
         return suggested.ordinal() > current.ordinal() ? suggested : null;
