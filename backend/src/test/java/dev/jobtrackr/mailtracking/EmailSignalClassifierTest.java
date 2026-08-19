@@ -55,4 +55,39 @@ class EmailSignalClassifierTest {
         assertEquals(EmailSignalType.OFFER, result.type());
         assertEquals(RecruitmentStage.OFFRE, result.suggestedStage());
     }
+
+    @Test
+    void detectsFrenchRecruiterAvailabilityRequest() {
+        var result = classifier.classify(
+            "Votre candidature - Software Engineer",
+            "Votre profil m'intéresse. Seriez-vous disponible pour un échange de 30 minutes cette semaine ?"
+        );
+
+        assertEquals(EmailSignalType.INTERVIEW, result.type());
+        assertEquals(RecruitmentStage.SCREENING_RH, result.suggestedStage());
+        assertTrue(result.confidence() >= 80);
+    }
+
+    @Test
+    void detectsAtsAcknowledgementUsingInterestWording() {
+        var result = classifier.classify(
+            "Application received",
+            "Thank you for your interest in the Software Engineer position. Your application has been received."
+        );
+
+        assertEquals(EmailSignalType.ACKNOWLEDGEMENT, result.type());
+        assertNull(result.suggestedStage());
+    }
+
+    @Test
+    void detectsCommonEnglishRejectionWording() {
+        var result = classifier.classify(
+            "Update on your application",
+            "After careful consideration, we have decided not to move forward with your application."
+        );
+
+        assertEquals(EmailSignalType.REJECTION, result.type());
+        assertEquals(RecruitmentStage.CLOTURE, result.suggestedStage());
+        assertTrue(result.confidence() >= 90);
+    }
 }
