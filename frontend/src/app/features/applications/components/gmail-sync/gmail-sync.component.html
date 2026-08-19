@@ -1,0 +1,40 @@
+<section class="gmail-sync" [class.connected]="status?.connected">
+  <div class="gmail-main">
+    <span class="gmail-icon"><mat-icon>mail</mat-icon></span>
+    <div class="gmail-copy">
+      <div class="gmail-title">
+        <strong>Suivi Gmail</strong>
+        @if (status?.connected) { <span class="status-dot">Connecté</span> }
+      </div>
+
+      @if (loading) {
+        <small>Vérification de la connexion…</small>
+      } @else if (!status?.available) {
+        <small>Intégration Gmail non configurée sur le serveur.</small>
+      } @else if (status?.connected) {
+        <small>{{ status?.emailAddress }} · Sync auto toutes les {{ intervalLabel() }} · {{ formatLastSync() }}</small>
+      } @else {
+        <small>Analyse automatiquement les réponses recruteur et rapproche les candidatures.</small>
+      }
+    </div>
+  </div>
+
+  <div class="gmail-actions">
+    @if (status?.available && !status?.connected) {
+      <button mat-stroked-button type="button" [disabled]="connecting" (click)="connect()">
+        <mat-icon>link</mat-icon>{{ connecting ? 'Connexion…' : 'Connecter Gmail' }}
+      </button>
+    }
+    @if (status?.connected) {
+      <button mat-stroked-button type="button" [disabled]="syncing" (click)="synchronize()">
+        <mat-icon>{{ syncing ? 'hourglass_top' : 'sync' }}</mat-icon>{{ syncing ? 'Sync…' : 'Synchroniser' }}
+      </button>
+      <button class="disconnect" type="button" [disabled]="disconnecting" (click)="disconnect()">
+        {{ disconnecting ? 'Déconnexion…' : 'Déconnecter' }}
+      </button>
+    }
+  </div>
+
+  @if (message) { <p class="gmail-feedback success"><mat-icon>check_circle</mat-icon>{{ message }}</p> }
+  @if (error || status?.lastError) { <p class="gmail-feedback error"><mat-icon>error</mat-icon>{{ error || status?.lastError }}</p> }
+</section>
