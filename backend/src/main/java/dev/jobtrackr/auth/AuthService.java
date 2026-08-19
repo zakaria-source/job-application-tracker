@@ -17,7 +17,6 @@ import dev.jobtrackr.security.TokenService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -39,7 +38,6 @@ public class AuthService {
     private final UserAccountRepository users;
     private final UserProfileRepository profiles;
     private final AuthSessionRepository sessions;
-    private final AuthSessionRevocationService revocations;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final TokenService tokenService;
@@ -49,7 +47,6 @@ public class AuthService {
     public AuthService(UserAccountRepository users,
                        UserProfileRepository profiles,
                        AuthSessionRepository sessions,
-                       AuthSessionRevocationService revocations,
                        PasswordEncoder passwordEncoder,
                        AuthenticationManager authenticationManager,
                        TokenService tokenService,
@@ -58,7 +55,6 @@ public class AuthService {
         this.users = users;
         this.profiles = profiles;
         this.sessions = sessions;
-        this.revocations = revocations;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.tokenService = tokenService;
@@ -101,11 +97,16 @@ public class AuthService {
         return createAuthResult(user, Instant.now());
     }
 
-    @Transactional
+    /**
+     * Refresh rotation is serialized per auth session with a database row lock.
+     * A replay revokes that locked session and the dedicated exception is configured
+     * not to roll the revocation back when the request is rejected with 401.
+     */
+    @Transactional(noRollbackFor = InvalidRefreshTokenException.class)
     public AuthResult refresh(String rawRefreshToken) {
         RefreshTokenService.ParsedRefreshToken presented = parseRefresh(rawRefreshToken);
         rateLimits.check("refresh:" + presented.sessionId(), 30, REFRESH_WINDOW);
-        AuthSessionEntity session = sessions.findById(presented.sessionId())
+        AuthSessionEntity session = sessions.findByIdForUpdate(presented.sessionId())
             .orElseThrow(AuthService::invalidRefreshToken);
         Instant now = Instant.now();
 
@@ -113,14 +114,15 @@ public class AuthService {
             throw invalidRefreshToken();
         }
         if (!refreshTokens.matches(session.getRefreshTokenHash(), presented.hash())) {
-            revocations.revoke(session.getId(), now);
+            session.revoke(now);
+            sessions.saveAndFlush(session);
             log.warn("auth_event action=refresh_reuse_detected sessionId={} userId={}", session.getId(), session.getUser().getId());
             throw invalidRefreshToken();
         }
 
         IssuedRefreshToken rotated = refreshTokens.issue(session.getId());
         session.rotate(rotated.hash(), rotated.expiresAt(), now);
-        sessions.save(session);
+        sessions.saveAndFlush(session);
         IssuedToken access = tokenService.issue(session.getUser());
         log.info("auth_event action=refresh_success sessionId={} userId={}", session.getId(), session.getUser().getId());
         return new AuthResult(access, rotated, toUserResponse(session.getUser()));
@@ -133,10 +135,10 @@ public class AuthService {
         }
         try {
             RefreshTokenService.ParsedRefreshToken presented = refreshTokens.parse(rawRefreshToken);
-            sessions.findById(presented.sessionId()).ifPresent(session -> {
+            sessions.findByIdForUpdate(presented.sessionId()).ifPresent(session -> {
                 if (refreshTokens.matches(session.getRefreshTokenHash(), presented.hash())) {
                     session.revoke(Instant.now());
-                    sessions.save(session);
+                    sessions.saveAndFlush(session);
                     log.info("auth_event action=logout_success sessionId={} userId={}", session.getId(), session.getUser().getId());
                 }
             });
@@ -167,8 +169,8 @@ public class AuthService {
         }
     }
 
-    private static BadCredentialsException invalidRefreshToken() {
-        return new BadCredentialsException("Invalid refresh token");
+    private static InvalidRefreshTokenException invalidRefreshToken() {
+        return new InvalidRefreshTokenException();
     }
 
     private static UserResponse toUserResponse(UserAccountEntity user) {

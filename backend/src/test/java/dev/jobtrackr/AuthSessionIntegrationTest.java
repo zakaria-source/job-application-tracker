@@ -1,5 +1,7 @@
 package dev.jobtrackr;
 
+import dev.jobtrackr.common.RateLimitExceededException;
+import dev.jobtrackr.common.RateLimitService;
 import dev.jobtrackr.security.SessionCookieService;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
@@ -9,12 +11,24 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.time.Duration;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -35,6 +49,12 @@ class AuthSessionIntegrationTest {
 
     @Autowired
     MockMvc mockMvc;
+
+    @Autowired
+    JdbcTemplate jdbc;
+
+    @Autowired
+    RateLimitService rateLimits;
 
     @Test
     void rotatesRefreshTokensAndRejectsReplay() throws Exception {
@@ -66,6 +86,65 @@ class AuthSessionIntegrationTest {
 
         mockMvc.perform(post("/api/v1/auth/refresh").cookie(rotatedRefresh))
             .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void serializesConcurrentRefreshRotationAndRevokesTheReplayedFamily() throws Exception {
+        var registration = register("refresh-race@example.com", "Refresh Race User");
+        Cookie originalRefresh = registration.getResponse().getCookie(SessionCookieService.REFRESH_COOKIE_NAME);
+        assertThat(originalRefresh).isNotNull();
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        try {
+            Future<MvcResult> first = executor.submit(() -> concurrentRefresh(originalRefresh, ready, start));
+            Future<MvcResult> second = executor.submit(() -> concurrentRefresh(originalRefresh, ready, start));
+
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+
+            MvcResult firstResult = first.get(10, TimeUnit.SECONDS);
+            MvcResult secondResult = second.get(10, TimeUnit.SECONDS);
+            assertThat(List.of(
+                firstResult.getResponse().getStatus(),
+                secondResult.getResponse().getStatus()
+            )).containsExactlyInAnyOrder(200, 401);
+
+            MvcResult success = firstResult.getResponse().getStatus() == 200 ? firstResult : secondResult;
+            Cookie rotatedRefresh = success.getResponse().getCookie(SessionCookieService.REFRESH_COOKIE_NAME);
+            assertThat(rotatedRefresh).isNotNull();
+            assertThat(rotatedRefresh.getValue()).isNotEqualTo(originalRefresh.getValue());
+
+            // The losing request is a replay of the one-time token, so the session
+            // family is revoked and even the just-rotated token can no longer refresh.
+            mockMvc.perform(post("/api/v1/auth/refresh").cookie(rotatedRefresh))
+                .andExpect(status().isUnauthorized());
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void sharesRateLimitsThroughPostgresWithoutPersistingRawKeys() {
+        String key = "login:" + UUID.randomUUID() + "@example.com";
+        RateLimitService secondReplica = new RateLimitService(jdbc);
+
+        rateLimits.check(key, 2, Duration.ofMinutes(1));
+        secondReplica.check(key, 2, Duration.ofMinutes(1));
+
+        assertThatThrownBy(() -> rateLimits.check(key, 2, Duration.ofMinutes(1)))
+            .isInstanceOf(RateLimitExceededException.class);
+
+        Integer rawKeyRows = jdbc.queryForObject(
+            "select count(*) from rate_limit_bucket where bucket_key = ?",
+            Integer.class,
+            key
+        );
+        assertThat(rawKeyRows).isZero();
+
+        rateLimits.reset(key);
+        secondReplica.check(key, 2, Duration.ofMinutes(1));
     }
 
     @Test
@@ -141,6 +220,16 @@ class AuthSessionIntegrationTest {
 
         mockMvc.perform(post("/api/v1/auth/refresh").cookie(refresh))
             .andExpect(status().isUnauthorized());
+    }
+
+    private MvcResult concurrentRefresh(Cookie refresh, CountDownLatch ready, CountDownLatch start) throws Exception {
+        ready.countDown();
+        if (!start.await(5, TimeUnit.SECONDS)) {
+            throw new IllegalStateException("Concurrent refresh start timed out");
+        }
+        return mockMvc.perform(post("/api/v1/auth/refresh")
+                .cookie(new Cookie(refresh.getName(), refresh.getValue())))
+            .andReturn();
     }
 
     private org.springframework.test.web.servlet.MvcResult register(String email, String displayName) throws Exception {
