@@ -202,14 +202,17 @@ class CloudApiIntegrationTest {
         var csrfCookie = csrfResult.getResponse().getCookie("XSRF-TOKEN");
         assertThat(csrfCookie).isNotNull();
 
-        mockMvc.perform(post("/api/v1/auth/logout")
+        var logout = mockMvc.perform(post("/api/v1/auth/logout")
                 .cookie(accessCookie, refreshCookie, csrfCookie)
                 .header("X-XSRF-TOKEN", csrfCookie.getValue()))
             .andExpect(status().isNoContent())
-            .andExpect(header().stringValues("Set-Cookie",
-                org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString(SessionCookieService.ACCESS_COOKIE_NAME + "=")),
-                org.hamcrest.Matchers.hasItem(org.hamcrest.Matchers.containsString(SessionCookieService.REFRESH_COOKIE_NAME + "="))))
-            .andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.containsString("Max-Age=0")));
+            .andReturn();
+
+        var setCookies = logout.getResponse().getHeaders("Set-Cookie");
+        assertThat(setCookies).anyMatch(value ->
+            value.contains(SessionCookieService.ACCESS_COOKIE_NAME + "=") && value.contains("Max-Age=0"));
+        assertThat(setCookies).anyMatch(value ->
+            value.contains(SessionCookieService.REFRESH_COOKIE_NAME + "=") && value.contains("Max-Age=0"));
     }
 
     private String register(String email, String displayName) throws Exception {
