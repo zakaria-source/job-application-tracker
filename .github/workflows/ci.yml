@@ -38,6 +38,16 @@ jobs:
         working-directory: frontend
         run: npm run test:ci
 
+      - name: Enforce browser auth boundary
+        working-directory: frontend
+        run: |
+          if grep -R -n -E 'accessToken|sessionStorage|Authorization.*Bearer' src/app/core/auth; then
+            echo 'Browser auth code must not read, persist, or attach bearer credentials.'
+            exit 1
+          fi
+          grep -F 'withCredentials: true' src/app/core/auth/auth.interceptor.ts
+          grep -F "withXsrfConfiguration({cookieName: 'XSRF-TOKEN', headerName: 'X-XSRF-TOKEN'})" src/main.ts
+
       - name: Build Netlify application
         working-directory: frontend
         env:
@@ -77,6 +87,8 @@ jobs:
           grep -F '    plan: free' render.yaml
           grep -F '      - key: DATABASE_HOST' render.yaml
           grep -F '        sync: false' render.yaml
+          grep -F '        value: PT15M' render.yaml
+          grep -F '        value: P30D' render.yaml
           if grep -q '^databases:' render.yaml; then
             echo 'Render-managed database must not be provisioned in the free Neon baseline.'
             exit 1
