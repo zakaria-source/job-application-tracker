@@ -1,6 +1,6 @@
 package dev.jobtrackr.gmail;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import org.jsoup.Jsoup;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -16,8 +16,6 @@ import java.util.Base64;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-
-import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 class GmailApiClient {
     private static final String GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
@@ -133,7 +131,7 @@ class GmailApiClient {
                 if (pageToken.isBlank()) break;
             }
         } catch (RestClientResponseException exception) {
-            if (exception.getStatusCode() == NOT_FOUND) throw new HistoryExpiredException();
+            if (exception.getStatusCode().value() == 404) throw new HistoryExpiredException();
             throw exception;
         }
         return new HistoryChanges(List.copyOf(ids), latestHistoryId);
@@ -215,7 +213,7 @@ class GmailApiClient {
     private static String text(JsonNode node, String field) {
         if (node == null) return "";
         JsonNode value = node.path(field);
-        return value.isTextual() || value.isNumber() ? value.asText("") : "";
+        return value.isString() || value.isNumber() ? value.asString("") : "";
     }
 
     private static String bearer(String token) {
