@@ -1,5 +1,6 @@
 package dev.jobtrackr.gmail;
 
+import dev.jobtrackr.application.dto.ApplicationResponse;
 import dev.jobtrackr.gmail.dto.GmailStatusResponse;
 import dev.jobtrackr.gmail.dto.GmailSyncResponse;
 import dev.jobtrackr.mailtracking.EmailTrackingService;
@@ -16,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -32,6 +34,7 @@ class GmailSyncService {
     private final GmailConnectionRepository connections;
     private final GmailProcessedMessageRepository processedMessages;
     private final EmailTrackingService emailTracking;
+    private final GmailApplicationDiscoveryService discovery;
 
     GmailSyncService(
         GmailProperties properties,
@@ -39,7 +42,8 @@ class GmailSyncService {
         GmailTokenCipher cipher,
         GmailConnectionRepository connections,
         GmailProcessedMessageRepository processedMessages,
-        EmailTrackingService emailTracking
+        EmailTrackingService emailTracking,
+        GmailApplicationDiscoveryService discovery
     ) {
         this.properties = properties;
         this.api = api;
@@ -47,6 +51,7 @@ class GmailSyncService {
         this.connections = connections;
         this.processedMessages = processedMessages;
         this.emailTracking = emailTracking;
+        this.discovery = discovery;
     }
 
     GmailStatusResponse status(UUID userId) {
@@ -119,6 +124,7 @@ class GmailSyncService {
             int matched = 0;
             int applied = 0;
             int ignored = 0;
+            int created = 0;
             UUID userId = connection.getOwner().getId();
 
             for (String messageId : messageIds) {
@@ -137,14 +143,15 @@ class GmailSyncService {
                 matched += outcome.matched() ? 1 : 0;
                 applied += outcome.applied() ? 1 : 0;
                 ignored += outcome.ignored() ? 1 : 0;
+                created += outcome.created() ? 1 : 0;
             }
 
             Instant syncedAt = Instant.now();
             connection.markSynced(nextHistoryId, syncedAt);
             connections.save(connection);
-            log.info("gmail_sync userId={} connectionId={} fullSync={} rescanRecent={} scanned={} matched={} applied={} ignored={}",
-                userId, connection.getId(), fullSync, rescanRecent, scanned, matched, applied, ignored);
-            return new GmailSyncResponse(scanned, matched, applied, ignored, fullSync, syncedAt);
+            log.info("gmail_sync userId={} connectionId={} fullSync={} rescanRecent={} scanned={} matched={} applied={} created={} ignored={}",
+                userId, connection.getId(), fullSync, rescanRecent, scanned, matched, applied, created, ignored);
+            return new GmailSyncResponse(scanned, matched, applied, ignored, created, fullSync, syncedAt);
         } catch (RuntimeException exception) {
             connection.markError(safeMessage(exception), Instant.now());
             connections.save(connection);
@@ -166,6 +173,34 @@ class GmailSyncService {
             userId,
             new EmailAnalysisRequest(subject.substring(0, Math.min(300, subject.length())), sender, body)
         );
+
+        if (analysis.matches().isEmpty() && !OTHER_SIGNAL.equals(analysis.signalType())) {
+            Optional<ApplicationResponse> created = discovery.createIfMissing(userId, message, analysis);
+            if (created.isPresent()) {
+                ApplicationResponse application = created.get();
+                emailTracking.apply(userId, new EmailApplyRequest(
+                    application.id(),
+                    null,
+                    analysis.signalType(),
+                    subject.substring(0, Math.min(300, subject.length()))
+                ));
+                processedMessages.save(new GmailProcessedMessageEntity(
+                    UUID.randomUUID(),
+                    connection,
+                    message.id(),
+                    message.threadId(),
+                    message.date(),
+                    Instant.now(),
+                    application.id(),
+                    analysis.signalType(),
+                    100,
+                    true
+                ));
+                log.info("gmail_application_discovered userId={} applicationId={} company={} position={} signal={}",
+                    userId, application.id(), application.company(), application.position(), analysis.signalType());
+                return new MessageOutcome(true, true, false, true);
+            }
+        }
 
         EmailApplicationMatch top = analysis.matches().isEmpty() ? null : analysis.matches().get(0);
         Integer topScore = top == null ? null : top.score();
@@ -196,7 +231,7 @@ class GmailSyncService {
             recordActivity
         ));
 
-        return new MessageOutcome(matched, recordActivity, !recordActivity);
+        return new MessageOutcome(matched, recordActivity, !recordActivity, false);
     }
 
     private boolean shouldRecordActivity(EmailAnalysisResponse analysis) {
@@ -233,5 +268,5 @@ class GmailSyncService {
         return message == null || message.isBlank() ? exception.getClass().getSimpleName() : message;
     }
 
-    private record MessageOutcome(boolean matched, boolean applied, boolean ignored) {}
+    private record MessageOutcome(boolean matched, boolean applied, boolean ignored, boolean created) {}
 }

@@ -7,6 +7,7 @@ public record GmailSyncResponse(
     int matched,
     int applied,
     int ignored,
+    int created,
     boolean fullSync,
     Instant syncedAt
 ) {}
