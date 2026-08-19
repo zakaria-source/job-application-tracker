@@ -99,6 +99,7 @@ public class SecurityConfig {
                     "/api/v1/auth/logout",
                     "/api/v1/auth/csrf",
                     "/api/v1/auth/capabilities",
+                    "/api/v1/gmail/oauth/callback",
                     "/actuator/health"
                 ).permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
