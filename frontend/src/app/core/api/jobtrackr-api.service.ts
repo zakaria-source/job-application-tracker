@@ -4,6 +4,7 @@ import {Observable, map} from 'rxjs';
 import {Interview, JobApplication, RecruitmentStage} from '@app/features/applications/models/application.model';
 import {ApplicationEvent, ApplicationHealth, FollowUp, InterviewDebrief, InterviewDebriefInput} from '@app/features/applications/models/application-tracking.model';
 import {JobImportPreview} from '@app/features/applications/models/job-import.model';
+import {EmailAnalysis, EmailAnalysisInput, EmailApplyInput, EmailApplyResponse} from '@app/features/applications/models/application-email.model';
 import {UserProfile} from '@app/features/profile/user-profile.model';
 
 interface ApplicationDto extends Omit<JobApplication, 'applicationDate' | 'lastUpdated' | 'responseDate' | 'followUpDate' | 'interviews'> {
@@ -84,6 +85,14 @@ export class JobTrackrApiService {
 
   previewJobUrl(url: string): Observable<JobImportPreview> {
     return this.http.post<JobImportPreview>('/api/v1/job-import/preview', {url});
+  }
+
+  analyzeRecruitmentEmail(input: EmailAnalysisInput): Observable<EmailAnalysis> {
+    return this.http.post<EmailAnalysis>('/api/v1/mail-tracking/analyze', input);
+  }
+
+  applyRecruitmentEmail(input: EmailApplyInput): Observable<EmailApplyResponse> {
+    return this.http.post<EmailApplyResponse>('/api/v1/mail-tracking/apply', input);
   }
 
   getTrackingOverview(id: string): Observable<ApplicationTrackingOverview> {
