@@ -23,6 +23,8 @@ import java.util.UUID;
 class GmailSyncService {
     private static final Logger log = LoggerFactory.getLogger(GmailSyncService.class);
     private static final String OTHER_SIGNAL = "Autre message";
+    private static final int MIN_ACTIVITY_MATCH_SCORE = 30;
+    private static final int MIN_ACTIVITY_MATCH_GAP = 5;
 
     private final GmailProperties properties;
     private final GmailApiClient api;
@@ -169,12 +171,13 @@ class GmailSyncService {
         Integer topScore = top == null ? null : top.score();
         UUID matchedApplicationId = top == null ? null : top.applicationId();
         boolean matched = top != null && !OTHER_SIGNAL.equals(analysis.signalType());
-        boolean autoApply = matched && shouldAutoApply(analysis);
+        boolean recordActivity = matched && shouldRecordActivity(analysis);
+        boolean moveStage = recordActivity && shouldAutoApply(analysis);
 
-        if (autoApply) {
+        if (recordActivity) {
             emailTracking.apply(userId, new EmailApplyRequest(
                 top.applicationId(),
-                analysis.suggestedStage(),
+                moveStage ? analysis.suggestedStage() : null,
                 analysis.signalType(),
                 subject.substring(0, Math.min(300, subject.length()))
             ));
@@ -190,10 +193,19 @@ class GmailSyncService {
             matchedApplicationId,
             analysis.signalType(),
             topScore,
-            autoApply
+            recordActivity
         ));
 
-        return new MessageOutcome(matched, autoApply, !matched);
+        return new MessageOutcome(matched, recordActivity, !recordActivity);
+    }
+
+    private boolean shouldRecordActivity(EmailAnalysisResponse analysis) {
+        if (analysis.matches().isEmpty()) return false;
+        int top = analysis.matches().get(0).score();
+        if (top < MIN_ACTIVITY_MATCH_SCORE) return false;
+        if (analysis.matches().size() == 1) return true;
+        int second = analysis.matches().get(1).score();
+        return top >= properties.getAutoApplyMinMatch() || top - second >= MIN_ACTIVITY_MATCH_GAP;
     }
 
     private boolean shouldAutoApply(EmailAnalysisResponse analysis) {
