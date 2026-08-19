@@ -172,7 +172,7 @@ class CloudApiIntegrationTest {
     }
 
     @Test
-    void authenticatesWithHttpOnlySessionCookieAndClearsItOnLogout() throws Exception {
+    void authenticatesWithHttpOnlySessionCookieAndClearsItOnCsrfProtectedLogout() throws Exception {
         var result = mockMvc.perform(post("/api/v1/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
@@ -186,16 +186,33 @@ class CloudApiIntegrationTest {
             .andExpect(jsonPath("$.accessToken").doesNotExist())
             .andReturn();
 
-        var cookie = result.getResponse().getCookie(SessionCookieService.COOKIE_NAME);
-        assertThat(cookie).isNotNull();
-        assertThat(cookie.isHttpOnly()).isTrue();
+        var accessCookie = result.getResponse().getCookie(SessionCookieService.ACCESS_COOKIE_NAME);
+        var refreshCookie = result.getResponse().getCookie(SessionCookieService.REFRESH_COOKIE_NAME);
+        assertThat(accessCookie).isNotNull();
+        assertThat(refreshCookie).isNotNull();
+        assertThat(accessCookie.isHttpOnly()).isTrue();
+        assertThat(refreshCookie.isHttpOnly()).isTrue();
 
-        mockMvc.perform(get("/api/v1/applications").cookie(cookie))
+        mockMvc.perform(get("/api/v1/applications").cookie(accessCookie))
             .andExpect(status().isOk());
 
-        mockMvc.perform(post("/api/v1/auth/logout").cookie(cookie))
+        var csrfResult = mockMvc.perform(get("/api/v1/auth/csrf").cookie(accessCookie))
+            .andExpect(status().isOk())
+            .andReturn();
+        var csrfCookie = csrfResult.getResponse().getCookie("XSRF-TOKEN");
+        assertThat(csrfCookie).isNotNull();
+
+        var logout = mockMvc.perform(post("/api/v1/auth/logout")
+                .cookie(accessCookie, refreshCookie, csrfCookie)
+                .header("X-XSRF-TOKEN", csrfCookie.getValue()))
             .andExpect(status().isNoContent())
-            .andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.containsString("Max-Age=0")));
+            .andReturn();
+
+        var setCookies = logout.getResponse().getHeaders("Set-Cookie");
+        assertThat(setCookies).anyMatch(value ->
+            value.contains(SessionCookieService.ACCESS_COOKIE_NAME + "=") && value.contains("Max-Age=0"));
+        assertThat(setCookies).anyMatch(value ->
+            value.contains(SessionCookieService.REFRESH_COOKIE_NAME + "=") && value.contains("Max-Age=0"));
     }
 
     private String register(String email, String displayName) throws Exception {
