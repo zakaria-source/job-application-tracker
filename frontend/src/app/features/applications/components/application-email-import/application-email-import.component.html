@@ -1,0 +1,130 @@
+<div class="mail-dialog-backdrop" role="presentation" (click)="closed.emit()">
+  <section
+    class="mail-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="mail-dialog-title"
+    cdkTrapFocus
+    [cdkTrapFocusAutoCapture]="true"
+    (click)="$event.stopPropagation()"
+  >
+    <header class="mail-dialog-header">
+      <div>
+        <span class="eyebrow">SUIVI · MAIL</span>
+        <h2 id="mail-dialog-title">Analyser une réponse recruteur</h2>
+        <p>Collez le mail reçu. JobTrackr détecte le signal et la candidature la plus probable avant toute modification.</p>
+      </div>
+      <button class="icon-button" type="button" aria-label="Fermer" (click)="closed.emit()"><mat-icon>close</mat-icon></button>
+    </header>
+
+    @if (!analysis) {
+      <div class="mail-form">
+        <label>
+          <span>Objet du mail</span>
+          <input
+            type="text"
+            maxlength="300"
+            autocomplete="off"
+            placeholder="Ex. Next steps — Software Engineer"
+            [(ngModel)]="input.subject"
+          >
+        </label>
+
+        <label>
+          <span>Expéditeur <small>optionnel mais utile pour le matching</small></span>
+          <input
+            type="text"
+            maxlength="320"
+            autocomplete="off"
+            placeholder="Ex. Marie Dupont — marie@entreprise.com"
+            [(ngModel)]="input.sender"
+          >
+        </label>
+
+        <label>
+          <span>Contenu du mail</span>
+          <textarea
+            rows="10"
+            maxlength="20000"
+            placeholder="Collez ici le contenu du mail reçu…"
+            [(ngModel)]="input.body"
+          ></textarea>
+        </label>
+
+        <div class="privacy-note">
+          <mat-icon>shield</mat-icon>
+          <span>Le corps du mail sert à l’analyse mais n’est pas enregistré dans l’historique. Seuls le signal détecté et l’objet sont conservés lors de la confirmation.</span>
+        </div>
+      </div>
+    } @else {
+      <div class="analysis-result">
+        <div class="signal-card">
+          <div class="signal-heading">
+            <span class="signal-badge">{{ analysis.signalType }}</span>
+            <strong>{{ analysis.signalConfidence }}% confiance</strong>
+          </div>
+          <p>{{ analysis.summary }}</p>
+          @if (analysis.evidence.length > 0) {
+            <div class="evidence-list">
+              @for (evidence of analysis.evidence; track evidence) { <span>{{ evidence }}</span> }
+            </div>
+          }
+        </div>
+
+        <div class="selection-grid">
+          <label>
+            <span>Candidature associée</span>
+            <select [(ngModel)]="selectedApplicationId">
+              @for (application of applications; track application.id) {
+                <option [value]="application.id">{{ applicationOptionLabel(application) }}</option>
+              }
+            </select>
+          </label>
+
+          <label>
+            <span>Étape à appliquer</span>
+            <select [(ngModel)]="selectedStage">
+              <option value="">Ne pas changer l’étape</option>
+              @for (stage of stageOptions; track stage) { <option [value]="stage">{{ stage }}</option> }
+            </select>
+          </label>
+        </div>
+
+        @if (selectedApplicationId && matchReasons(selectedApplicationId).length > 0) {
+          <div class="match-explanation">
+            <strong>Pourquoi ce rapprochement ?</strong>
+            <ul>
+              @for (reason of matchReasons(selectedApplicationId); track reason) { <li>{{ reason }}</li> }
+            </ul>
+          </div>
+        } @else {
+          <div class="match-warning">
+            <mat-icon>info</mat-icon>
+            <span>Aucune correspondance forte détectée. Choisissez manuellement la candidature avant de confirmer.</span>
+          </div>
+        }
+      </div>
+    }
+
+    @if (error) {
+      <div class="mail-error" role="alert"><mat-icon>error</mat-icon><span>{{ error }}</span></div>
+    }
+
+    <footer class="mail-dialog-footer">
+      <button mat-stroked-button type="button" (click)="analysis ? resetAnalysis() : closed.emit()">
+        {{ analysis ? 'Modifier le mail' : 'Annuler' }}
+      </button>
+      @if (!analysis) {
+        <button mat-flat-button color="primary" type="button" [disabled]="!canAnalyze" (click)="analyze()">
+          <mat-icon>{{ analyzing ? 'hourglass_top' : 'auto_awesome' }}</mat-icon>
+          {{ analyzing ? 'Analyse…' : 'Analyser le mail' }}
+        </button>
+      } @else {
+        <button mat-flat-button color="primary" type="button" [disabled]="!canApply" (click)="apply()">
+          <mat-icon>{{ applying ? 'hourglass_top' : 'check_circle' }}</mat-icon>
+          {{ applying ? 'Application…' : 'Confirmer le suivi' }}
+        </button>
+      }
+    </footer>
+  </section>
+</div>

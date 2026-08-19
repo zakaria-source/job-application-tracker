@@ -10,6 +10,8 @@ JobTrackr is a cloud workspace for tracking job applications, follow-ups and int
 - application tracking with list and Kanban views
 - recruitment stages, priorities and follow-up dates
 - recruiter and interview tracking
+- recruiter-email classification and application matching
+- optional Gmail OAuth connection with periodic incremental synchronization
 - action-oriented dashboard and pipeline metrics
 - safe JSON backup import/export
 - synchronized data across devices
@@ -102,6 +104,8 @@ dev.jobtrackr
 │   ├── AuthController
 │   ├── AuthService
 │   └── AuthSessionEntity
+├── gmail                   # OAuth, encrypted refresh token and periodic Gmail sync
+├── mailtracking            # recruiter-email classification, matching and apply flow
 ├── jobimport
 ├── profile
 ├── identity
@@ -110,6 +114,14 @@ dev.jobtrackr
 ```
 
 Controllers handle HTTP concerns, services own use cases and transaction boundaries, entities own persistence state, DTOs define the API contract, and mappers translate persistence models to API responses.
+
+## Gmail synchronization
+
+The Applications workspace supports both manual email analysis and an optional Gmail connection. Gmail uses a server-side OAuth 2.0 authorization-code flow with offline access. The first synchronization inspects a bounded recent window; later runs use Gmail history IDs for incremental synchronization and fall back to a bounded full synchronization if the history cursor has expired.
+
+Automatic application updates are deliberately conservative. A message must have a high-confidence recruiting signal, a strong application match, and enough separation from the next-best match before JobTrackr updates the pipeline. Processed Gmail message IDs are persisted so the same message is not applied twice.
+
+The backend scheduler defaults to a 15-minute delay. On a scale-to-zero/free hosting plan, scheduled work only runs while the backend instance is awake; the UI therefore also exposes a manual **Synchroniser** action.
 
 ## Stack
 
@@ -167,6 +179,8 @@ npm start
 
 Open `http://localhost:4200`, create an account, then use the application through the local backend.
 
+Gmail is optional locally. To enable it, create a Google OAuth web client and supply `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_TOKEN_ENCRYPTION_KEY`, and a redirect URI matching `/api/v1/gmail/oauth/callback`. See `DEPLOYMENT.md` for the complete setup.
+
 ## Tests
 
 Frontend:
@@ -183,7 +197,7 @@ Backend:
 mvn -B -f backend/pom.xml verify
 ```
 
-Backend integration tests use PostgreSQL Testcontainers and include auth refresh rotation, replay revocation, cookie CSRF enforcement and explicit Bearer API compatibility.
+Backend integration tests use PostgreSQL Testcontainers and include auth refresh rotation, replay revocation, cookie CSRF enforcement and explicit Bearer API compatibility. Gmail-specific unit coverage verifies email classification and refresh-token encryption.
 
 ## Logs and observability
 
@@ -193,8 +207,9 @@ The API writes concise structured logs to stdout so they are visible directly in
 - request logs include method, path, HTTP status and duration
 - authentication success events log only the user UUID
 - application mutations log only resource UUIDs and workflow metadata
+- Gmail synchronization logs connection/user identifiers and aggregate counts, not message bodies or OAuth credentials
 - handled API errors are logged with the same request correlation ID
-- passwords, JWTs, request bodies, recruiter details and notes are never logged
+- passwords, JWTs, OAuth tokens, request bodies, recruiter details and notes are never logged
 - `/actuator/health` and `OPTIONS` requests are excluded from request logs to avoid noise
 
 Example:
@@ -214,6 +229,9 @@ The `X-Request-Id` response header is exposed through CORS, so a browser-side fa
 - Angular never reads or stores the access credential
 - browser mutations and logout require `X-XSRF-TOKEN`
 - explicit non-browser API clients may use `Authorization: Bearer` through a separate security chain
+- Gmail access tokens are short-lived and are not persisted
+- Gmail refresh tokens are encrypted at rest with AES-GCM using a dedicated deployment secret
+- Gmail message bodies are processed ephemerally and are not stored; only deduplication/matching metadata and application activity signals are persisted
 - profile and application data are scoped to the authenticated user
 - production database connections use TLS
 - production secrets stay outside the repository
@@ -225,4 +243,4 @@ Production uses Netlify for the frontend, Render for the Spring Boot API and Neo
 
 Authentication changes follow an expand → migrate → enforce → contract rollout so frontend and backend deployments do not need to switch at exactly the same instant.
 
-Deployment details, environment variables, auth flow, smoke tests and rollback notes are documented in [`DEPLOYMENT.md`](DEPLOYMENT.md).
+Deployment details, environment variables, Gmail OAuth setup, smoke tests and rollback notes are documented in [`DEPLOYMENT.md`](DEPLOYMENT.md).

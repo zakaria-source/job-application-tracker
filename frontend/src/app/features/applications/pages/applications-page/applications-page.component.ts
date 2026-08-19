@@ -6,15 +6,19 @@ import {MatCardModule} from '@angular/material/card';
 import {MatIconModule} from '@angular/material/icon';
 import {WorkspaceService, WorkspaceState} from '@app/core/workspace/workspace.service';
 import {ApplicationDetailsComponent} from '@app/features/applications/components/application-details/application-details.component';
+import {ApplicationEmailImportComponent} from '@app/features/applications/components/application-email-import/application-email-import.component';
 import {ApplicationFilterCriteria, ApplicationFiltersComponent} from '@app/features/applications/components/application-filters/application-filters.component';
 import {ApplicationKanbanComponent, ApplicationStageChange} from '@app/features/applications/components/application-kanban/application-kanban.component';
 import {ApplicationListComponent} from '@app/features/applications/components/application-list/application-list.component';
 import {ApplicationStudioComponent} from '@app/features/applications/components/application-studio/application-studio.component';
+import {GmailSyncComponent} from '@app/features/applications/components/gmail-sync/gmail-sync.component';
 import {ApplicationDraftService} from '@app/features/applications/data-access/application-draft.service';
 import {ApplicationExportService} from '@app/features/applications/data-access/application-export.service';
 import {ApplicationImportService, ImportPreview} from '@app/features/applications/data-access/application-import.service';
 import {ApplicationStore} from '@app/features/applications/data-access/application.store';
+import {EmailApplyResponse} from '@app/features/applications/models/application-email.model';
 import {JobApplication, RecruitmentStage} from '@app/features/applications/models/application.model';
+import {GmailSyncResult} from '@app/features/applications/models/gmail-sync.model';
 
 const EMPTY_FILTERS: ApplicationFilterCriteria = {searchTerm: '', status: '', contractType: '', priority: ''};
 
@@ -30,7 +34,9 @@ const EMPTY_FILTERS: ApplicationFilterCriteria = {searchTerm: '', status: '', co
     ApplicationListComponent,
     ApplicationKanbanComponent,
     ApplicationDetailsComponent,
-    ApplicationStudioComponent
+    ApplicationStudioComponent,
+    ApplicationEmailImportComponent,
+    GmailSyncComponent
   ],
   templateUrl: './applications-page.component.html',
   styleUrl: './applications-page.component.css'
@@ -49,6 +55,7 @@ export class ApplicationsPageComponent implements OnInit {
   feedbackMessage = '';
   showForm = false;
   showDetails = false;
+  showEmailImport = false;
   editMode = false;
   viewMode: 'list' | 'kanban' = 'list';
   workspaceState: WorkspaceState;
@@ -83,7 +90,8 @@ export class ApplicationsPageComponent implements OnInit {
     const target = event.target as HTMLElement | null;
     const typing = target?.matches('input, textarea, select, [contenteditable="true"]') ?? false;
     if (event.key === 'Escape') {
-      if (this.importPreview || this.importError) this.closeImportPreview();
+      if (this.showEmailImport) this.showEmailImport = false;
+      else if (this.importPreview || this.importError) this.closeImportPreview();
       else if (this.pendingDelete) this.pendingDelete = null;
       else if (this.showDetails) this.closeDetails();
       return;
@@ -124,6 +132,35 @@ export class ApplicationsPageComponent implements OnInit {
   viewApplicationDetails(application: JobApplication): void { this.selectedApplication = {...application}; this.showDetails = true; this.showForm = false; }
   closeDetails(): void { this.showDetails = false; this.selectedApplication = null; }
   deleteApplication(application: JobApplication): void { this.pendingDelete = application; }
+
+  openEmailImport(): void {
+    this.showEmailImport = true;
+    this.showDetails = false;
+  }
+
+  onEmailApplied(response: EmailApplyResponse): void {
+    this.applicationStore.refresh().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.showEmailImport = false;
+        this.showFeedback(`${response.message} · ${response.stage}`);
+      },
+      error: () => {
+        this.showEmailImport = false;
+        this.showFeedback('Suivi mail enregistré · rechargez la page pour actualiser le pipeline');
+      }
+    });
+  }
+
+  onGmailSynced(result: GmailSyncResult): void {
+    this.applicationStore.refresh().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => this.showFeedback(
+        result.applied > 0
+          ? `Gmail synchronisé · ${result.applied} suivi${result.applied > 1 ? 's' : ''} mis à jour`
+          : `Gmail synchronisé · ${result.scanned} nouveau${result.scanned > 1 ? 'x' : ''} mail${result.scanned > 1 ? 's' : ''} analysé${result.scanned > 1 ? 's' : ''}`
+      ),
+      error: () => this.showFeedback('Gmail synchronisé · rechargez la page pour actualiser le pipeline')
+    });
+  }
 
   confirmDelete(): void {
     const application = this.pendingDelete;

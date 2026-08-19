@@ -60,6 +60,7 @@ public class JobApplicationEntity {
     }
     public void scheduleFollowUp(LocalDate date, Instant now) { this.followUpDate = date; this.lastUpdated = now; }
     public void clearFollowUp(Instant now) { this.followUpDate = null; this.lastUpdated = now; }
+    public void touch(Instant now) { this.lastUpdated = now; }
     public void addInterview(InterviewEntity interview, Instant now) { interviews.add(interview); this.lastUpdated = now; }
 
     public UUID getId() { return id; } public String getCompany() { return company; } public String getPosition() { return position; }

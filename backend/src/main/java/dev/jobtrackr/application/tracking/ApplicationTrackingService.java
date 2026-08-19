@@ -127,6 +127,18 @@ public class ApplicationTrackingService {
         activity.recordInterviewsUpdated(application, now);
     }
 
+    public void recordEmailSignal(JobApplicationEntity application, String signalType, String subject, Instant now) {
+        String cleanSubject = subject == null ? "" : subject.trim().replaceAll("\\s+", " ");
+        String shortenedSubject = cleanSubject.length() > 140 ? cleanSubject.substring(0, 137) + "..." : cleanSubject;
+        activity.record(
+            application,
+            ApplicationEventType.EMAIL_SIGNAL_APPLIED,
+            "Mail de recrutement analysé",
+            signalType + (shortenedSubject.isBlank() ? "" : " · " + shortenedSubject),
+            now
+        );
+    }
+
     public void syncLegacyFollowUp(JobApplicationEntity application, LocalDate previousDate, Instant now) {
         followUps.syncLegacy(application, previousDate, now);
     }

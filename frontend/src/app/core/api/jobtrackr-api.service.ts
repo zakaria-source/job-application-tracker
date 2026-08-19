@@ -4,6 +4,8 @@ import {Observable, map} from 'rxjs';
 import {Interview, JobApplication, RecruitmentStage} from '@app/features/applications/models/application.model';
 import {ApplicationEvent, ApplicationHealth, FollowUp, InterviewDebrief, InterviewDebriefInput} from '@app/features/applications/models/application-tracking.model';
 import {JobImportPreview} from '@app/features/applications/models/job-import.model';
+import {EmailAnalysis, EmailAnalysisInput, EmailApplyInput, EmailApplyResponse} from '@app/features/applications/models/application-email.model';
+import {GmailAuthorizationResponse, GmailStatus, GmailSyncResult} from '@app/features/applications/models/gmail-sync.model';
 import {UserProfile} from '@app/features/profile/user-profile.model';
 
 interface ApplicationDto extends Omit<JobApplication, 'applicationDate' | 'lastUpdated' | 'responseDate' | 'followUpDate' | 'interviews'> {
@@ -29,6 +31,8 @@ interface TrackingOverviewDto {
   health: ApplicationHealth;
   debriefs: InterviewDebriefDto[];
 }
+interface GmailStatusDto extends Omit<GmailStatus, 'lastSyncAt'> { lastSyncAt?: string | null; }
+interface GmailSyncDto extends Omit<GmailSyncResult, 'syncedAt'> { syncedAt: string; }
 
 export interface ApplicationImportSummary { imported: number; skipped: number; }
 export interface ApplicationTrackingOverview {
@@ -42,6 +46,7 @@ export interface ApplicationTrackingOverview {
 export class JobTrackrApiService {
   private readonly applicationsUrl = '/api/v1/applications';
   private readonly profileUrl = '/api/v1/profile';
+  private readonly gmailUrl = '/api/v1/gmail';
 
   constructor(private readonly http: HttpClient) {}
 
@@ -84,6 +89,36 @@ export class JobTrackrApiService {
 
   previewJobUrl(url: string): Observable<JobImportPreview> {
     return this.http.post<JobImportPreview>('/api/v1/job-import/preview', {url});
+  }
+
+  analyzeRecruitmentEmail(input: EmailAnalysisInput): Observable<EmailAnalysis> {
+    return this.http.post<EmailAnalysis>('/api/v1/mail-tracking/analyze', input);
+  }
+
+  applyRecruitmentEmail(input: EmailApplyInput): Observable<EmailApplyResponse> {
+    return this.http.post<EmailApplyResponse>('/api/v1/mail-tracking/apply', input);
+  }
+
+  getGmailStatus(): Observable<GmailStatus> {
+    return this.http.get<GmailStatusDto>(`${this.gmailUrl}/status`).pipe(map(status => ({
+      ...status,
+      lastSyncAt: status.lastSyncAt ? new Date(status.lastSyncAt) : null
+    })));
+  }
+
+  getGmailAuthorizationUrl(): Observable<GmailAuthorizationResponse> {
+    return this.http.get<GmailAuthorizationResponse>(`${this.gmailUrl}/authorization-url`);
+  }
+
+  syncGmail(): Observable<GmailSyncResult> {
+    return this.http.post<GmailSyncDto>(`${this.gmailUrl}/sync`, {}).pipe(map(result => ({
+      ...result,
+      syncedAt: new Date(result.syncedAt)
+    })));
+  }
+
+  disconnectGmail(): Observable<void> {
+    return this.http.delete<void>(this.gmailUrl);
   }
 
   getTrackingOverview(id: string): Observable<ApplicationTrackingOverview> {
