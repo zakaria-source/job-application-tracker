@@ -70,4 +70,8 @@ class GmailProcessedMessageEntity {
         this.matchScore = matchScore;
         this.autoApplied = autoApplied;
     }
+
+    boolean isAutoApplied() {
+        return autoApplied;
+    }
 }
