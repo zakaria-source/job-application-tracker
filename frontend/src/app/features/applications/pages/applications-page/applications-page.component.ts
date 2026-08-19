@@ -11,12 +11,14 @@ import {ApplicationFilterCriteria, ApplicationFiltersComponent} from '@app/featu
 import {ApplicationKanbanComponent, ApplicationStageChange} from '@app/features/applications/components/application-kanban/application-kanban.component';
 import {ApplicationListComponent} from '@app/features/applications/components/application-list/application-list.component';
 import {ApplicationStudioComponent} from '@app/features/applications/components/application-studio/application-studio.component';
+import {GmailSyncComponent} from '@app/features/applications/components/gmail-sync/gmail-sync.component';
 import {ApplicationDraftService} from '@app/features/applications/data-access/application-draft.service';
 import {ApplicationExportService} from '@app/features/applications/data-access/application-export.service';
 import {ApplicationImportService, ImportPreview} from '@app/features/applications/data-access/application-import.service';
 import {ApplicationStore} from '@app/features/applications/data-access/application.store';
 import {EmailApplyResponse} from '@app/features/applications/models/application-email.model';
 import {JobApplication, RecruitmentStage} from '@app/features/applications/models/application.model';
+import {GmailSyncResult} from '@app/features/applications/models/gmail-sync.model';
 
 const EMPTY_FILTERS: ApplicationFilterCriteria = {searchTerm: '', status: '', contractType: '', priority: ''};
 
@@ -33,7 +35,8 @@ const EMPTY_FILTERS: ApplicationFilterCriteria = {searchTerm: '', status: '', co
     ApplicationKanbanComponent,
     ApplicationDetailsComponent,
     ApplicationStudioComponent,
-    ApplicationEmailImportComponent
+    ApplicationEmailImportComponent,
+    GmailSyncComponent
   ],
   templateUrl: './applications-page.component.html',
   styleUrl: './applications-page.component.css'
@@ -145,6 +148,17 @@ export class ApplicationsPageComponent implements OnInit {
         this.showEmailImport = false;
         this.showFeedback('Suivi mail enregistré · rechargez la page pour actualiser le pipeline');
       }
+    });
+  }
+
+  onGmailSynced(result: GmailSyncResult): void {
+    this.applicationStore.refresh().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => this.showFeedback(
+        result.applied > 0
+          ? `Gmail synchronisé · ${result.applied} suivi${result.applied > 1 ? 's' : ''} mis à jour`
+          : `Gmail synchronisé · ${result.scanned} nouveau${result.scanned > 1 ? 'x' : ''} mail${result.scanned > 1 ? 's' : ''} analysé${result.scanned > 1 ? 's' : ''}`
+      ),
+      error: () => this.showFeedback('Gmail synchronisé · rechargez la page pour actualiser le pipeline')
     });
   }
 
