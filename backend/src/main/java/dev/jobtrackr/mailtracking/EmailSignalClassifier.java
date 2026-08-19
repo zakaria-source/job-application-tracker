@@ -125,7 +125,7 @@ class EmailSignalClassifier {
     static String normalize(String value) {
         String decomposed = Normalizer.normalize(value == null ? "" : value, Normalizer.Form.NFD);
         return decomposed.replaceAll("\\p{M}+", "")
-            .replace('’', '\'')
+            .replace("’", "'")
             .toLowerCase(Locale.ROOT)
             .replaceAll("\\s+", " ")
             .trim();
