@@ -19,6 +19,8 @@
       </div>
     </div>
 
+    <app-gmail-sync (synced)="onGmailSynced($event)" />
+
     @if (applications.length > 0) {
       <div class="applications-toolbar">
         <app-application-filters (filtersChange)="onFiltersChange($event)" />
