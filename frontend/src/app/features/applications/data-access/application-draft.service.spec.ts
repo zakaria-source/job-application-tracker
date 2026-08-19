@@ -24,7 +24,6 @@ const formDraft: ApplicationFormDraft = {
 function serviceFor(userId = 'user-1'): ApplicationDraftService {
   const sessionStore = {
     current: {
-      accessToken: 'token',
       expiresAt: '2099-01-01T00:00:00.000Z',
       user: {id: userId, email: 'user@example.com', displayName: 'User'}
     }
