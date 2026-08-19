@@ -74,7 +74,8 @@ class GmailOAuthService {
             .queryParam("include_granted_scopes", "true")
             .queryParam("prompt", "consent")
             .queryParam("state", rawState)
-            .build(true)
+            .build()
+            .encode()
             .toUri();
         return new GmailAuthorizationResponse(uri.toString());
     }
@@ -139,7 +140,7 @@ class GmailOAuthService {
             .path("/applications")
             .queryParam("gmail", status);
         if (reason != null) builder.queryParam("reason", reason);
-        return builder.build(true).toUri();
+        return builder.build().encode().toUri();
     }
 
     private static String hash(String state) {
