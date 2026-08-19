@@ -67,7 +67,7 @@
 
 @if (importPreview || importError) {
   <div class="dialog-backdrop" role="presentation" (click)="closeImportPreview()">
-    <section class="product-dialog import-dialog" role="dialog" aria-modal="true" aria-labelledby="import-title" (click)="$event.stopPropagation()">
+    <section class="product-dialog import-dialog" role="dialog" aria-modal="true" aria-labelledby="import-title" cdkTrapFocus [cdkTrapFocusAutoCapture]="true" (click)="$event.stopPropagation()">
       <header><div><span>IMPORT · APERÇU</span><h2 id="import-title">Vérifier avant d’importer</h2><p>{{ importFileName }}</p></div><button type="button" aria-label="Fermer" (click)="closeImportPreview()"><mat-icon>close</mat-icon></button></header>
       @if (importError) {
         <div class="dialog-error"><mat-icon>error</mat-icon><span>{{ importError }}</span></div>
@@ -85,7 +85,7 @@
 
 @if (pendingDelete) {
   <div class="dialog-backdrop" role="presentation" (click)="pendingDelete = null">
-    <section class="product-dialog delete-dialog" role="alertdialog" aria-modal="true" aria-labelledby="delete-title" (click)="$event.stopPropagation()">
+    <section class="product-dialog delete-dialog" role="alertdialog" aria-modal="true" aria-labelledby="delete-title" cdkTrapFocus [cdkTrapFocusAutoCapture]="true" (click)="$event.stopPropagation()">
       <header><div><span>ACTION IRRÉVERSIBLE</span><h2 id="delete-title">Supprimer cette candidature ?</h2><p>{{ pendingDelete.company }} · {{ pendingDelete.position }}</p></div></header>
       <p class="dialog-copy">Elle disparaîtra de votre pipeline et de votre compte.</p>
       <footer><button mat-stroked-button type="button" (click)="pendingDelete = null">Annuler</button><button mat-flat-button color="warn" type="button" (click)="confirmDelete()"><mat-icon>delete</mat-icon>Supprimer</button></footer>
