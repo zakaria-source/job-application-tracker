@@ -11,38 +11,56 @@ import java.util.Locale;
 @Component
 class EmailSignalClassifier {
     private static final List<String> REJECTION = List.of(
-        "ne donnerons pas suite", "ne donnerons malheureusement pas suite", "candidature n'a pas ete retenue",
-        "candidature n est pas retenue", "nous ne poursuivrons pas", "nous avons decide de poursuivre avec d'autres",
-        "we regret", "unfortunately", "not move forward", "not moving forward", "will not be progressing",
-        "not proceeding with your application", "other candidates"
+        "ne donnerons pas suite", "ne pourrons pas donner suite", "ne donnerons malheureusement pas suite",
+        "candidature n'a pas ete retenue", "candidature n est pas retenue", "candidature n'a pas ete selectionnee",
+        "candidature n a pas ete selectionnee", "profil ne correspond pas", "nous ne poursuivrons pas",
+        "nous avons decide de poursuivre avec d'autres", "nous avons choisi de poursuivre avec d'autres",
+        "we regret", "unfortunately", "not move forward", "not to move forward", "not moving forward",
+        "won't be moving forward", "will not be progressing", "not proceeding with your application",
+        "decided not to proceed", "decided not to progress", "not selected", "not successful",
+        "move forward with other candidates", "other candidates"
     );
     private static final List<String> OFFER = List.of(
         "proposition d'embauche", "proposition d embauche", "offre d'emploi", "offre d emploi",
-        "nous avons le plaisir de vous faire une offre", "pleased to offer", "job offer", "offer letter",
+        "nous avons le plaisir de vous faire une offre", "nous souhaitons vous faire une offre",
+        "pleased to offer", "we would like to offer", "job offer", "offer letter",
         "congratulations", "felicitations"
     );
     private static final List<String> FINAL_INTERVIEW = List.of(
         "entretien final", "final interview", "final round", "derniere etape", "derniere étape"
     );
     private static final List<String> MANAGER_INTERVIEW = List.of(
-        "hiring manager", "engineering manager", "manager interview", "entretien manager", "entretien avec le manager"
+        "hiring manager", "engineering manager", "manager interview", "entretien manager",
+        "entretien avec le manager", "echange avec le manager", "échange avec le manager"
     );
     private static final List<String> TECHNICAL_INTERVIEW = List.of(
         "entretien technique", "technical interview", "technical round", "coding interview", "coding challenge",
-        "live coding", "case study", "etude de cas", "exercice technique", "test technique"
+        "live coding", "case study", "etude de cas", "exercice technique", "test technique", "technical assessment",
+        "take-home test", "take home test"
     );
     private static final List<String> INTERVIEW = List.of(
-        "entretien", "interview", "screening", "echange telephonique", "echange avec", "rendez-vous",
-        "vos disponibilites", "your availability", "schedule a call", "book a call", "meet with"
+        "entretien", "interview", "screening", "phone screen", "recruiter screen", "echange telephonique",
+        "échange téléphonique", "echange de 30 minutes", "échange de 30 minutes", "echange de 45 minutes",
+        "échange de 45 minutes", "echange avec", "échange avec", "faire un point", "point telephonique",
+        "point téléphonique", "rendez-vous", "vos disponibilites", "vos disponibilités", "seriez-vous disponible",
+        "etes-vous disponible", "êtes-vous disponible", "your availability", "are you available", "schedule a call",
+        "schedule time", "schedule a time", "book a call", "book a time", "choose a time", "pick a time",
+        "meet with", "speak with you", "chat with you", "would like to speak", "would like to chat",
+        "would like to meet", "invite you to", "interview invitation", "next interview", "calendly"
     );
     private static final List<String> ACKNOWLEDGEMENT = List.of(
-        "candidature bien recue", "candidature a bien ete recue", "merci pour votre candidature",
-        "nous avons bien recu votre candidature", "application received", "received your application",
-        "thank you for applying", "thanks for applying", "we received your application"
+        "candidature bien recue", "candidature a bien ete recue", "candidature a ete recue",
+        "candidature a bien ete enregistree", "candidature a ete enregistree", "merci pour votre candidature",
+        "merci de votre candidature", "nous avons bien recu votre candidature", "nous accusons reception de votre candidature",
+        "application received", "received your application", "we have received your application",
+        "thank you for applying", "thanks for applying", "thank you for your application",
+        "thank you for your interest", "thanks for your interest", "application has been received",
+        "application was received", "application successfully submitted"
     );
     private static final List<String> FOLLOW_UP = List.of(
         "suite a notre echange", "suite à notre échange", "je reviens vers vous", "nous revenons vers vous",
-        "following up", "follow up", "getting back to you", "reconnect", "reprendre contact"
+        "comme convenu", "following up", "follow up", "getting back to you", "reconnect", "reprendre contact",
+        "next step", "next steps", "prochaine etape", "prochaine étape", "processus de recrutement"
     );
 
     Classification classify(String subject, String body) {
@@ -80,7 +98,7 @@ class EmailSignalClassifier {
 
         Match interview = match(text, INTERVIEW);
         if (interview.found()) {
-            return result(EmailSignalType.INTERVIEW, RecruitmentStage.SCREENING_RH, 84,
+            return result(EmailSignalType.INTERVIEW, RecruitmentStage.SCREENING_RH, 86,
                 "Une invitation ou une demande de disponibilité pour un entretien a été détectée.", interview.phrases());
         }
 
@@ -92,7 +110,7 @@ class EmailSignalClassifier {
 
         Match followUp = match(text, FOLLOW_UP);
         if (followUp.found()) {
-            return result(EmailSignalType.FOLLOW_UP, null, 76,
+            return result(EmailSignalType.FOLLOW_UP, null, 78,
                 "Le message ressemble à une reprise de contact ou une relance.", followUp.phrases());
         }
 
