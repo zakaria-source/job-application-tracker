@@ -82,6 +82,7 @@ class GmailApiClient {
                 .uri(builder -> {
                     builder.path("/users/me/messages")
                         .queryParam("maxResults", 100)
+                        .queryParam("labelIds", "INBOX")
                         .queryParam("q", "newer_than:" + Math.max(1, lookbackDays) + "d -category:promotions -category:social");
                     if (token != null && !token.isBlank()) builder.queryParam("pageToken", token);
                     return builder.build();
