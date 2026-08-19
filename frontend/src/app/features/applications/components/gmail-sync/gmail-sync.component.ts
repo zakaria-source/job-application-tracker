@@ -57,9 +57,13 @@ export class GmailSyncComponent implements OnInit {
     this.api.syncGmail().subscribe({
       next: result => {
         this.syncing = false;
-        this.message = result.applied > 0
-          ? `${result.applied} suivi${result.applied > 1 ? 's' : ''} mis à jour depuis Gmail`
-          : `${result.scanned} nouveau${result.scanned > 1 ? 'x' : ''} mail${result.scanned > 1 ? 's' : ''} analysé${result.scanned > 1 ? 's' : ''}`;
+        if (result.created > 0) {
+          this.message = `${result.created} candidature${result.created > 1 ? 's' : ''} créée${result.created > 1 ? 's' : ''} · ${result.applied} mail${result.applied > 1 ? 's' : ''} enregistré${result.applied > 1 ? 's' : ''}`;
+        } else if (result.applied > 0) {
+          this.message = `${result.applied} mail${result.applied > 1 ? 's' : ''} rattaché${result.applied > 1 ? 's' : ''} aux candidatures`;
+        } else {
+          this.message = `${result.scanned} mail${result.scanned > 1 ? 's' : ''} analysé${result.scanned > 1 ? 's' : ''}`;
+        }
         this.status = this.status ? {...this.status, lastSyncAt: result.syncedAt, lastError: null} : this.status;
         this.synced.emit(result);
       },
