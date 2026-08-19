@@ -13,8 +13,17 @@ const PUBLIC_AUTH_ENDPOINTS = new Set([
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const sessions = inject(SessionStore);
   const router = inject(Router);
+  const apiRequest = request.url.startsWith('/api/v1/');
+  const fallbackToken = apiRequest ? sessions.accessToken : null;
 
-  return next(request).pipe(
+  const outgoingRequest = apiRequest
+    ? request.clone({
+        withCredentials: true,
+        ...(fallbackToken ? {setHeaders: {Authorization: `Bearer ${fallbackToken}`}} : {})
+      })
+    : request;
+
+  return next(outgoingRequest).pipe(
     catchError(error => {
       const protectedApiRequest = request.url.startsWith('/api/v1/') && !PUBLIC_AUTH_ENDPOINTS.has(request.url);
       if (protectedApiRequest && error instanceof HttpErrorResponse && error.status === 401) {
