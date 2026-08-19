@@ -9,6 +9,7 @@ import java.util.List;
 public record JwtProperties(
     String jwtSecret,
     Duration tokenTtl,
-    List<String> allowedOrigins
+    List<String> allowedOrigins,
+    boolean secureCookies
 ) {
 }

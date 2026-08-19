@@ -1,5 +1,5 @@
-<div class="studio-backdrop" role="presentation" (click)="requestClose()">
-  <section class="application-studio" role="dialog" aria-modal="true" aria-labelledby="studio-title" (click)="$event.stopPropagation()">
+<div class="studio-backdrop" role="presentation" cdkTrapFocus [cdkTrapFocusAutoCapture]="true" (click)="requestClose()">
+  <section class="application-studio" role="dialog" aria-modal="true" aria-labelledby="studio-title" [attr.inert]="showDiscardConfirm ? '' : null" (click)="$event.stopPropagation()">
     <header class="studio-header">
       <div class="studio-heading">
         <span>{{ editMode ? 'OPPORTUNITÉ' : 'NOUVELLE OPPORTUNITÉ' }}</span>

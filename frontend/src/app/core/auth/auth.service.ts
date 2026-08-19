@@ -1,6 +1,6 @@
 import {HttpClient} from '@angular/common/http';
 import {Injectable} from '@angular/core';
-import {Observable, tap} from 'rxjs';
+import {Observable, catchError, of, tap} from 'rxjs';
 import {AuthSession, SessionStore} from '@app/core/auth/session.store';
 
 @Injectable({providedIn: 'root'})
@@ -22,7 +22,10 @@ export class AuthService {
       .pipe(tap(session => this.sessions.save(session)));
   }
 
-  logout(): void {
-    this.sessions.clear();
+  logout(): Observable<void> {
+    return this.http.post<void>(`${this.authUrl}/logout`, {}).pipe(
+      catchError(() => of(undefined)),
+      tap(() => this.sessions.clear())
+    );
   }
 }

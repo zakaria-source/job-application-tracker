@@ -1,3 +1,4 @@
+import {A11yModule} from '@angular/cdk/a11y';
 import {Component, DestroyRef, HostListener, OnInit, ViewChild, inject} from '@angular/core';
 import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {MatButtonModule} from '@angular/material/button';
@@ -21,6 +22,7 @@ const EMPTY_FILTERS: ApplicationFilterCriteria = {searchTerm: '', status: '', co
   selector: 'app-applications-page',
   standalone: true,
   imports: [
+    A11yModule,
     MatButtonModule,
     MatCardModule,
     MatIconModule,
@@ -36,9 +38,7 @@ const EMPTY_FILTERS: ApplicationFilterCriteria = {searchTerm: '', status: '', co
 export class ApplicationsPageComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private feedbackTimer?: ReturnType<typeof setTimeout>;
-
   @ViewChild(ApplicationFiltersComponent) private filtersComponent?: ApplicationFiltersComponent;
-
   applications: JobApplication[] = [];
   filteredApplications: JobApplication[] = [];
   selectedApplication: JobApplication | null = null;
@@ -52,7 +52,6 @@ export class ApplicationsPageComponent implements OnInit {
   editMode = false;
   viewMode: 'list' | 'kanban' = 'list';
   workspaceState: WorkspaceState;
-
   private activeFilters: ApplicationFilterCriteria = EMPTY_FILTERS;
 
   constructor(
@@ -63,174 +62,97 @@ export class ApplicationsPageComponent implements OnInit {
     private readonly workspace: WorkspaceService
   ) {
     this.workspaceState = workspace.state;
-    workspace.state$
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(state => this.workspaceState = state);
+    workspace.state$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(state => this.workspaceState = state);
   }
 
-  get hasActiveFilters(): boolean {
-    return Object.values(this.activeFilters).some(Boolean);
-  }
+  get hasActiveFilters(): boolean { return Object.values(this.activeFilters).some(Boolean); }
 
   ngOnInit(): void {
-    this.applicationStore.getApplications()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(applications => {
-        this.applications = applications;
-        this.applyFilters(this.activeFilters);
-        if (this.selectedApplication && !this.showForm) {
-          this.selectedApplication = applications.find(item => item.id === this.selectedApplication?.id)
-            ?? this.selectedApplication;
-        }
-      });
+    this.applicationStore.getApplications().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(applications => {
+      this.applications = applications;
+      this.applyFilters(this.activeFilters);
+      if (this.selectedApplication && !this.showForm) {
+        this.selectedApplication = applications.find(item => item.id === this.selectedApplication?.id) ?? this.selectedApplication;
+      }
+    });
   }
 
   @HostListener('document:keydown', ['$event'])
   handleKeyboardShortcut(event: KeyboardEvent): void {
     if (this.showForm) return;
-
     const target = event.target as HTMLElement | null;
     const typing = target?.matches('input, textarea, select, [contenteditable="true"]') ?? false;
-
     if (event.key === 'Escape') {
       if (this.importPreview || this.importError) this.closeImportPreview();
       else if (this.pendingDelete) this.pendingDelete = null;
       else if (this.showDetails) this.closeDetails();
       return;
     }
-
     if (typing || event.metaKey || event.ctrlKey || event.altKey) return;
-    if (event.key.toLowerCase() === 'n') {
-      event.preventDefault();
-      this.showAddForm();
-    }
-    if (event.key === '/') {
-      event.preventDefault();
-      this.filtersComponent?.focusSearch();
-    }
+    if (event.key.toLowerCase() === 'n') { event.preventDefault(); this.showAddForm(); }
+    if (event.key === '/') { event.preventDefault(); this.filtersComponent?.focusSearch(); }
   }
 
-  retryWorkspace(): void {
-    this.workspace.connect().subscribe({error: () => undefined});
-  }
-
-  onFiltersChange(criteria: ApplicationFilterCriteria): void {
-    this.activeFilters = criteria;
-    this.applyFilters(criteria);
-  }
-
-  clearFilters(): void {
-    if (this.filtersComponent) {
-      this.filtersComponent.resetFilters();
-      return;
-    }
-    this.onFiltersChange(EMPTY_FILTERS);
-  }
+  retryWorkspace(): void { this.workspace.connect().subscribe({error: () => undefined}); }
+  onFiltersChange(criteria: ApplicationFilterCriteria): void { this.activeFilters = criteria; this.applyFilters(criteria); }
+  clearFilters(): void { if (this.filtersComponent) { this.filtersComponent.resetFilters(); return; } this.onFiltersChange(EMPTY_FILTERS); }
 
   onStageChange(change: ApplicationStageChange): void {
-    this.applicationStore.updateApplicationStage(change.applicationId, change.stage)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => this.showFeedback(`Étape mise à jour · ${change.stage}`),
-        error: () => this.showFeedback('Mise à jour impossible · le changement a été annulé')
-      });
+    this.applicationStore.updateApplicationStage(change.applicationId, change.stage).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => this.showFeedback(`Étape mise à jour · ${change.stage}`),
+      error: () => this.showFeedback('Mise à jour impossible · le changement a été annulé')
+    });
   }
 
   advanceSelectedStage(stage: RecruitmentStage): void {
     if (!this.selectedApplication) return;
-    this.applicationStore.updateApplicationStage(this.selectedApplication.id, stage)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => this.showFeedback(`Candidature avancée vers ${stage}`),
-        error: () => this.showFeedback('Impossible de faire avancer la candidature')
-      });
+    this.applicationStore.updateApplicationStage(this.selectedApplication.id, stage).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => this.showFeedback(`Candidature avancée vers ${stage}`),
+      error: () => this.showFeedback('Impossible de faire avancer la candidature')
+    });
   }
 
   completeFollowUp(application: JobApplication): void {
-    this.applicationStore.completeFollowUp(application.id)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => this.showFeedback(`Relance marquée comme effectuée · ${application.company}`),
-        error: () => this.showFeedback('Impossible de terminer la relance · le changement a été annulé')
-      });
+    this.applicationStore.completeFollowUp(application.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => this.showFeedback(`Relance marquée comme effectuée · ${application.company}`),
+      error: () => this.showFeedback('Impossible de terminer la relance · le changement a été annulé')
+    });
   }
 
-  showAddForm(): void {
-    this.editMode = false;
-    this.selectedApplication = null;
-    this.showForm = true;
-    this.showDetails = false;
-  }
-
-  editApplication(application: JobApplication): void {
-    this.editMode = true;
-    this.selectedApplication = {...application};
-    this.showForm = true;
-    this.showDetails = false;
-  }
-
-  viewApplicationDetails(application: JobApplication): void {
-    this.selectedApplication = {...application};
-    this.showDetails = true;
-    this.showForm = false;
-  }
-
-  closeDetails(): void {
-    this.showDetails = false;
-    this.selectedApplication = null;
-  }
-
-  deleteApplication(application: JobApplication): void {
-    this.pendingDelete = application;
-  }
+  showAddForm(): void { this.editMode = false; this.selectedApplication = null; this.showForm = true; this.showDetails = false; }
+  editApplication(application: JobApplication): void { this.editMode = true; this.selectedApplication = {...application}; this.showForm = true; this.showDetails = false; }
+  viewApplicationDetails(application: JobApplication): void { this.selectedApplication = {...application}; this.showDetails = true; this.showForm = false; }
+  closeDetails(): void { this.showDetails = false; this.selectedApplication = null; }
+  deleteApplication(application: JobApplication): void { this.pendingDelete = application; }
 
   confirmDelete(): void {
     const application = this.pendingDelete;
     if (!application) return;
-
-    this.applicationStore.deleteApplication(application.id)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          this.pendingDelete = null;
-          if (this.selectedApplication?.id === application.id) this.closeDetails();
-          this.showFeedback(`Candidature supprimée · ${application.company}`);
-        },
-        error: () => this.showFeedback('Suppression impossible · la candidature a été restaurée')
-      });
+    this.applicationStore.deleteApplication(application.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.pendingDelete = null;
+        if (this.selectedApplication?.id === application.id) this.closeDetails();
+        this.showFeedback(`Candidature supprimée · ${application.company}`);
+      },
+      error: () => this.showFeedback('Suppression impossible · la candidature a été restaurée')
+    });
   }
 
   onFormSubmit(application: JobApplication): void {
     if (this.editMode) {
-      this.applicationStore.updateApplication(application)
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe({
-          next: saved => {
-            this.showFeedback(`Candidature mise à jour · ${saved.company}`);
-            this.cancelForm();
-          },
-          error: error => this.showFeedback(this.updateErrorMessage(error))
-        });
+      this.applicationStore.updateApplication(application).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: saved => { this.showFeedback(`Candidature mise à jour · ${saved.company}`); this.cancelForm(); },
+        error: error => this.showFeedback(this.updateErrorMessage(error))
+      });
       return;
     }
-
-    this.applicationStore.addApplication(application)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: saved => {
-          this.draftService.clear();
-          this.showFeedback(`Candidature ajoutée au pipeline · ${saved.company}`);
-          this.cancelForm();
-        },
-        error: () => this.showFeedback('Ajout impossible · votre brouillon a été conservé')
-      });
+    this.applicationStore.addApplication(application).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: saved => { this.draftService.clear(); this.showFeedback(`Candidature ajoutée au pipeline · ${saved.company}`); this.cancelForm(); },
+      error: () => this.showFeedback('Ajout impossible · votre brouillon a été conservé')
+    });
   }
 
-  cancelForm(): void {
-    this.showForm = false;
-    this.editMode = false;
-    this.selectedApplication = null;
-  }
+  cancelForm(): void { this.showForm = false; this.editMode = false; this.selectedApplication = null; }
 
   exportApplications(): void {
     const serialized = this.exportService.serialize(this.applications);
@@ -248,20 +170,13 @@ export class ApplicationsPageComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
-
     this.importFileName = file.name;
     this.importError = '';
     const reader = new FileReader();
     reader.onload = () => {
-      try {
-        this.importPreview = this.importService.preview(String(reader.result ?? ''), this.applications);
-      } catch (error) {
-        console.error(error);
-        this.importPreview = null;
-        this.importError = 'Ce fichier ne correspond pas à un export JobTrackr valide.';
-      } finally {
-        input.value = '';
-      }
+      try { this.importPreview = this.importService.preview(String(reader.result ?? ''), this.applications); }
+      catch (error) { console.error(error); this.importPreview = null; this.importError = 'Ce fichier ne correspond pas à un export JobTrackr valide.'; }
+      finally { input.value = ''; }
     };
     reader.readAsText(file);
   }
@@ -269,33 +184,20 @@ export class ApplicationsPageComponent implements OnInit {
   confirmImport(): void {
     if (!this.importPreview) return;
     const applications = this.importPreview.applications;
-
-    this.applicationStore.mergeApplications(applications)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: count => {
-          this.closeImportPreview();
-          this.showFeedback(count > 0
-            ? `${count} candidature${count > 1 ? 's' : ''} importée${count > 1 ? 's' : ''}`
-            : 'Aucune nouvelle candidature à importer');
-        },
-        error: () => {
-          this.importError = 'Import impossible pour le moment. Aucun succès n’est affiché avant confirmation serveur.';
-        }
-      });
+    this.applicationStore.mergeApplications(applications).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: count => {
+        this.closeImportPreview();
+        this.showFeedback(count > 0 ? `${count} candidature${count > 1 ? 's' : ''} importée${count > 1 ? 's' : ''}` : 'Aucune nouvelle candidature à importer');
+      },
+      error: () => { this.importError = 'Import impossible pour le moment. Aucun succès n’est affiché avant confirmation serveur.'; }
+    });
   }
 
-  closeImportPreview(): void {
-    this.importPreview = null;
-    this.importError = '';
-    this.importFileName = '';
-  }
+  closeImportPreview(): void { this.importPreview = null; this.importError = ''; this.importFileName = ''; }
 
   private updateErrorMessage(error: unknown): string {
     const status = (error as {status?: number})?.status;
-    return status === 412
-      ? 'Cette candidature a été modifiée ailleurs · rechargez la version récente avant de réessayer'
-      : 'Mise à jour impossible · vos modifications restent ouvertes';
+    return status === 412 ? 'Cette candidature a été modifiée ailleurs · rechargez la version récente avant de réessayer' : 'Mise à jour impossible · vos modifications restent ouvertes';
   }
 
   private showFeedback(message: string): void {
@@ -307,17 +209,8 @@ export class ApplicationsPageComponent implements OnInit {
   private applyFilters(criteria: ApplicationFilterCriteria): void {
     const search = criteria.searchTerm.trim().toLowerCase();
     this.filteredApplications = this.applications.filter(application => {
-      const matchesSearch = !search
-        || application.company.toLowerCase().includes(search)
-        || application.position.toLowerCase().includes(search)
-        || application.notes.toLowerCase().includes(search)
-        || application.stage.toLowerCase().includes(search)
-        || (application.recruiterName ?? '').toLowerCase().includes(search);
-
-      return matchesSearch
-        && (!criteria.status || application.status === criteria.status)
-        && (!criteria.contractType || application.contractType === criteria.contractType)
-        && (!criteria.priority || application.priority === criteria.priority);
+      const matchesSearch = !search || application.company.toLowerCase().includes(search) || application.position.toLowerCase().includes(search) || application.notes.toLowerCase().includes(search) || application.stage.toLowerCase().includes(search) || (application.recruiterName ?? '').toLowerCase().includes(search);
+      return matchesSearch && (!criteria.status || application.status === criteria.status) && (!criteria.contractType || application.contractType === criteria.contractType) && (!criteria.priority || application.priority === criteria.priority);
     });
   }
 }

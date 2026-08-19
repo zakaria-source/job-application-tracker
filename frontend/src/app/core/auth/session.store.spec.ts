@@ -1,24 +1,55 @@
-import {beforeEach, describe, expect, it} from 'vitest';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {SessionStore} from '@app/core/auth/session.store';
 
 describe('SessionStore', () => {
   beforeEach(() => localStorage.clear());
+  afterEach(() => vi.useRealTimers());
 
-  it('persists a valid authenticated session', () => {
+  it('persists only non-sensitive session metadata', () => {
     const store = new SessionStore();
     store.save({
-      accessToken: 'token',
       expiresAt: new Date(Date.now() + 60_000).toISOString(),
       user: {id: 'user-1', email: 'alex@example.com', displayName: 'Alex'}
     });
 
+    const stored = JSON.parse(localStorage.getItem('jobtrackr-cloud-session-v1') ?? '{}');
+    expect(stored.accessToken).toBeUndefined();
     expect(store.isAuthenticated()).toBe(true);
     expect(new SessionStore().current?.user.email).toBe('alex@example.com');
   });
 
+  it('migrates legacy storage by stripping a persisted access token', () => {
+    localStorage.setItem('jobtrackr-cloud-session-v1', JSON.stringify({
+      accessToken: 'legacy-sensitive-token',
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      user: {id: 'user-1', email: 'alex@example.com', displayName: 'Alex'}
+    }));
+
+    const store = new SessionStore();
+    const stored = JSON.parse(localStorage.getItem('jobtrackr-cloud-session-v1') ?? '{}');
+
+    expect(store.isAuthenticated()).toBe(true);
+    expect(stored.accessToken).toBeUndefined();
+  });
+
+  it('invalidates a session that expires while the app remains open', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-19T00:00:00Z'));
+
+    const store = new SessionStore();
+    store.save({
+      expiresAt: new Date(Date.now() + 30_000).toISOString(),
+      user: {id: 'user-1', email: 'alex@example.com', displayName: 'Alex'}
+    });
+
+    expect(store.isAuthenticated()).toBe(true);
+    vi.advanceTimersByTime(31_000);
+    expect(store.isAuthenticated()).toBe(false);
+    expect(localStorage.getItem('jobtrackr-cloud-session-v1')).toBeNull();
+  });
+
   it('drops expired sessions during restore', () => {
     localStorage.setItem('jobtrackr-cloud-session-v1', JSON.stringify({
-      accessToken: 'expired',
       expiresAt: new Date(Date.now() - 60_000).toISOString(),
       user: {id: 'user-1', email: 'alex@example.com', displayName: 'Alex'}
     }));

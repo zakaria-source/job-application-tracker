@@ -8,14 +8,13 @@ export interface AuthUser {
 }
 
 export interface AuthSession {
-  accessToken: string;
   expiresAt: string;
   user: AuthUser;
 }
 
 @Injectable({providedIn: 'root'})
 export class SessionStore {
-  // Keep the existing browser key to preserve active sessions across this internal refactor.
+  // Keep the existing browser key so legacy sessions can be migrated without leaving JWTs behind.
   private readonly storageKey = 'jobtrackr-cloud-session-v1';
   private readonly sessionSubject = new BehaviorSubject<AuthSession | null>(this.restore());
 
@@ -25,17 +24,21 @@ export class SessionStore {
     return this.sessionSubject.value;
   }
 
-  get accessToken(): string | null {
-    return this.current?.accessToken ?? null;
-  }
-
   isAuthenticated(): boolean {
-    return this.current !== null;
+    const session = this.current;
+    if (!session) return false;
+
+    if (this.isExpired(session)) {
+      this.clear();
+      return false;
+    }
+    return true;
   }
 
   save(session: AuthSession): void {
-    localStorage.setItem(this.storageKey, JSON.stringify(session));
-    this.sessionSubject.next(session);
+    const sanitized = this.sanitize(session);
+    localStorage.setItem(this.storageKey, JSON.stringify(sanitized));
+    this.sessionSubject.next(sanitized);
   }
 
   clear(): void {
@@ -45,27 +48,55 @@ export class SessionStore {
 
   private restore(): AuthSession | null {
     const raw = localStorage.getItem(this.storageKey);
-    if (!raw) {
-      return null;
-    }
+    if (!raw) return null;
 
     try {
-      const session = JSON.parse(raw) as AuthSession;
-      if (!session.accessToken || !session.expiresAt || !session.user?.id || !session.user?.email) {
+      const candidate = JSON.parse(raw) as Partial<AuthSession> & {
+        accessToken?: unknown;
+        user?: Partial<AuthUser>;
+      };
+      if (!candidate.expiresAt || !candidate.user?.id || !candidate.user?.email) {
         this.removeStoredSession();
         return null;
       }
 
-      if (new Date(session.expiresAt).getTime() <= Date.now()) {
+      const session = this.sanitize({
+        expiresAt: candidate.expiresAt,
+        user: {
+          id: candidate.user.id,
+          email: candidate.user.email,
+          displayName: candidate.user.displayName ?? candidate.user.email
+        }
+      });
+
+      if (this.isExpired(session)) {
         this.removeStoredSession();
         return null;
       }
 
+      // Rewrites legacy storage immediately, stripping any previously persisted accessToken.
+      localStorage.setItem(this.storageKey, JSON.stringify(session));
       return session;
     } catch {
       this.removeStoredSession();
       return null;
     }
+  }
+
+  private sanitize(session: AuthSession): AuthSession {
+    return {
+      expiresAt: session.expiresAt,
+      user: {
+        id: session.user.id,
+        email: session.user.email,
+        displayName: session.user.displayName
+      }
+    };
+  }
+
+  private isExpired(session: AuthSession): boolean {
+    const expiresAt = new Date(session.expiresAt).getTime();
+    return !Number.isFinite(expiresAt) || expiresAt <= Date.now();
   }
 
   private removeStoredSession(): void {

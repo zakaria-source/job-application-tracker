@@ -116,9 +116,13 @@ export class AccountComponent {
   }
 
   logout(): void {
-    this.workspace.disconnect();
-    this.errorMessage = '';
-    void this.router.navigate(['/account']);
+    this.auth.logout()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.workspace.disconnect();
+        this.errorMessage = '';
+        void this.router.navigate(['/account']);
+      });
   }
 
   initials(name: string): string {
