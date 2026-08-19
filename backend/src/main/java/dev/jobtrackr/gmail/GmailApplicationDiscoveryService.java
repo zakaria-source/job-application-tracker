@@ -10,6 +10,7 @@ import dev.jobtrackr.application.dto.ApplicationResponse;
 import dev.jobtrackr.mailtracking.dto.EmailAnalysisResponse;
 import org.springframework.stereotype.Service;
 
+import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -52,13 +53,18 @@ class GmailApplicationDiscoveryService {
         this.applications = applications;
     }
 
-    Optional<ApplicationResponse> createIfMissing(
+    Optional<DiscoveryResolution> resolveOrCreate(
         UUID userId,
         GmailApiClient.GmailMessage message,
         EmailAnalysisResponse analysis
     ) {
         DiscoveryCandidate candidate = extractCandidate(message, analysis);
         if (candidate == null) return Optional.empty();
+
+        Optional<ApplicationResponse> existing = findExisting(userId, candidate);
+        if (existing.isPresent()) {
+            return Optional.of(new DiscoveryResolution(existing.get(), false));
+        }
 
         ApplicationRequest request = new ApplicationRequest(
             candidate.company(),
@@ -79,7 +85,7 @@ class GmailApplicationDiscoveryService {
             ApplicationPriority.MOYENNE,
             List.of()
         );
-        return Optional.of(applications.create(userId, request));
+        return Optional.of(new DiscoveryResolution(applications.create(userId, request), true));
     }
 
     DiscoveryCandidate extractCandidate(
@@ -126,9 +132,45 @@ class GmailApplicationDiscoveryService {
         );
     }
 
+    private Optional<ApplicationResponse> findExisting(UUID userId, DiscoveryCandidate candidate) {
+        List<ApplicationResponse> existing = applications.list(userId);
+        String recruiterEmail = normalizeEmail(candidate.recruiterEmail());
+        if (!recruiterEmail.isBlank()) {
+            Optional<ApplicationResponse> byRecruiter = existing.stream()
+                .filter(application -> recruiterEmail.equals(normalizeEmail(application.recruiterEmail())))
+                .findFirst();
+            if (byRecruiter.isPresent()) return byRecruiter;
+        }
+
+        String companyKey = normalizeKey(candidate.company());
+        List<ApplicationResponse> sameCompany = existing.stream()
+            .filter(application -> companyKey.equals(normalizeKey(application.company())))
+            .toList();
+        if (sameCompany.isEmpty()) return Optional.empty();
+
+        String positionKey = normalizeKey(candidate.position());
+        if (!isUnknownPosition(candidate.position())) {
+            Optional<ApplicationResponse> exactPosition = sameCompany.stream()
+                .filter(application -> positionKey.equals(normalizeKey(application.position())))
+                .findFirst();
+            if (exactPosition.isPresent()) return exactPosition;
+
+            List<ApplicationResponse> placeholders = sameCompany.stream()
+                .filter(application -> isUnknownPosition(application.position()))
+                .toList();
+            if (placeholders.size() == 1) return Optional.of(placeholders.get(0));
+            return Optional.empty();
+        }
+
+        return sameCompany.size() == 1 ? Optional.of(sameCompany.get(0)) : Optional.empty();
+    }
+
     private static String extractCompany(String subject, String body, String sender, String recruiterEmail) {
-        String displayName = cleanCompanyName(extractDisplayName(sender));
-        if (isUsefulCompany(displayName)) return displayName;
+        String rawDisplayName = extractDisplayName(sender);
+        String displayName = cleanCompanyName(rawDisplayName);
+        if (looksOrganizationalSender(rawDisplayName) && isUsefulCompany(displayName)) {
+            return displayName;
+        }
 
         Matcher context = COMPANY_CONTEXT_PATTERN.matcher(subject + "\n" + body);
         if (context.find()) {
@@ -137,7 +179,14 @@ class GmailApplicationDiscoveryService {
         }
 
         String domainCompany = companyFromDomain(recruiterEmail);
-        return isUsefulCompany(domainCompany) ? domainCompany : "";
+        if (isUsefulCompany(domainCompany)) return domainCompany;
+
+        String textKey = normalizeKey(subject + " " + body);
+        String displayKey = normalizeKey(displayName);
+        if (isUsefulCompany(displayName) && displayKey.length() >= 3 && textKey.contains(displayKey)) {
+            return displayName;
+        }
+        return "";
     }
 
     private static String extractPosition(String subject, String body, String company) {
@@ -178,11 +227,18 @@ class GmailApplicationDiscoveryService {
         return truncate(cleaned, 180);
     }
 
+    private static boolean looksOrganizationalSender(String value) {
+        String normalized = normalizeKey(value);
+        return normalized.contains("career") || normalized.contains("recruit") || normalized.contains("talent")
+            || normalized.contains("hiring") || normalized.contains("jobs") || normalized.contains("team")
+            || normalized.contains("company") || normalized.contains("group") || normalized.contains("groupe");
+    }
+
     private static boolean isUsefulCompany(String company) {
         if (company == null || company.length() < 2) return false;
-        String normalized = company.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "");
+        String normalized = normalizeKey(company);
         if (normalized.length() < 2) return false;
-        return GENERIC_COMPANY_NAMES.stream().noneMatch(name -> normalized.equals(name.replaceAll("[^a-z0-9]+", "")));
+        return GENERIC_COMPANY_NAMES.stream().noneMatch(name -> normalized.equals(normalizeKey(name)));
     }
 
     private static String companyFromDomain(String email) {
@@ -198,6 +254,7 @@ class GmailApplicationDiscoveryService {
         int index = labels.length - 2;
         if (("co".equals(labels[index]) || "com".equals(labels[index])) && labels.length >= 3) index--;
         String token = labels[index].replaceAll("[^a-z0-9-]", "");
+        if (token.endsWith("hq") && token.length() > 4) token = token.substring(0, token.length() - 2);
         if (token.length() < 2) return "";
         String spaced = token.replace('-', ' ');
         return Character.toUpperCase(spaced.charAt(0)) + spaced.substring(1);
@@ -241,6 +298,22 @@ class GmailApplicationDiscoveryService {
         return ContractType.AUTRE;
     }
 
+    private static boolean isUnknownPosition(String value) {
+        return UNKNOWN_POSITION.equalsIgnoreCase(safe(value));
+    }
+
+    private static String normalizeEmail(String value) {
+        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static String normalizeKey(String value) {
+        String decomposed = Normalizer.normalize(value == null ? "" : value, Normalizer.Form.NFD);
+        return decomposed.replaceAll("\\p{M}+", "")
+            .toLowerCase(Locale.ROOT)
+            .replaceAll("[^a-z0-9]+", "")
+            .trim();
+    }
+
     private static String truncate(String value, int max) {
         return value.length() <= max ? value : value.substring(0, max);
     }
@@ -248,6 +321,8 @@ class GmailApplicationDiscoveryService {
     private static String safe(String value) {
         return value == null ? "" : value.trim();
     }
+
+    record DiscoveryResolution(ApplicationResponse application, boolean created) {}
 
     record DiscoveryCandidate(
         String company,
