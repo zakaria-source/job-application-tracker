@@ -13,6 +13,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -24,7 +26,7 @@ class EmailTrackingServiceAutomationTest {
     void exposesDetectedStageWhenNoApplicationExistsYet() {
         JobApplicationRepository applications = mock(JobApplicationRepository.class);
         ApplicationTrackingService tracking = mock(ApplicationTrackingService.class);
-        when(applications.findAllByOwner_Id(org.mockito.ArgumentMatchers.any())).thenReturn(List.of());
+        when(applications.findAllByOwner_Id(any())).thenReturn(List.of());
 
         EmailTrackingService service = new EmailTrackingService(
             applications,
@@ -72,7 +74,7 @@ class EmailTrackingServiceAutomationTest {
             )
         );
 
-        verify(application, never()).moveTo(RecruitmentStage.SCREENING_RH, org.mockito.ArgumentMatchers.any());
-        verify(application).touch(org.mockito.ArgumentMatchers.any());
+        verify(application, never()).moveTo(eq(RecruitmentStage.SCREENING_RH), any());
+        verify(application).touch(any());
     }
 }
