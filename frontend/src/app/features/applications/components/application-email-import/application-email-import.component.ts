@@ -101,6 +101,11 @@ export class ApplicationEmailImportComponent {
     this.error = '';
   }
 
+  applicationOptionLabel(application: JobApplication): string {
+    const score = this.matchScore(application.id);
+    return `${application.company} — ${application.position}${score === null ? '' : ` · ${score}% match`}`;
+  }
+
   matchScore(applicationId: string): number | null {
     return this.analysis?.matches.find(match => match.applicationId === applicationId)?.score ?? null;
   }
