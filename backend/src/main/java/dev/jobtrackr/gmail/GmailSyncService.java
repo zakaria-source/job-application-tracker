@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
@@ -127,17 +129,14 @@ class GmailSyncService {
             int created = 0;
             UUID userId = connection.getOwner().getId();
 
-            for (String messageId : messageIds) {
-                GmailProcessedMessageEntity previous = processedMessages
-                    .findByConnection_IdAndMessageId(connection.getId(), messageId)
-                    .orElse(null);
-                if (previous != null) {
-                    if (!rescanRecent || previous.isAutoApplied()) continue;
-                    processedMessages.delete(previous);
-                    processedMessages.flush();
-                }
+            List<GmailApiClient.GmailMessage> messages = loadMessagesForProcessing(
+                connection,
+                messageIds,
+                rescanRecent,
+                accessToken
+            );
 
-                GmailApiClient.GmailMessage message = api.message(accessToken, messageId);
+            for (GmailApiClient.GmailMessage message : messages) {
                 MessageOutcome outcome = processMessage(connection, userId, message);
                 scanned++;
                 matched += outcome.matched() ? 1 : 0;
@@ -159,6 +158,41 @@ class GmailSyncService {
         }
     }
 
+    private List<GmailApiClient.GmailMessage> loadMessagesForProcessing(
+        GmailConnectionEntity connection,
+        List<String> messageIds,
+        boolean rescanRecent,
+        String accessToken
+    ) {
+        List<GmailApiClient.GmailMessage> messages = new ArrayList<>();
+        boolean deletedPrevious = false;
+
+        for (String messageId : messageIds) {
+            GmailProcessedMessageEntity previous = processedMessages
+                .findByConnection_IdAndMessageId(connection.getId(), messageId)
+                .orElse(null);
+            if (previous != null) {
+                if (!rescanRecent || previous.isAutoApplied()) continue;
+                processedMessages.delete(previous);
+                deletedPrevious = true;
+            }
+            messages.add(api.message(accessToken, messageId));
+        }
+
+        if (deletedPrevious) processedMessages.flush();
+        return chronological(messages);
+    }
+
+    static List<GmailApiClient.GmailMessage> chronological(List<GmailApiClient.GmailMessage> messages) {
+        List<GmailApiClient.GmailMessage> ordered = new ArrayList<>(messages);
+        ordered.sort(
+            Comparator.comparing(
+                (GmailApiClient.GmailMessage message) -> message.date() == null ? Instant.EPOCH : message.date()
+            ).thenComparing(GmailApiClient.GmailMessage::id)
+        );
+        return List.copyOf(ordered);
+    }
+
     private MessageOutcome processMessage(
         GmailConnectionEntity connection,
         UUID userId,
@@ -168,37 +202,52 @@ class GmailSyncService {
         String sender = message.from() == null ? "" : message.from();
         String body = valueOr(message.body(), "(Contenu non disponible)");
         if (body.length() > 20_000) body = body.substring(0, 20_000);
+        String shortSubject = subject.substring(0, Math.min(300, subject.length()));
 
         EmailAnalysisResponse analysis = emailTracking.analyze(
             userId,
-            new EmailAnalysisRequest(subject.substring(0, Math.min(300, subject.length())), sender, body)
+            new EmailAnalysisRequest(shortSubject, sender, body)
         );
 
+        Optional<UUID> threadApplicationId = findThreadApplication(connection, message.threadId());
+        if (threadApplicationId.isPresent()) {
+            boolean moveStage = analysis.signalConfidence() >= properties.getAutoApplyMinConfidence()
+                && analysis.suggestedStage() != null;
+            emailTracking.applyAutomated(userId, new EmailApplyRequest(
+                threadApplicationId.get(),
+                moveStage ? analysis.suggestedStage() : null,
+                analysis.signalType(),
+                shortSubject
+            ));
+            saveProcessed(connection, message, threadApplicationId.get(), analysis.signalType(), 100, true);
+            return new MessageOutcome(true, true, false, false);
+        }
+
         if (analysis.matches().isEmpty() && !OTHER_SIGNAL.equals(analysis.signalType())) {
-            Optional<ApplicationResponse> created = discovery.createIfMissing(userId, message, analysis);
-            if (created.isPresent()) {
-                ApplicationResponse application = created.get();
-                emailTracking.apply(userId, new EmailApplyRequest(
+            Optional<GmailApplicationDiscoveryService.DiscoveryResolution> resolution =
+                discovery.resolveOrCreate(userId, message, analysis);
+            if (resolution.isPresent()) {
+                GmailApplicationDiscoveryService.DiscoveryResolution discovered = resolution.get();
+                ApplicationResponse application = discovered.application();
+                boolean moveStage = analysis.signalConfidence() >= properties.getAutoApplyMinConfidence()
+                    && analysis.suggestedStage() != null;
+                emailTracking.applyAutomated(userId, new EmailApplyRequest(
                     application.id(),
-                    null,
+                    moveStage ? analysis.suggestedStage() : null,
                     analysis.signalType(),
-                    subject.substring(0, Math.min(300, subject.length()))
+                    shortSubject
                 ));
-                processedMessages.save(new GmailProcessedMessageEntity(
-                    UUID.randomUUID(),
+                saveProcessed(
                     connection,
-                    message.id(),
-                    message.threadId(),
-                    message.date(),
-                    Instant.now(),
+                    message,
                     application.id(),
                     analysis.signalType(),
-                    100,
+                    discovered.created() ? 100 : 95,
                     true
-                ));
-                log.info("gmail_application_discovered userId={} applicationId={} company={} position={} signal={}",
-                    userId, application.id(), application.company(), application.position(), analysis.signalType());
-                return new MessageOutcome(true, true, false, true);
+                );
+                log.info("gmail_application_resolved userId={} applicationId={} created={} company={} position={} signal={}",
+                    userId, application.id(), discovered.created(), application.company(), application.position(), analysis.signalType());
+                return new MessageOutcome(true, true, false, discovered.created());
             }
         }
 
@@ -210,14 +259,44 @@ class GmailSyncService {
         boolean moveStage = recordActivity && shouldAutoApply(analysis);
 
         if (recordActivity) {
-            emailTracking.apply(userId, new EmailApplyRequest(
+            emailTracking.applyAutomated(userId, new EmailApplyRequest(
                 top.applicationId(),
                 moveStage ? analysis.suggestedStage() : null,
                 analysis.signalType(),
-                subject.substring(0, Math.min(300, subject.length()))
+                shortSubject
             ));
         }
 
+        saveProcessed(
+            connection,
+            message,
+            matchedApplicationId,
+            analysis.signalType(),
+            topScore,
+            recordActivity
+        );
+
+        return new MessageOutcome(matched, recordActivity, !recordActivity, false);
+    }
+
+    private Optional<UUID> findThreadApplication(GmailConnectionEntity connection, String threadId) {
+        if (threadId == null || threadId.isBlank()) return Optional.empty();
+        return processedMessages
+            .findFirstByConnection_IdAndThreadIdAndMatchedApplicationIdIsNotNullOrderByMessageDateDescProcessedAtDesc(
+                connection.getId(),
+                threadId
+            )
+            .map(GmailProcessedMessageEntity::getMatchedApplicationId);
+    }
+
+    private void saveProcessed(
+        GmailConnectionEntity connection,
+        GmailApiClient.GmailMessage message,
+        UUID applicationId,
+        String signalType,
+        Integer matchScore,
+        boolean applied
+    ) {
         processedMessages.save(new GmailProcessedMessageEntity(
             UUID.randomUUID(),
             connection,
@@ -225,13 +304,11 @@ class GmailSyncService {
             message.threadId(),
             message.date(),
             Instant.now(),
-            matchedApplicationId,
-            analysis.signalType(),
-            topScore,
-            recordActivity
+            applicationId,
+            signalType,
+            matchScore,
+            applied
         ));
-
-        return new MessageOutcome(matched, recordActivity, !recordActivity, false);
     }
 
     private boolean shouldRecordActivity(EmailAnalysisResponse analysis) {
