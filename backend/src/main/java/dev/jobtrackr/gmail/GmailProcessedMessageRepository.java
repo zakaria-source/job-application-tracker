@@ -8,4 +8,8 @@ import java.util.UUID;
 interface GmailProcessedMessageRepository extends JpaRepository<GmailProcessedMessageEntity, UUID> {
     boolean existsByConnection_IdAndMessageId(UUID connectionId, String messageId);
     Optional<GmailProcessedMessageEntity> findByConnection_IdAndMessageId(UUID connectionId, String messageId);
+    Optional<GmailProcessedMessageEntity> findFirstByConnection_IdAndThreadIdAndMatchedApplicationIdIsNotNullOrderByMessageDateDescProcessedAtDesc(
+        UUID connectionId,
+        String threadId
+    );
 }

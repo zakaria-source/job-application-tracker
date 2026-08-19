@@ -74,4 +74,8 @@ class GmailProcessedMessageEntity {
     boolean isAutoApplied() {
         return autoApplied;
     }
+
+    UUID getMatchedApplicationId() {
+        return matchedApplicationId;
+    }
 }

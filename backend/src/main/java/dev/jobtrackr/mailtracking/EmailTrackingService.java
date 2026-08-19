@@ -87,23 +87,40 @@ public class EmailTrackingService {
     public EmailApplyResponse apply(UUID userId, EmailApplyRequest request) {
         JobApplicationEntity application = applications.findByIdAndOwner_Id(request.applicationId(), userId)
             .orElseThrow(ResourceNotFoundException::new);
+        return applyTo(application, request.stage(), request.signalType(), request.subject());
+    }
+
+    @Transactional
+    public EmailApplyResponse applyAutomated(UUID userId, EmailApplyRequest request) {
+        JobApplicationEntity application = applications.findByIdAndOwner_Id(request.applicationId(), userId)
+            .orElseThrow(ResourceNotFoundException::new);
+        RecruitmentStage safeStage = safeAutomatedStage(application.getStage(), request.stage());
+        return applyTo(application, safeStage, request.signalType(), request.subject());
+    }
+
+    private EmailApplyResponse applyTo(
+        JobApplicationEntity application,
+        RecruitmentStage requestedStage,
+        String signalType,
+        String subject
+    ) {
         RecruitmentStage previousStage = application.getStage();
         Instant now = Instant.now();
 
-        if (request.stage() != null && request.stage() != previousStage) {
-            application.moveTo(request.stage(), now);
+        if (requestedStage != null && requestedStage != previousStage) {
+            application.moveTo(requestedStage, now);
             tracking.recordStageChanged(application, previousStage, now);
         } else {
             application.touch(now);
         }
 
-        tracking.recordEmailSignal(application, request.signalType(), request.subject(), now);
+        tracking.recordEmailSignal(application, signalType, subject, now);
         applications.flush();
 
         return new EmailApplyResponse(
             application.getId(),
             application.getStage(),
-            request.stage() != null && request.stage() != previousStage
+            requestedStage != null && requestedStage != previousStage
                 ? "Mail enregistré et étape mise à jour"
                 : "Mail enregistré dans l'activité de la candidature"
         );
@@ -113,8 +130,16 @@ public class EmailTrackingService {
         RecruitmentStage suggested,
         List<EmailApplicationMatch> matches
     ) {
-        if (suggested == null || matches.isEmpty()) return null;
-        RecruitmentStage current = matches.get(0).currentStage();
+        if (suggested == null) return null;
+        if (matches.isEmpty()) return suggested;
+        return safeAutomatedStage(matches.get(0).currentStage(), suggested);
+    }
+
+    private static RecruitmentStage safeAutomatedStage(
+        RecruitmentStage current,
+        RecruitmentStage suggested
+    ) {
+        if (suggested == null || suggested == current) return null;
         if (suggested == RecruitmentStage.CLOTURE || suggested == RecruitmentStage.OFFRE) return suggested;
         return suggested.ordinal() > current.ordinal() ? suggested : null;
     }
