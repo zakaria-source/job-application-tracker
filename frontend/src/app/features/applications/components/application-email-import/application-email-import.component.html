@@ -76,10 +76,7 @@
             <span>Candidature associée</span>
             <select [(ngModel)]="selectedApplicationId">
               @for (application of applications; track application.id) {
-                <option [value]="application.id">
-                  {{ application.company }} — {{ application.position }}
-                  @if (matchScore(application.id) !== null) { · {{ matchScore(application.id) }}% match }
-                </option>
+                <option [value]="application.id">{{ applicationOptionLabel(application) }}</option>
               }
             </select>
           </label>
