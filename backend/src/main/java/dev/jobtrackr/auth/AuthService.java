@@ -4,6 +4,7 @@ import dev.jobtrackr.auth.dto.LoginRequest;
 import dev.jobtrackr.auth.dto.RegisterRequest;
 import dev.jobtrackr.auth.dto.UserResponse;
 import dev.jobtrackr.auth.exception.DuplicateEmailException;
+import dev.jobtrackr.common.RateLimitService;
 import dev.jobtrackr.common.exception.ResourceNotFoundException;
 import dev.jobtrackr.identity.UserAccountEntity;
 import dev.jobtrackr.identity.UserAccountRepository;
@@ -22,6 +23,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.UUID;
@@ -30,6 +32,9 @@ import java.util.UUID;
 public class AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
+    private static final Duration LOGIN_WINDOW = Duration.ofMinutes(1);
+    private static final Duration REGISTER_WINDOW = Duration.ofHours(1);
+    private static final Duration REFRESH_WINDOW = Duration.ofMinutes(1);
 
     private final UserAccountRepository users;
     private final UserProfileRepository profiles;
@@ -38,6 +43,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final TokenService tokenService;
     private final RefreshTokenService refreshTokens;
+    private final RateLimitService rateLimits;
 
     public AuthService(UserAccountRepository users,
                        UserProfileRepository profiles,
@@ -45,7 +51,8 @@ public class AuthService {
                        PasswordEncoder passwordEncoder,
                        AuthenticationManager authenticationManager,
                        TokenService tokenService,
-                       RefreshTokenService refreshTokens) {
+                       RefreshTokenService refreshTokens,
+                       RateLimitService rateLimits) {
         this.users = users;
         this.profiles = profiles;
         this.sessions = sessions;
@@ -53,11 +60,13 @@ public class AuthService {
         this.authenticationManager = authenticationManager;
         this.tokenService = tokenService;
         this.refreshTokens = refreshTokens;
+        this.rateLimits = rateLimits;
     }
 
     @Transactional
     public AuthResult register(RegisterRequest request) {
         String email = normalizeEmail(request.email());
+        rateLimits.check("register:" + email, 5, REGISTER_WINDOW);
         if (users.existsByEmailIgnoreCase(email)) {
             throw new DuplicateEmailException();
         }
@@ -80,8 +89,11 @@ public class AuthService {
     @Transactional
     public AuthResult login(LoginRequest request) {
         String email = normalizeEmail(request.email());
+        String rateKey = "login:" + email;
+        rateLimits.check(rateKey, 10, LOGIN_WINDOW);
         authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email, request.password()));
         UserAccountEntity user = users.findByEmailIgnoreCase(email).orElseThrow(ResourceNotFoundException::new);
+        rateLimits.reset(rateKey);
         log.info("auth_event action=login_success userId={}", user.getId());
         return createAuthResult(user, Instant.now());
     }
@@ -89,6 +101,7 @@ public class AuthService {
     @Transactional
     public AuthResult refresh(String rawRefreshToken) {
         RefreshTokenService.ParsedRefreshToken presented = parseRefresh(rawRefreshToken);
+        rateLimits.check("refresh:" + presented.sessionId(), 30, REFRESH_WINDOW);
         AuthSessionEntity session = sessions.findById(presented.sessionId())
             .orElseThrow(AuthService::invalidRefreshToken);
         Instant now = Instant.now();
