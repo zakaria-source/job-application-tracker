@@ -1,6 +1,7 @@
 import {Injectable} from '@angular/core';
 import {BehaviorSubject, Observable, catchError, forkJoin, map, tap, throwError} from 'rxjs';
 import {JobTrackrApiService} from '@app/core/api/jobtrackr-api.service';
+import {AuthService} from '@app/core/auth/auth.service';
 import {SessionStore} from '@app/core/auth/session.store';
 import {ApplicationStore} from '@app/features/applications/data-access/application.store';
 import {UserProfileService} from '@app/features/profile/user-profile.service';
@@ -16,6 +17,7 @@ export class WorkspaceService {
 
   constructor(
     private readonly sessions: SessionStore,
+    private readonly auth: AuthService,
     private readonly api: JobTrackrApiService,
     private readonly applications: ApplicationStore,
     private readonly profiles: UserProfileService
@@ -42,6 +44,7 @@ export class WorkspaceService {
 
     this.stateSubject.next('loading');
     return forkJoin({
+      csrf: this.auth.ensureCsrfToken(),
       profile: this.api.getProfile(),
       applications: this.api.listApplications()
     }).pipe(

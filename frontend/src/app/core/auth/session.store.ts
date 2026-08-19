@@ -9,21 +9,19 @@ export interface AuthUser {
 
 export interface AuthSession {
   expiresAt: string;
+  sessionExpiresAt?: string;
   user: AuthUser;
   /**
    * Compatibility only: older backend deployments returned the bearer token
-   * in the authentication response. New deployments authenticate with an
-   * HttpOnly cookie and omit this field.
+   * in the authentication response. New deployments authenticate with
+   * HttpOnly access/refresh cookies and omit this field.
    */
   accessToken?: string;
 }
 
 @Injectable({providedIn: 'root'})
 export class SessionStore {
-  // Keep the existing browser key so legacy sessions can be migrated without leaving JWTs behind.
   private readonly storageKey = 'jobtrackr-cloud-session-v1';
-  // A legacy bearer token is kept only for the lifetime of the current tab.
-  // Long-lived authentication remains in the server-managed HttpOnly cookie.
   private readonly fallbackTokenKey = 'jobtrackr-legacy-access-token-v1';
   private readonly sessionSubject = new BehaviorSubject<AuthSession | null>(this.restore());
 
@@ -42,7 +40,7 @@ export class SessionStore {
     const session = this.current;
     if (!session) return false;
 
-    if (this.isExpired(session)) {
+    if (this.isSessionExpired(session)) {
       this.clear();
       return false;
     }
@@ -86,6 +84,7 @@ export class SessionStore {
 
       const session = this.sanitize({
         expiresAt: candidate.expiresAt,
+        sessionExpiresAt: candidate.sessionExpiresAt,
         user: {
           id: candidate.user.id,
           email: candidate.user.email,
@@ -93,12 +92,11 @@ export class SessionStore {
         }
       });
 
-      if (this.isExpired(session)) {
+      if (this.isSessionExpired(session)) {
         this.removeStoredSession();
         return null;
       }
 
-      // Rewrites legacy localStorage immediately, stripping any previously persisted accessToken.
       localStorage.setItem(this.storageKey, JSON.stringify(session));
       return session;
     } catch {
@@ -110,6 +108,7 @@ export class SessionStore {
   private sanitize(session: AuthSession): AuthSession {
     return {
       expiresAt: session.expiresAt,
+      ...(session.sessionExpiresAt ? {sessionExpiresAt: session.sessionExpiresAt} : {}),
       user: {
         id: session.user.id,
         email: session.user.email,
@@ -118,8 +117,8 @@ export class SessionStore {
     };
   }
 
-  private isExpired(session: AuthSession): boolean {
-    const expiresAt = new Date(session.expiresAt).getTime();
+  private isSessionExpired(session: AuthSession): boolean {
+    const expiresAt = new Date(session.sessionExpiresAt ?? session.expiresAt).getTime();
     return !Number.isFinite(expiresAt) || expiresAt <= Date.now();
   }
 

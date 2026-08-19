@@ -1,4 +1,4 @@
-import {provideHttpClient, withInterceptors} from '@angular/common/http';
+import {provideHttpClient, withInterceptors, withXsrfConfiguration} from '@angular/common/http';
 import {provideZoneChangeDetection} from '@angular/core';
 import {bootstrapApplication} from '@angular/platform-browser';
 import {provideRouter} from '@angular/router';
@@ -9,7 +9,10 @@ import {APP_ROUTES} from './app/app.routes';
 bootstrapApplication(App, {
   providers: [
     provideZoneChangeDetection(),
-    provideHttpClient(withInterceptors([authInterceptor])),
+    provideHttpClient(
+      withXsrfConfiguration({cookieName: 'XSRF-TOKEN', headerName: 'X-XSRF-TOKEN'}),
+      withInterceptors([authInterceptor])
+    ),
     provideRouter(APP_ROUTES)
   ]
 }).catch(err => console.error(err));
