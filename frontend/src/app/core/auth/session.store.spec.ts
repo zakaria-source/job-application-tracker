@@ -29,11 +29,32 @@ describe('SessionStore', () => {
     const store = new SessionStore();
     store.save({
       expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      sessionExpiresAt: new Date(Date.now() + 86_400_000).toISOString(),
       user: {id: 'user-1', email: 'alex@example.com', displayName: 'Alex'}
     });
 
+    const stored = JSON.parse(localStorage.getItem('jobtrackr-cloud-session-v1') ?? '{}');
     expect(store.accessToken).toBeNull();
+    expect(stored.sessionExpiresAt).toBeDefined();
     expect(sessionStorage.getItem('jobtrackr-legacy-access-token-v1')).toBeNull();
+  });
+
+  it('uses refresh-session expiry instead of access-token expiry', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-19T00:00:00Z'));
+
+    const store = new SessionStore();
+    store.save({
+      expiresAt: new Date(Date.now() + 30_000).toISOString(),
+      sessionExpiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+      user: {id: 'user-1', email: 'alex@example.com', displayName: 'Alex'}
+    });
+
+    vi.advanceTimersByTime(31_000);
+    expect(store.isAuthenticated()).toBe(true);
+
+    vi.advanceTimersByTime(3_570_000);
+    expect(store.isAuthenticated()).toBe(false);
   });
 
   it('migrates legacy storage by stripping a persisted access token', () => {
@@ -51,7 +72,7 @@ describe('SessionStore', () => {
     expect(store.accessToken).toBeNull();
   });
 
-  it('invalidates a session that expires while the app remains open', () => {
+  it('invalidates a legacy session that expires while the app remains open', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-19T00:00:00Z'));
 
