@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -25,7 +26,9 @@ import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -63,14 +66,16 @@ public class SecurityConfig {
     }
 
     /**
-     * Browser traffic authenticates only from the HttpOnly access cookie. Unsafe
-     * requests must present Angular's XSRF header backed by the readable CSRF cookie.
+     * Browser traffic authenticates through a dedicated HttpOnly-cookie JWT filter.
+     * We deliberately do not use Resource Server for browser cookies: Resource Server
+     * treats bearer credentials as CSRF-exempt, which is correct for Authorization
+     * headers but not for ambient browser cookies.
      */
     @Bean
     @Order(2)
     SecurityFilterChain browserSecurityFilterChain(
         HttpSecurity http,
-        SessionCookieService sessionCookies,
+        CookieJwtAuthenticationFilter cookieJwtAuthenticationFilter,
         CookieCsrfTokenRepository csrfTokens
     ) throws Exception {
         http
@@ -84,6 +89,8 @@ public class SecurityConfig {
                 ))
             .cors(Customizer.withDefaults())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(exceptions -> exceptions
+                .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers(
                     "/api/v1/auth/register",
@@ -96,9 +103,7 @@ public class SecurityConfig {
                 ).permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .anyRequest().authenticated())
-            .oauth2ResourceServer(oauth2 -> oauth2
-                .bearerTokenResolver(sessionCookies::resolve)
-                .jwt(Customizer.withDefaults()));
+            .addFilterBefore(cookieJwtAuthenticationFilter, CsrfFilter.class);
         return http.build();
     }
 
