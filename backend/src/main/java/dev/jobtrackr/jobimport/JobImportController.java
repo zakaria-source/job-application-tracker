@@ -2,7 +2,10 @@ package dev.jobtrackr.jobimport;
 
 import dev.jobtrackr.jobimport.dto.JobImportPreview;
 import dev.jobtrackr.jobimport.dto.JobImportRequest;
+import dev.jobtrackr.security.CurrentUser;
 import jakarta.validation.Valid;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,7 +22,10 @@ public class JobImportController {
     }
 
     @PostMapping("/preview")
-    public JobImportPreview preview(@Valid @RequestBody JobImportRequest request) {
-        return service.preview(request.url());
+    public JobImportPreview preview(
+        @AuthenticationPrincipal Jwt jwt,
+        @Valid @RequestBody JobImportRequest request
+    ) {
+        return service.preview(CurrentUser.id(jwt), request.url());
     }
 }
