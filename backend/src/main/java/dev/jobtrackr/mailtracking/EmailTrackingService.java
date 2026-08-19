@@ -30,11 +30,16 @@ public class EmailTrackingService {
         "[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}", Pattern.CASE_INSENSITIVE
     );
     private static final Set<String> GENERIC_EMAIL_DOMAINS = Set.of(
-        "gmail.com", "outlook.com", "hotmail.com", "yahoo.com", "icloud.com", "proton.me", "protonmail.com"
+        "gmail.com", "outlook.com", "hotmail.com", "yahoo.com", "icloud.com", "proton.me", "protonmail.com",
+        "greenhouse.io", "greenhouse-mail.io", "lever.co", "ashbyhq.com", "workday.com", "myworkdayjobs.com",
+        "smartrecruiters.com", "teamtailor.com", "recruitee.com"
     );
     private static final Set<String> POSITION_STOP_WORDS = Set.of(
         "software", "engineer", "ingenieur", "developer", "developpeur", "backend", "frontend", "fullstack",
         "senior", "junior", "stage", "intern", "alternance", "java", "cloud", "remote", "paris"
+    );
+    private static final Set<String> COMPANY_STOP_WORDS = Set.of(
+        "group", "groupe", "company", "technologies", "technology", "solutions", "services", "france", "international"
     );
 
     private final JobApplicationRepository applications;
@@ -56,10 +61,11 @@ public class EmailTrackingService {
         EmailSignalClassifier.Classification classification = classifier.classify(request.subject(), request.body());
         String normalizedSubject = EmailSignalClassifier.normalize(request.subject());
         String normalizedBody = EmailSignalClassifier.normalize(request.body());
+        String normalizedSender = EmailSignalClassifier.normalize(request.sender());
         String senderEmail = extractEmail(request.sender());
 
         List<EmailApplicationMatch> matches = applications.findAllByOwner_Id(userId).stream()
-            .map(application -> score(application, normalizedSubject, normalizedBody, senderEmail))
+            .map(application -> score(application, normalizedSubject, normalizedBody, normalizedSender, senderEmail))
             .filter(match -> match.score() >= 15)
             .sorted(Comparator.comparingInt(EmailApplicationMatch::score).reversed())
             .limit(3)
@@ -117,6 +123,7 @@ public class EmailTrackingService {
         JobApplicationEntity application,
         String subject,
         String body,
+        String sender,
         String senderEmail
     ) {
         int score = 0;
@@ -132,13 +139,22 @@ public class EmailTrackingService {
         if (company.length() >= 3 && subject.contains(company)) {
             score += 45;
             reasons.add("Entreprise trouvée dans l'objet");
+        } else if (company.length() >= 3 && sender.contains(company)) {
+            score += 40;
+            reasons.add("Entreprise trouvée dans le nom de l'expéditeur");
         } else if (company.length() >= 3 && body.contains(company)) {
             score += 30;
             reasons.add("Entreprise trouvée dans le corps du mail");
         }
 
+        int companyTokenScore = companyTokenScore(company, subject, body, sender);
+        if (companyTokenScore > 0) {
+            score += companyTokenScore;
+            reasons.add("Nom de l'entreprise partiellement reconnu");
+        }
+
         String domain = emailDomain(senderEmail);
-        if (!domain.isBlank() && !GENERIC_EMAIL_DOMAINS.contains(domain)) {
+        if (!domain.isBlank() && !isGenericDomain(domain)) {
             for (String token : companyTokens(company)) {
                 if (token.length() >= 4 && domain.contains(token)) {
                     score += 25;
@@ -146,6 +162,15 @@ public class EmailTrackingService {
                     break;
                 }
             }
+        }
+
+        String normalizedPosition = EmailSignalClassifier.normalize(application.getPosition());
+        if (normalizedPosition.length() >= 6 && subject.contains(normalizedPosition)) {
+            score += 25;
+            reasons.add("Intitulé exact du poste trouvé dans l'objet");
+        } else if (normalizedPosition.length() >= 6 && body.contains(normalizedPosition)) {
+            score += 18;
+            reasons.add("Intitulé exact du poste trouvé dans le corps du mail");
         }
 
         int positionScore = 0;
@@ -170,6 +195,22 @@ public class EmailTrackingService {
             Math.min(100, score),
             List.copyOf(reasons)
         );
+    }
+
+    private static int companyTokenScore(String company, String subject, String body, String sender) {
+        int score = 0;
+        for (String token : companyTokens(company)) {
+            if (token.length() < 4 || COMPANY_STOP_WORDS.contains(token)) continue;
+            if (sender.contains(token)) {
+                score += 18;
+            } else if (subject.contains(token)) {
+                score += 14;
+            } else if (body.contains(token)) {
+                score += 8;
+            }
+            if (score >= 35) return 35;
+        }
+        return Math.min(35, score);
     }
 
     private static Set<String> companyTokens(String company) {
@@ -202,5 +243,13 @@ public class EmailTrackingService {
     private static String emailDomain(String email) {
         int separator = email.indexOf('@');
         return separator >= 0 && separator + 1 < email.length() ? email.substring(separator + 1) : "";
+    }
+
+    private static boolean isGenericDomain(String domain) {
+        if (GENERIC_EMAIL_DOMAINS.contains(domain)) return true;
+        for (String generic : GENERIC_EMAIL_DOMAINS) {
+            if (domain.endsWith("." + generic)) return true;
+        }
+        return false;
     }
 }

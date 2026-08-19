@@ -14,7 +14,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -61,14 +63,14 @@ class GmailSyncService {
         requireConfigured();
         GmailConnectionEntity connection = connections.findByOwner_Id(userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Gmail is not connected"));
-        return sync(connection);
+        return sync(connection, true);
     }
 
     void syncAllConnected() {
         if (!properties.configured()) return;
         for (GmailConnectionEntity connection : connections.findAllBySyncEnabledTrue()) {
             try {
-                sync(connection);
+                sync(connection, false);
             } catch (RuntimeException exception) {
                 log.warn("gmail_sync_failed connectionId={} userId={} reason={}",
                     connection.getId(), connection.getOwner().getId(), exception.getClass().getSimpleName());
@@ -80,8 +82,7 @@ class GmailSyncService {
         connections.findByOwner_Id(userId).ifPresent(connections::delete);
     }
 
-    private GmailSyncResponse sync(GmailConnectionEntity connection) {
-        Instant startedAt = Instant.now();
+    private GmailSyncResponse sync(GmailConnectionEntity connection, boolean rescanRecent) {
         try {
             String refreshToken = cipher.decrypt(connection.getRefreshTokenCiphertext());
             String accessToken = api.refreshAccessToken(refreshToken);
@@ -96,8 +97,14 @@ class GmailSyncService {
             } else {
                 try {
                     GmailApiClient.HistoryChanges changes = api.addedMessageIds(accessToken, connection.getHistoryId());
-                    messageIds = changes.messageIds();
                     nextHistoryId = changes.historyId();
+                    if (rescanRecent) {
+                        Set<String> ids = new LinkedHashSet<>(changes.messageIds());
+                        ids.addAll(api.recentMessageIds(accessToken, properties.getInitialLookbackDays()));
+                        messageIds = List.copyOf(ids);
+                    } else {
+                        messageIds = changes.messageIds();
+                    }
                 } catch (GmailApiClient.HistoryExpiredException expired) {
                     fullSync = true;
                     GmailApiClient.GmailProfile baseline = api.profile(accessToken);
@@ -113,7 +120,15 @@ class GmailSyncService {
             UUID userId = connection.getOwner().getId();
 
             for (String messageId : messageIds) {
-                if (processedMessages.existsByConnection_IdAndMessageId(connection.getId(), messageId)) continue;
+                GmailProcessedMessageEntity previous = processedMessages
+                    .findByConnection_IdAndMessageId(connection.getId(), messageId)
+                    .orElse(null);
+                if (previous != null) {
+                    if (!rescanRecent || previous.isAutoApplied()) continue;
+                    processedMessages.delete(previous);
+                    processedMessages.flush();
+                }
+
                 GmailApiClient.GmailMessage message = api.message(accessToken, messageId);
                 MessageOutcome outcome = processMessage(connection, userId, message);
                 scanned++;
@@ -125,8 +140,8 @@ class GmailSyncService {
             Instant syncedAt = Instant.now();
             connection.markSynced(nextHistoryId, syncedAt);
             connections.save(connection);
-            log.info("gmail_sync userId={} connectionId={} fullSync={} scanned={} matched={} applied={} ignored={}",
-                userId, connection.getId(), fullSync, scanned, matched, applied, ignored);
+            log.info("gmail_sync userId={} connectionId={} fullSync={} rescanRecent={} scanned={} matched={} applied={} ignored={}",
+                userId, connection.getId(), fullSync, rescanRecent, scanned, matched, applied, ignored);
             return new GmailSyncResponse(scanned, matched, applied, ignored, fullSync, syncedAt);
         } catch (RuntimeException exception) {
             connection.markError(safeMessage(exception), Instant.now());

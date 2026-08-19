@@ -146,12 +146,13 @@ class GmailApiClient {
         JsonNode payload = json == null ? null : json.path("payload");
         String subject = header(payload, "Subject");
         String from = header(payload, "From");
-        String body = findMime(payload, "text/plain");
-        if (body.isBlank()) {
-            String html = findMime(payload, "text/html");
-            if (!html.isBlank()) body = Jsoup.parse(html).text();
-        }
-        if (body.isBlank()) body = text(json, "snippet");
+
+        String plain = findMime(payload, "text/plain");
+        String html = findMime(payload, "text/html");
+        String htmlText = html.isBlank() ? "" : Jsoup.parse(html).text();
+        String snippet = text(json, "snippet");
+        String body = mergeBody(plain, htmlText, snippet);
+
         Instant date = parseInternalDate(text(json, "internalDate"));
         return new GmailMessage(
             text(json, "id"),
@@ -174,15 +175,31 @@ class GmailApiClient {
 
     private static String findMime(JsonNode part, String wantedMimeType) {
         if (part == null || part.isMissingNode()) return "";
+        List<String> values = new ArrayList<>();
+        collectMime(part, wantedMimeType, values);
+        return String.join("\n", values).trim();
+    }
+
+    private static void collectMime(JsonNode part, String wantedMimeType, List<String> values) {
+        if (part == null || part.isMissingNode()) return;
         if (wantedMimeType.equalsIgnoreCase(text(part, "mimeType"))) {
             String data = text(part.path("body"), "data");
-            if (!data.isBlank()) return decode(data);
+            if (!data.isBlank()) {
+                String decoded = decode(data).trim();
+                if (!decoded.isBlank()) values.add(decoded);
+            }
         }
         for (JsonNode child : array(part, "parts")) {
-            String value = findMime(child, wantedMimeType);
-            if (!value.isBlank()) return value;
+            collectMime(child, wantedMimeType, values);
         }
-        return "";
+    }
+
+    private static String mergeBody(String plain, String htmlText, String snippet) {
+        LinkedHashSet<String> parts = new LinkedHashSet<>();
+        if (plain != null && !plain.isBlank()) parts.add(plain.trim());
+        if (htmlText != null && !htmlText.isBlank()) parts.add(htmlText.trim());
+        if (snippet != null && !snippet.isBlank()) parts.add(snippet.trim());
+        return String.join("\n", parts).trim();
     }
 
     private static String decode(String data) {
