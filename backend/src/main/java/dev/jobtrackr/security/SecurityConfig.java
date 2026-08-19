@@ -5,6 +5,7 @@ import dev.jobtrackr.identity.UserAccountRepository;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
@@ -18,11 +19,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
 import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -36,8 +40,17 @@ import java.util.List;
 @EnableConfigurationProperties(JwtProperties.class)
 public class SecurityConfig {
 
+    private static final RequestMatcher BEARER_API_CLIENT = request -> {
+        String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
+        return authorization != null && authorization.regionMatches(true, 0, "Bearer ", 0, 7);
+    };
+
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, SessionCookieService sessionCookies) throws Exception {
+    SecurityFilterChain securityFilterChain(
+        HttpSecurity http,
+        SessionCookieService sessionCookies,
+        CookieCsrfTokenRepository csrfTokens
+    ) throws Exception {
         DefaultBearerTokenResolver headerResolver = new DefaultBearerTokenResolver();
         BearerTokenResolver bearerTokenResolver = request -> {
             String headerToken = headerResolver.resolve(request);
@@ -45,11 +58,17 @@ public class SecurityConfig {
         };
 
         http
-            // Expand phase: issue Angular-compatible CSRF tokens now, enforce them only
-            // after the migrated frontend is deployed everywhere.
             .csrf(csrf -> csrf
                 .spa()
-                .ignoringRequestMatchers("/api/**"))
+                .csrfTokenRepository(csrfTokens)
+                .ignoringRequestMatchers(
+                    "/api/v1/auth/register",
+                    "/api/v1/auth/login",
+                    "/api/v1/auth/refresh"
+                )
+                // Explicit API clients that authenticate with a Bearer header are
+                // not vulnerable to ambient-cookie CSRF. Browser cookie auth is protected.
+                .ignoringRequestMatchers(BEARER_API_CLIENT))
             .cors(Customizer.withDefaults())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authorize -> authorize
@@ -68,6 +87,16 @@ public class SecurityConfig {
                 .bearerTokenResolver(bearerTokenResolver)
                 .jwt(Customizer.withDefaults()));
         return http.build();
+    }
+
+    @Bean
+    CookieCsrfTokenRepository csrfTokenRepository(JwtProperties properties) {
+        CookieCsrfTokenRepository repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        repository.setCookieCustomizer(cookie -> cookie
+            .secure(properties.secureCookies())
+            .sameSite("Strict")
+            .path("/"));
+        return repository;
     }
 
     @Bean
@@ -108,9 +137,11 @@ public class SecurityConfig {
 
     @Bean
     JwtDecoder jwtDecoder(SecretKey key) {
-        return NimbusJwtDecoder.withSecretKey(key)
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(key)
             .macAlgorithm(MacAlgorithm.HS256)
             .build();
+        decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer("jobtrackr"));
+        return decoder;
     }
 
     @Bean
