@@ -32,7 +32,7 @@ class GmailApplicationDiscoveryService {
         "[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}", Pattern.CASE_INSENSITIVE
     );
     private static final Pattern COMPANY_CONTEXT_PATTERN = Pattern.compile(
-        "(?iu)(?:application|candidature|interview|entretien)[^\\n]{0,120}\\b(?:at|chez|with|aupres de|auprès de)\\s+([\\p{L}0-9][\\p{L}0-9&.'’+\\- ]{1,70})"
+        "(?iu)(?:application|candidature|interview|entretien)[^\\n]{0,120}\\b(?:at|chez|aupres de|auprès de)\\s+([\\p{L}0-9][\\p{L}0-9&.'’+\\- ]{1,70})"
     );
     private static final Pattern POSITION_PATTERN = Pattern.compile(
         "(?iu)(?:application for|applying for|applied for|candidature (?:pour|au poste de)|postul(?:e|é|ée) (?:pour|au poste de)|position|role|rôle|poste)\\s*[:\\-]?\\s*[\"“]?([^\\n|]{3,140})"
