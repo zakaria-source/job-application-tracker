@@ -68,11 +68,12 @@ public class AuthController {
     @GetMapping("/capabilities")
     public Map<String, Object> capabilities() {
         return Map.of(
-            "version", "cookie-refresh-v1",
+            "version", "cookie-refresh-csrf-v1",
             "httpOnlyAccessCookie", true,
             "refreshRotation", true,
             "csrfTokenEndpoint", "/api/v1/auth/csrf",
-            "csrfEnforced", false
+            "csrfEnforced", true,
+            "accessTokenTtlSeconds", 900
         );
     }
 
