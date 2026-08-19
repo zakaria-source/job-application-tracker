@@ -19,7 +19,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const sessions = inject(SessionStore);
   const auth = inject(AuthService);
   const router = inject(Router);
-  const outgoing = prepareApiRequest(request, sessions);
+  const outgoing = prepareApiRequest(request);
 
   return next(outgoing).pipe(
     catchError(error => {
@@ -33,8 +33,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
       if (canRefresh) {
         return auth.refreshSession().pipe(
           switchMap(() => next(prepareApiRequest(
-            request.clone({context: request.context.set(AUTH_RETRY, true)}),
-            sessions
+            request.clone({context: request.context.set(AUTH_RETRY, true)})
           ))),
           catchError(refreshError => {
             sessions.clear();
@@ -53,16 +52,10 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
   );
 };
 
-function prepareApiRequest(request: HttpRequest<unknown>, sessions: SessionStore): HttpRequest<unknown> {
-  if (!request.url.startsWith('/api/v1/')) {
-    return request;
-  }
-
-  const fallbackToken = sessions.accessToken;
-  return request.clone({
-    withCredentials: true,
-    ...(fallbackToken ? {setHeaders: {Authorization: `Bearer ${fallbackToken}`}} : {})
-  });
+function prepareApiRequest(request: HttpRequest<unknown>): HttpRequest<unknown> {
+  return request.url.startsWith('/api/v1/')
+    ? request.clone({withCredentials: true})
+    : request;
 }
 
 function isProtectedApiRequest(request: HttpRequest<unknown>): boolean {
