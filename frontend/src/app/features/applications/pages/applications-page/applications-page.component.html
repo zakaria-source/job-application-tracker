@@ -12,6 +12,9 @@
       <div class="applications-count"><strong>{{ applications.length }}</strong><span>candidature{{ applications.length > 1 ? 's' : '' }} suivie{{ applications.length > 1 ? 's' : '' }}</span></div>
       <div class="header-actions">
         <span class="shortcut-hint"><kbd>N</kbd> Nouvelle</span>
+        @if (applications.length > 0) {
+          <button mat-stroked-button type="button" (click)="openEmailImport()"><mat-icon>mail</mat-icon>Analyser un mail</button>
+        }
         <button mat-flat-button color="primary" type="button" (click)="showAddForm()"><mat-icon>add</mat-icon>Nouvelle candidature</button>
       </div>
     </div>
@@ -57,6 +60,14 @@
 
 @if (showForm) {
   <app-application-studio [editMode]="editMode" [application]="selectedApplication" (save)="onFormSubmit($event)" (closed)="cancelForm()" />
+}
+
+@if (showEmailImport) {
+  <app-application-email-import
+    [applications]="applications"
+    (closed)="showEmailImport = false"
+    (applied)="onEmailApplied($event)"
+  />
 }
 
 @if (selectedApplication && showDetails) {
