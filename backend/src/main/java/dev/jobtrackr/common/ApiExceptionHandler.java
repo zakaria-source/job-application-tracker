@@ -55,6 +55,18 @@ public class ApiExceptionHandler {
         return problem(HttpStatus.UNAUTHORIZED, "Authentication failed", "Invalid email or password.");
     }
 
+    @ExceptionHandler(RateLimitExceededException.class)
+    ResponseEntity<ProblemDetail> rateLimited() {
+        log.warn("api_error type=rate_limited status=429");
+        return problem(HttpStatus.TOO_MANY_REQUESTS, "Too many requests", "Please wait before trying again.");
+    }
+
+    @ExceptionHandler(ServiceBusyException.class)
+    ResponseEntity<ProblemDetail> serviceBusy(ServiceBusyException exception) {
+        log.warn("api_error type=service_busy status=503");
+        return problem(HttpStatus.SERVICE_UNAVAILABLE, "Service temporarily busy", exception.getMessage());
+    }
+
     @ExceptionHandler(UnsafeJobUrlException.class)
     ResponseEntity<ProblemDetail> unsafeJobUrl(UnsafeJobUrlException exception) {
         log.warn("api_error type=unsafe_job_url status=400");

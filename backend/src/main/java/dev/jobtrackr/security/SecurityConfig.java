@@ -10,7 +10,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -46,14 +45,21 @@ public class SecurityConfig {
         };
 
         http
-            .csrf(AbstractHttpConfigurer::disable)
+            // Expand phase: issue Angular-compatible CSRF tokens now, enforce them only
+            // after the migrated frontend is deployed everywhere.
+            .csrf(csrf -> csrf
+                .spa()
+                .ignoringRequestMatchers("/api/**"))
             .cors(Customizer.withDefaults())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers(
                     "/api/v1/auth/register",
                     "/api/v1/auth/login",
+                    "/api/v1/auth/refresh",
                     "/api/v1/auth/logout",
+                    "/api/v1/auth/csrf",
+                    "/api/v1/auth/capabilities",
                     "/actuator/health"
                 ).permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
@@ -112,7 +118,13 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(properties.allowedOrigins());
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "If-Match", RequestLoggingFilter.REQUEST_ID_HEADER));
+        configuration.setAllowedHeaders(List.of(
+            "Authorization",
+            "Content-Type",
+            "If-Match",
+            "X-XSRF-TOKEN",
+            RequestLoggingFilter.REQUEST_ID_HEADER
+        ));
         configuration.setExposedHeaders(List.of("ETag", RequestLoggingFilter.REQUEST_ID_HEADER));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
