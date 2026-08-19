@@ -16,6 +16,7 @@ export interface GmailSyncResult {
   matched: number;
   applied: number;
   ignored: number;
+  created: number;
   fullSync: boolean;
   syncedAt: Date;
 }
