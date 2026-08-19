@@ -4,11 +4,12 @@ import dev.jobtrackr.security.SessionCookieService;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -21,6 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties = {
     "jobtrackr.security.jwt-secret=test-secret-that-is-long-enough-for-hs256-signing-0123456789",
+    "jobtrackr.security.token-ttl=PT15M",
     "jobtrackr.security.refresh-ttl=P30D"
 })
 @AutoConfigureMockMvc
@@ -36,20 +38,7 @@ class AuthSessionIntegrationTest {
 
     @Test
     void rotatesRefreshTokensAndRejectsReplay() throws Exception {
-        var registration = mockMvc.perform(post("/api/v1/auth/register")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""
-                    {
-                      "email": "rotation@example.com",
-                      "password": "long-enough-password",
-                      "displayName": "Rotation User"
-                    }
-                    """))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.accessToken").doesNotExist())
-            .andExpect(jsonPath("$.sessionExpiresAt").exists())
-            .andReturn();
-
+        var registration = register("rotation@example.com", "Rotation User");
         Cookie firstAccess = registration.getResponse().getCookie(SessionCookieService.ACCESS_COOKIE_NAME);
         Cookie firstRefresh = registration.getResponse().getCookie(SessionCookieService.REFRESH_COOKIE_NAME);
         assertThat(firstAccess).isNotNull();
@@ -72,7 +61,6 @@ class AuthSessionIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.email").value("rotation@example.com"));
 
-        // Reusing the previous refresh token is treated as credential replay and revokes the session family.
         mockMvc.perform(post("/api/v1/auth/refresh").cookie(firstRefresh))
             .andExpect(status().isUnauthorized());
 
@@ -81,28 +69,66 @@ class AuthSessionIntegrationTest {
     }
 
     @Test
-    void exposesMigrationCapabilitiesAndClearsBothCookiesOnLogout() throws Exception {
+    void protectsCookieMutationsWithCsrfWhileBearerClientsRemainCompatible() throws Exception {
+        var registration = register("csrf@example.com", "CSRF User");
+        Cookie access = registration.getResponse().getCookie(SessionCookieService.ACCESS_COOKIE_NAME);
+        assertThat(access).isNotNull();
+
+        var csrfResponse = mockMvc.perform(get("/api/v1/auth/csrf").cookie(access))
+            .andExpect(status().isOk())
+            .andReturn();
+        Cookie csrf = csrfResponse.getResponse().getCookie("XSRF-TOKEN");
+        assertThat(csrf).isNotNull();
+        assertThat(csrf.isHttpOnly()).isFalse();
+
+        mockMvc.perform(post("/api/v1/applications")
+                .cookie(access)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(applicationJson("No CSRF")))
+            .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/api/v1/applications")
+                .cookie(access, csrf)
+                .header("X-XSRF-TOKEN", csrf.getValue())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(applicationJson("Cookie CSRF")))
+            .andExpect(status().isCreated());
+
+        // Non-browser API clients authenticate explicitly and do not rely on an ambient cookie.
+        mockMvc.perform(post("/api/v1/applications")
+                .header("Authorization", "Bearer " + access.getValue())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(applicationJson("Bearer client")))
+            .andExpect(status().isCreated());
+    }
+
+    @Test
+    void advertisesEnforcedContractAndRevokesRefreshOnCsrfProtectedLogout() throws Exception {
         mockMvc.perform(get("/api/v1/auth/capabilities"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.version").value("cookie-refresh-v1"))
+            .andExpect(jsonPath("$.version").value("cookie-refresh-csrf-v1"))
             .andExpect(jsonPath("$.refreshRotation").value(true))
-            .andExpect(jsonPath("$.csrfEnforced").value(false));
+            .andExpect(jsonPath("$.csrfEnforced").value(true))
+            .andExpect(jsonPath("$.accessTokenTtlSeconds").value(900));
 
-        var registration = mockMvc.perform(post("/api/v1/auth/register")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""
-                    {
-                      "email": "logout-session@example.com",
-                      "password": "long-enough-password",
-                      "displayName": "Logout User"
-                    }
-                    """))
-            .andExpect(status().isCreated())
-            .andReturn();
+        var registration = register("logout-session@example.com", "Logout User");
+        Cookie access = registration.getResponse().getCookie(SessionCookieService.ACCESS_COOKIE_NAME);
         Cookie refresh = registration.getResponse().getCookie(SessionCookieService.REFRESH_COOKIE_NAME);
+        assertThat(access).isNotNull();
         assertThat(refresh).isNotNull();
 
-        var logout = mockMvc.perform(post("/api/v1/auth/logout").cookie(refresh))
+        mockMvc.perform(post("/api/v1/auth/logout").cookie(refresh))
+            .andExpect(status().isForbidden());
+
+        var csrfResponse = mockMvc.perform(get("/api/v1/auth/csrf").cookie(access))
+            .andExpect(status().isOk())
+            .andReturn();
+        Cookie csrf = csrfResponse.getResponse().getCookie("XSRF-TOKEN");
+        assertThat(csrf).isNotNull();
+
+        var logout = mockMvc.perform(post("/api/v1/auth/logout")
+                .cookie(refresh, csrf)
+                .header("X-XSRF-TOKEN", csrf.getValue()))
             .andExpect(status().isNoContent())
             .andReturn();
 
@@ -115,5 +141,37 @@ class AuthSessionIntegrationTest {
 
         mockMvc.perform(post("/api/v1/auth/refresh").cookie(refresh))
             .andExpect(status().isUnauthorized());
+    }
+
+    private org.springframework.test.web.servlet.MvcResult register(String email, String displayName) throws Exception {
+        return mockMvc.perform(post("/api/v1/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "email": "%s",
+                      "password": "long-enough-password",
+                      "displayName": "%s"
+                    }
+                    """.formatted(email, displayName)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.accessToken").doesNotExist())
+            .andExpect(jsonPath("$.sessionExpiresAt").exists())
+            .andReturn();
+    }
+
+    private static String applicationJson(String company) {
+        return """
+            {
+              "company": "%s",
+              "position": "Backend Engineer",
+              "applicationDate": "2026-08-19",
+              "notes": "",
+              "contractType": "CDI",
+              "salaryPeriod": "Annuel",
+              "stage": "Candidature",
+              "priority": "Haute",
+              "interviews": []
+            }
+            """.formatted(company);
     }
 }
