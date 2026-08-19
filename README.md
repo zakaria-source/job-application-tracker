@@ -13,6 +13,8 @@ JobTrackr is a cloud workspace for tracking job applications, follow-ups and int
 - action-oriented dashboard and pipeline metrics
 - safe JSON backup import/export
 - synchronized data across devices
+- rotating cookie sessions with short-lived access JWTs
+- CSRF-protected browser mutations
 
 ## Architecture
 
@@ -88,31 +90,22 @@ dev.jobtrackr
 ├── application
 │   ├── domain
 │   ├── interview
+│   ├── tracking
 │   ├── dto
 │   ├── ApplicationController
 │   ├── ApplicationService
-│   ├── ApplicationMapper
 │   ├── JobApplicationEntity
 │   └── JobApplicationRepository
 ├── auth
 │   ├── dto
 │   ├── exception
 │   ├── AuthController
-│   └── AuthService
+│   ├── AuthService
+│   └── AuthSessionEntity
+├── jobimport
 ├── profile
-│   ├── dto
-│   ├── ProfileController
-│   ├── ProfileService
-│   ├── UserProfileEntity
-│   └── UserProfileRepository
 ├── identity
-│   ├── UserAccountEntity
-│   └── UserAccountRepository
 ├── common
-│   ├── domain
-│   ├── exception
-│   ├── ApiExceptionHandler
-│   └── RequestLoggingFilter
 └── security
 ```
 
@@ -190,7 +183,7 @@ Backend:
 mvn -B -f backend/pom.xml verify
 ```
 
-Backend integration tests use PostgreSQL Testcontainers.
+Backend integration tests use PostgreSQL Testcontainers and include auth refresh rotation, replay revocation, cookie CSRF enforcement and explicit Bearer API compatibility.
 
 ## Logs and observability
 
@@ -215,7 +208,12 @@ The `X-Request-Id` response header is exposed through CORS, so a browser-side fa
 ## Security and privacy
 
 - passwords are hashed with BCrypt
-- API access uses bearer JWT authentication
+- browser access uses a 15-minute JWT in an HttpOnly/Secure/SameSite cookie
+- refresh sessions are rotating, revocable, persisted server-side and default to 30 days
+- only refresh credential hashes are stored in PostgreSQL
+- Angular never reads or stores the access credential
+- browser mutations and logout require `X-XSRF-TOKEN`
+- explicit non-browser API clients may use `Authorization: Bearer` through a separate security chain
 - profile and application data are scoped to the authenticated user
 - production database connections use TLS
 - production secrets stay outside the repository
@@ -225,4 +223,6 @@ The `X-Request-Id` response header is exposed through CORS, so a browser-side fa
 
 Production uses Netlify for the frontend, Render for the Spring Boot API and Neon for PostgreSQL.
 
-Deployment details, environment variables, smoke tests and rollback notes are documented in [`DEPLOYMENT.md`](DEPLOYMENT.md).
+Authentication changes follow an expand → migrate → enforce → contract rollout so frontend and backend deployments do not need to switch at exactly the same instant.
+
+Deployment details, environment variables, auth flow, smoke tests and rollback notes are documented in [`DEPLOYMENT.md`](DEPLOYMENT.md).
