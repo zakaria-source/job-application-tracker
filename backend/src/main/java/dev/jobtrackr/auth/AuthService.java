@@ -39,6 +39,7 @@ public class AuthService {
     private final UserAccountRepository users;
     private final UserProfileRepository profiles;
     private final AuthSessionRepository sessions;
+    private final AuthSessionRevocationService revocations;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final TokenService tokenService;
@@ -48,6 +49,7 @@ public class AuthService {
     public AuthService(UserAccountRepository users,
                        UserProfileRepository profiles,
                        AuthSessionRepository sessions,
+                       AuthSessionRevocationService revocations,
                        PasswordEncoder passwordEncoder,
                        AuthenticationManager authenticationManager,
                        TokenService tokenService,
@@ -56,6 +58,7 @@ public class AuthService {
         this.users = users;
         this.profiles = profiles;
         this.sessions = sessions;
+        this.revocations = revocations;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.tokenService = tokenService;
@@ -110,8 +113,7 @@ public class AuthService {
             throw invalidRefreshToken();
         }
         if (!refreshTokens.matches(session.getRefreshTokenHash(), presented.hash())) {
-            session.revoke(now);
-            sessions.save(session);
+            revocations.revoke(session.getId(), now);
             log.warn("auth_event action=refresh_reuse_detected sessionId={} userId={}", session.getId(), session.getUser().getId());
             throw invalidRefreshToken();
         }
