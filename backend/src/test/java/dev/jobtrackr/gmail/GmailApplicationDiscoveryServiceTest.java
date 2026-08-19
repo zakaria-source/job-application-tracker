@@ -75,6 +75,58 @@ class GmailApplicationDiscoveryServiceTest {
     }
 
     @Test
+    void doesNotMistakeRecruiterPersonNameForCompany() {
+        var message = new GmailApiClient.GmailMessage(
+            "m-person",
+            "t-person",
+            "h-person",
+            "Technical interview - Software Engineer",
+            "Jane Doe <jane@mirakl.com>",
+            "We would like to schedule a technical interview with you next week.",
+            Instant.parse("2026-08-18T12:00:00Z")
+        );
+        var analysis = new EmailAnalysisResponse(
+            "Invitation entretien",
+            RecruitmentStage.ENTRETIEN_TECHNIQUE,
+            92,
+            "",
+            List.of(),
+            List.of()
+        );
+
+        var candidate = service.extractCandidate(message, analysis);
+
+        assertNotNull(candidate);
+        assertEquals("Mirakl", candidate.company());
+    }
+
+    @Test
+    void normalizesHqCorporateDomainForEmployerName() {
+        var message = new GmailApiClient.GmailMessage(
+            "m-hq",
+            "t-hq",
+            "h-hq",
+            "Your application for Platform Engineer",
+            "Alice Smith <alice@datadoghq.com>",
+            "Thank you for applying. We received your application.",
+            Instant.parse("2026-08-18T13:00:00Z")
+        );
+        var analysis = new EmailAnalysisResponse(
+            "Accusé de réception",
+            null,
+            88,
+            "",
+            List.of(),
+            List.of()
+        );
+
+        var candidate = service.extractCandidate(message, analysis);
+
+        assertNotNull(candidate);
+        assertEquals("Datadog", candidate.company());
+    }
+
+    @Test
     void startsDiscoveredApplicationAtInterviewStageWhenSignalIsStrong() {
         var message = new GmailApiClient.GmailMessage(
             "m3",
