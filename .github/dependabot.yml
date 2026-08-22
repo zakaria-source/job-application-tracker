@@ -5,24 +5,15 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
-    labels:
-      - dependencies
-      - frontend
 
   - package-ecosystem: maven
     directory: /backend
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
-    labels:
-      - dependencies
-      - backend
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
-    labels:
-      - dependencies
-      - ci
