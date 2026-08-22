@@ -29,7 +29,7 @@
   "devDependencies": {
     "@angular-devkit/build-angular": "^21.2.21",
     "@angular/cli": "^21.2.21",
-    "@angular/compiler-cli": "^21.2.20",
+    "@angular/compiler-cli": "^22.1.2",
     "@vitest/coverage-v8": "^4.1.10",
     "jsdom": "^29.1.1",
     "typescript": "^5.9.3",
