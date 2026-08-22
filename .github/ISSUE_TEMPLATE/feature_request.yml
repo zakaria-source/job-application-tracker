@@ -1,0 +1,35 @@
+name: Feature request
+description: Propose a product or engineering improvement
+title: "[Feature]: "
+labels: []
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or opportunity
+      description: What user or engineering problem should this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the desired behavior without over-constraining the implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional alternatives, tradeoffs, or constraints.
+  - type: checkboxes
+    id: impact
+    attributes:
+      label: Impact areas
+      options:
+        - label: Frontend / UX
+        - label: Backend / API
+        - label: Data model / migration
+        - label: Authentication / security
+        - label: Gmail integration
+        - label: Deployment / operations
