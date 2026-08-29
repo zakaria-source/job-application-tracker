@@ -31,7 +31,7 @@
     "@angular/cli": "^21.2.21",
     "@angular/compiler-cli": "^21.2.20",
     "@vitest/coverage-v8": "^4.1.10",
-    "jsdom": "^29.1.1",
+    "jsdom": "^30.0.1",
     "typescript": "^5.9.3",
     "vitest": "^4.1.10"
   }
