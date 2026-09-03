@@ -5,6 +5,7 @@ import dev.jobtrackr.profile.ProfileService;
 import dev.jobtrackr.security.CurrentUser;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,7 +24,13 @@ public class WorkspaceController {
     }
 
     @GetMapping
-    public WorkspaceBootstrapResponse bootstrap(@AuthenticationPrincipal Jwt jwt) {
+    public WorkspaceBootstrapResponse bootstrap(
+        @AuthenticationPrincipal Jwt jwt,
+        CsrfToken csrfToken
+    ) {
+        // Resolving the deferred token makes Spring's SPA CSRF handler issue the
+        // XSRF-TOKEN cookie on the same request that hydrates the workspace.
+        csrfToken.getToken();
         UUID userId = CurrentUser.id(jwt);
         return new WorkspaceBootstrapResponse(
             profiles.get(userId),
