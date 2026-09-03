@@ -71,6 +71,10 @@ class GmailProcessedMessageEntity {
         this.autoApplied = autoApplied;
     }
 
+    String getMessageId() {
+        return messageId;
+    }
+
     boolean isAutoApplied() {
         return autoApplied;
     }
