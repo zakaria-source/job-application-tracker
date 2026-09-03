@@ -256,6 +256,9 @@ export class JobTrackrApiService {
     return {
       ...raw,
       notes: '',
+      offerUrl: raw.offerUrl ?? undefined,
+      salaryTarget: raw.salaryTarget ?? undefined,
+      recruiterName: raw.recruiterName ?? undefined,
       recruiterEmail: undefined,
       recruiterPhone: undefined,
       applicationDate: this.localDate(raw.applicationDate),
