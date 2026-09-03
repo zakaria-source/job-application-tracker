@@ -3,6 +3,7 @@ package dev.jobtrackr.application;
 import dev.jobtrackr.application.domain.RecruitmentStage;
 import dev.jobtrackr.application.dto.ApplicationRequest;
 import dev.jobtrackr.application.dto.ApplicationResponse;
+import dev.jobtrackr.application.dto.ApplicationSummaryResponse;
 import dev.jobtrackr.application.dto.ImportSummary;
 import dev.jobtrackr.application.interview.InterviewEntity;
 import dev.jobtrackr.application.interview.dto.InterviewRequest;
@@ -45,7 +46,20 @@ public class ApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public List<ApplicationResponse> list(UUID userId) {
+    public List<ApplicationSummaryResponse> list(UUID userId) {
+        return applications.findAllByOwner_IdOrderByApplicationDateDesc(userId)
+            .stream()
+            .map(ApplicationMapper::toSummaryResponse)
+            .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ApplicationResponse get(UUID userId, UUID applicationId) {
+        return ApplicationMapper.toResponse(requireOwned(userId, applicationId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<ApplicationResponse> listFull(UUID userId) {
         return applications.findAllByOwner_IdOrderByApplicationDateDesc(userId)
             .stream()
             .map(ApplicationMapper::toResponse)

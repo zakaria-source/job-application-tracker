@@ -17,6 +17,35 @@ interface ApplicationDto extends Omit<JobApplication, 'applicationDate' | 'lastU
   version?: number;
 }
 interface InterviewDto extends Omit<Interview, 'date'> { date: string; }
+interface InterviewSummaryDto {
+  id: string;
+  date: string;
+  type: Interview['type'];
+  reminderSet: boolean;
+}
+interface ApplicationSummaryDto {
+  id: string;
+  version?: number;
+  company: string;
+  position: string;
+  applicationDate: string;
+  status: JobApplication['status'];
+  lastUpdated: string;
+  responseDate?: string | null;
+  offerUrl?: string | null;
+  contractType: JobApplication['contractType'];
+  salaryTarget?: number | null;
+  salaryPeriod: JobApplication['salaryPeriod'];
+  followUpDate?: string | null;
+  recruiterName?: string | null;
+  stage: JobApplication['stage'];
+  priority: JobApplication['priority'];
+  interviews?: InterviewSummaryDto[];
+}
+interface WorkspaceBootstrapDto {
+  profile: UserProfile;
+  applications: ApplicationSummaryDto[];
+}
 interface ApplicationEventDto extends Omit<ApplicationEvent, 'createdAt'> { createdAt: string; }
 interface FollowUpDto extends Omit<FollowUp, 'scheduledFor' | 'completedAt' | 'createdAt' | 'updatedAt'> {
   scheduledFor: string;
@@ -41,17 +70,39 @@ export interface ApplicationTrackingOverview {
   health: ApplicationHealth;
   debriefs: InterviewDebrief[];
 }
+export interface WorkspaceBootstrap {
+  profile: UserProfile;
+  applications: JobApplication[];
+}
 
 @Injectable({providedIn: 'root'})
 export class JobTrackrApiService {
   private readonly applicationsUrl = '/api/v1/applications';
   private readonly profileUrl = '/api/v1/profile';
   private readonly gmailUrl = '/api/v1/gmail';
+  private readonly workspaceUrl = '/api/v1/workspace';
 
   constructor(private readonly http: HttpClient) {}
 
+  getWorkspaceBootstrap(): Observable<WorkspaceBootstrap> {
+    return this.http.get<WorkspaceBootstrapDto>(this.workspaceUrl).pipe(map(raw => ({
+      profile: raw.profile,
+      applications: raw.applications.map(item => this.hydrateApplicationSummary(item))
+    })));
+  }
+
   listApplications(): Observable<JobApplication[]> {
-    return this.http.get<ApplicationDto[]>(this.applicationsUrl)
+    return this.http.get<ApplicationSummaryDto[]>(this.applicationsUrl)
+      .pipe(map(items => items.map(item => this.hydrateApplicationSummary(item))));
+  }
+
+  getApplication(id: string): Observable<JobApplication> {
+    return this.http.get<ApplicationDto>(`${this.applicationsUrl}/${encodeURIComponent(id)}`)
+      .pipe(map(item => this.hydrateApplication(item)));
+  }
+
+  exportApplications(): Observable<JobApplication[]> {
+    return this.http.get<ApplicationDto[]>(`${this.applicationsUrl}/export`)
       .pipe(map(items => items.map(item => this.hydrateApplication(item))));
   }
 
@@ -198,6 +249,27 @@ export class JobTrackrApiService {
       responseDate: raw.responseDate ? this.localDate(raw.responseDate) : undefined,
       followUpDate: raw.followUpDate ? this.localDate(raw.followUpDate) : undefined,
       interviews: (raw.interviews ?? []).map(interview => ({...interview, date: new Date(interview.date)}))
+    };
+  }
+
+  private hydrateApplicationSummary(raw: ApplicationSummaryDto): JobApplication {
+    return {
+      ...raw,
+      notes: '',
+      offerUrl: raw.offerUrl ?? undefined,
+      salaryTarget: raw.salaryTarget ?? undefined,
+      recruiterName: raw.recruiterName ?? undefined,
+      recruiterEmail: undefined,
+      recruiterPhone: undefined,
+      applicationDate: this.localDate(raw.applicationDate),
+      lastUpdated: new Date(raw.lastUpdated),
+      responseDate: raw.responseDate ? this.localDate(raw.responseDate) : undefined,
+      followUpDate: raw.followUpDate ? this.localDate(raw.followUpDate) : undefined,
+      interviews: (raw.interviews ?? []).map(interview => ({
+        ...interview,
+        notes: '',
+        date: new Date(interview.date)
+      }))
     };
   }
 

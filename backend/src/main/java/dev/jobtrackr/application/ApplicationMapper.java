@@ -1,8 +1,10 @@
 package dev.jobtrackr.application;
 
 import dev.jobtrackr.application.dto.ApplicationResponse;
+import dev.jobtrackr.application.dto.ApplicationSummaryResponse;
 import dev.jobtrackr.application.interview.InterviewEntity;
 import dev.jobtrackr.application.interview.dto.InterviewResponse;
+import dev.jobtrackr.application.interview.dto.InterviewSummaryResponse;
 
 public final class ApplicationMapper {
 
@@ -34,12 +36,43 @@ public final class ApplicationMapper {
         );
     }
 
+    public static ApplicationSummaryResponse toSummaryResponse(JobApplicationEntity application) {
+        return new ApplicationSummaryResponse(
+            application.getId(),
+            application.getCompany(),
+            application.getPosition(),
+            application.getApplicationDate(),
+            application.getStatus(),
+            application.getLastUpdated(),
+            application.getResponseDate(),
+            application.getOfferUrl(),
+            application.getContractType(),
+            application.getSalaryTarget(),
+            application.getSalaryPeriod(),
+            application.getFollowUpDate(),
+            application.getRecruiterName(),
+            application.getStage(),
+            application.getPriority(),
+            application.getInterviews().stream().map(ApplicationMapper::toInterviewSummaryResponse).toList(),
+            application.getVersion()
+        );
+    }
+
     private static InterviewResponse toInterviewResponse(InterviewEntity interview) {
         return new InterviewResponse(
             interview.getId(),
             interview.getDate(),
             interview.getType(),
             interview.getNotes(),
+            interview.isReminderSet()
+        );
+    }
+
+    private static InterviewSummaryResponse toInterviewSummaryResponse(InterviewEntity interview) {
+        return new InterviewSummaryResponse(
+            interview.getId(),
+            interview.getDate(),
+            interview.getType(),
             interview.isReminderSet()
         );
     }

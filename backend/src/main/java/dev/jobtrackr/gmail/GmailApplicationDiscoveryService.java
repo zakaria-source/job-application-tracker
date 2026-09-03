@@ -133,7 +133,7 @@ class GmailApplicationDiscoveryService {
     }
 
     private Optional<ApplicationResponse> findExisting(UUID userId, DiscoveryCandidate candidate) {
-        List<ApplicationResponse> existing = applications.list(userId);
+        List<ApplicationResponse> existing = applications.listFull(userId);
         String recruiterEmail = normalizeEmail(candidate.recruiterEmail());
         if (!recruiterEmail.isBlank()) {
             Optional<ApplicationResponse> byRecruiter = existing.stream()

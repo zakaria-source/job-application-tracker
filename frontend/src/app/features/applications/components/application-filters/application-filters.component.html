@@ -6,7 +6,7 @@
         #searchInput
         matInput
         [(ngModel)]="searchTerm"
-        (input)="emitFilters()"
+        (input)="onSearchInput()"
         aria-label="Rechercher une candidature"
         placeholder="Rechercher entreprise, poste ou recruteur">
       @if (searchTerm) {

@@ -42,6 +42,16 @@ export class ApplicationStore {
     );
   }
 
+  loadApplication(id: string): Observable<JobApplication> {
+    return this.api.getApplication(id).pipe(
+      tap(application => this.replaceApplication(application))
+    );
+  }
+
+  exportSnapshot(): Observable<JobApplication[]> {
+    return this.api.exportApplications();
+  }
+
   getApplicationById(id: string): JobApplication | undefined {
     return this.applications.find(application => application.id === id);
   }
@@ -111,7 +121,7 @@ export class ApplicationStore {
     this.replaceApplication(optimistic);
 
     return this.api.completeCurrentFollowUp(id).pipe(
-      switchMap(followUp => this.refresh().pipe(
+      switchMap(followUp => this.loadApplication(id).pipe(
         map(() => followUp as FollowUp | null),
         catchError(() => {
           const current = this.getApplicationById(id);
