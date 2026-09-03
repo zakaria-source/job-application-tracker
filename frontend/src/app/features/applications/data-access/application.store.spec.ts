@@ -38,6 +38,8 @@ describe('ApplicationStore', () => {
 
     const api = {
       listApplications: () => of(serverApplications.map(item => clone(item))),
+      getApplication: (id: string) => of(clone(serverApplications.find(item => item.id === id)!)),
+      exportApplications: () => of(serverApplications.map(item => clone(item))),
       createApplication: (item: JobApplication) => {
         const saved = clone(item);
         serverApplications = [...serverApplications, saved];
@@ -151,7 +153,7 @@ describe('ApplicationStore', () => {
     expect(service.getApplicationById('1')?.responseDate).toEqual(firstResponse);
   });
 
-  it('completes a follow-up, refreshes the server version and clears its due date', () => {
+  it('completes a follow-up, refreshes only the server version and clears its due date', () => {
     const completedAt = new Date('2026-08-18T12:00:00');
     service.addApplication({...application, followUpDate: new Date('2026-08-18T08:00:00')}).subscribe();
     service.completeFollowUp('1', completedAt).subscribe();
