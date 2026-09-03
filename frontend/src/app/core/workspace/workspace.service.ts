@@ -1,5 +1,5 @@
 import {Injectable} from '@angular/core';
-import {BehaviorSubject, Observable, catchError, forkJoin, map, tap, throwError} from 'rxjs';
+import {BehaviorSubject, Observable, catchError, map, tap, throwError} from 'rxjs';
 import {JobTrackrApiService} from '@app/core/api/jobtrackr-api.service';
 import {AuthService} from '@app/core/auth/auth.service';
 import {SessionStore} from '@app/core/auth/session.store';
@@ -43,15 +43,13 @@ export class WorkspaceService {
     }
 
     this.stateSubject.next('loading');
-    return forkJoin({
-      csrf: this.auth.ensureCsrfToken(),
-      profile: this.api.getProfile(),
-      applications: this.api.listApplications()
-    }).pipe(
+    return this.api.getWorkspaceBootstrap().pipe(
       tap(({profile, applications}) => {
         this.profiles.connect(profile);
         this.applications.connect(applications);
         this.stateSubject.next('ready');
+        // Prepare CSRF for later mutations without delaying the first usable render.
+        this.auth.ensureCsrfToken().subscribe({error: () => undefined});
       }),
       map(() => undefined),
       catchError(error => {
