@@ -1,10 +1,12 @@
-import {Component, ElementRef, EventEmitter, Output, ViewChild} from '@angular/core';
+import {Component, DestroyRef, ElementRef, EventEmitter, Output, ViewChild, inject} from '@angular/core';
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
 import {FormsModule} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
 import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatIconModule} from '@angular/material/icon';
 import {MatInputModule} from '@angular/material/input';
 import {MatSelectModule} from '@angular/material/select';
+import {Subject, debounceTime, distinctUntilChanged} from 'rxjs';
 import {
     ApplicationPriority,
     ApplicationStatus,
@@ -26,6 +28,8 @@ export interface ApplicationFilterCriteria {
     styleUrl: './application-filters.component.css'
 })
 export class ApplicationFiltersComponent {
+    private readonly destroyRef = inject(DestroyRef);
+    private readonly searchChanges = new Subject<string>();
     @Output() filtersChange = new EventEmitter<ApplicationFilterCriteria>();
     @ViewChild('searchInput') private searchInput?: ElementRef<HTMLInputElement>;
 
@@ -33,6 +37,14 @@ export class ApplicationFiltersComponent {
     status: ApplicationStatus | '' = '';
     contractType: ContractType | '' = '';
     priority: ApplicationPriority | '' = '';
+
+    constructor() {
+        this.searchChanges.pipe(
+            debounceTime(180),
+            distinctUntilChanged(),
+            takeUntilDestroyed(this.destroyRef)
+        ).subscribe(() => this.emitFilters());
+    }
 
     get advancedFilterCount(): number {
         return [this.status, this.contractType, this.priority].filter(Boolean).length;
@@ -48,6 +60,10 @@ export class ApplicationFiltersComponent {
 
     focusSearch(): void {
         this.searchInput?.nativeElement.focus();
+    }
+
+    onSearchInput(): void {
+        this.searchChanges.next(this.searchTerm);
     }
 
     emitFilters(): void {
