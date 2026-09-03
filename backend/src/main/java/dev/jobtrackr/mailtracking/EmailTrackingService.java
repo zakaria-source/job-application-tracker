@@ -58,13 +58,20 @@ public class EmailTrackingService {
 
     @Transactional(readOnly = true)
     public EmailAnalysisResponse analyze(UUID userId, EmailAnalysisRequest request) {
+        return analyze(request, applications.findAllByOwner_Id(userId));
+    }
+
+    public EmailAnalysisResponse analyze(
+        EmailAnalysisRequest request,
+        List<JobApplicationEntity> candidateApplications
+    ) {
         EmailSignalClassifier.Classification classification = classifier.classify(request.subject(), request.body());
         String normalizedSubject = EmailSignalClassifier.normalize(request.subject());
         String normalizedBody = EmailSignalClassifier.normalize(request.body());
         String normalizedSender = EmailSignalClassifier.normalize(request.sender());
         String senderEmail = extractEmail(request.sender());
 
-        List<EmailApplicationMatch> matches = applications.findAllByOwner_Id(userId).stream()
+        List<EmailApplicationMatch> matches = candidateApplications.stream()
             .map(application -> score(application, normalizedSubject, normalizedBody, normalizedSender, senderEmail))
             .filter(match -> match.score() >= 15)
             .sorted(Comparator.comparingInt(EmailApplicationMatch::score).reversed())
