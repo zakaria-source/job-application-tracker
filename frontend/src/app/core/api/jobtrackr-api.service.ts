@@ -17,6 +17,31 @@ interface ApplicationDto extends Omit<JobApplication, 'applicationDate' | 'lastU
   version?: number;
 }
 interface InterviewDto extends Omit<Interview, 'date'> { date: string; }
+interface InterviewSummaryDto {
+  id: string;
+  date: string;
+  type: Interview['type'];
+  reminderSet: boolean;
+}
+interface ApplicationSummaryDto {
+  id: string;
+  version?: number;
+  company: string;
+  position: string;
+  applicationDate: string;
+  status: JobApplication['status'];
+  lastUpdated: string;
+  responseDate?: string | null;
+  offerUrl?: string | null;
+  contractType: JobApplication['contractType'];
+  salaryTarget?: number | null;
+  salaryPeriod: JobApplication['salaryPeriod'];
+  followUpDate?: string | null;
+  recruiterName?: string | null;
+  stage: JobApplication['stage'];
+  priority: JobApplication['priority'];
+  interviews?: InterviewSummaryDto[];
+}
 interface ApplicationEventDto extends Omit<ApplicationEvent, 'createdAt'> { createdAt: string; }
 interface FollowUpDto extends Omit<FollowUp, 'scheduledFor' | 'completedAt' | 'createdAt' | 'updatedAt'> {
   scheduledFor: string;
@@ -51,7 +76,17 @@ export class JobTrackrApiService {
   constructor(private readonly http: HttpClient) {}
 
   listApplications(): Observable<JobApplication[]> {
-    return this.http.get<ApplicationDto[]>(this.applicationsUrl)
+    return this.http.get<ApplicationSummaryDto[]>(this.applicationsUrl)
+      .pipe(map(items => items.map(item => this.hydrateApplicationSummary(item))));
+  }
+
+  getApplication(id: string): Observable<JobApplication> {
+    return this.http.get<ApplicationDto>(`${this.applicationsUrl}/${encodeURIComponent(id)}`)
+      .pipe(map(item => this.hydrateApplication(item)));
+  }
+
+  exportApplications(): Observable<JobApplication[]> {
+    return this.http.get<ApplicationDto[]>(`${this.applicationsUrl}/export`)
       .pipe(map(items => items.map(item => this.hydrateApplication(item))));
   }
 
@@ -198,6 +233,24 @@ export class JobTrackrApiService {
       responseDate: raw.responseDate ? this.localDate(raw.responseDate) : undefined,
       followUpDate: raw.followUpDate ? this.localDate(raw.followUpDate) : undefined,
       interviews: (raw.interviews ?? []).map(interview => ({...interview, date: new Date(interview.date)}))
+    };
+  }
+
+  private hydrateApplicationSummary(raw: ApplicationSummaryDto): JobApplication {
+    return {
+      ...raw,
+      notes: '',
+      recruiterEmail: undefined,
+      recruiterPhone: undefined,
+      applicationDate: this.localDate(raw.applicationDate),
+      lastUpdated: new Date(raw.lastUpdated),
+      responseDate: raw.responseDate ? this.localDate(raw.responseDate) : undefined,
+      followUpDate: raw.followUpDate ? this.localDate(raw.followUpDate) : undefined,
+      interviews: (raw.interviews ?? []).map(interview => ({
+        ...interview,
+        notes: '',
+        date: new Date(interview.date)
+      }))
     };
   }
 
