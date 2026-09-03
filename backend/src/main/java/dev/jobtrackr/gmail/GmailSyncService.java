@@ -1,5 +1,7 @@
 package dev.jobtrackr.gmail;
 
+import dev.jobtrackr.application.JobApplicationEntity;
+import dev.jobtrackr.application.JobApplicationRepository;
 import dev.jobtrackr.application.dto.ApplicationResponse;
 import dev.jobtrackr.gmail.dto.GmailStatusResponse;
 import dev.jobtrackr.gmail.dto.GmailSyncResponse;
@@ -17,8 +19,10 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -35,6 +39,7 @@ class GmailSyncService {
     private final GmailTokenCipher cipher;
     private final GmailConnectionRepository connections;
     private final GmailProcessedMessageRepository processedMessages;
+    private final JobApplicationRepository applications;
     private final EmailTrackingService emailTracking;
     private final GmailApplicationDiscoveryService discovery;
 
@@ -44,6 +49,7 @@ class GmailSyncService {
         GmailTokenCipher cipher,
         GmailConnectionRepository connections,
         GmailProcessedMessageRepository processedMessages,
+        JobApplicationRepository applications,
         EmailTrackingService emailTracking,
         GmailApplicationDiscoveryService discovery
     ) {
@@ -52,6 +58,7 @@ class GmailSyncService {
         this.cipher = cipher;
         this.connections = connections;
         this.processedMessages = processedMessages;
+        this.applications = applications;
         this.emailTracking = emailTracking;
         this.discovery = discovery;
     }
@@ -128,6 +135,7 @@ class GmailSyncService {
             int ignored = 0;
             int created = 0;
             UUID userId = connection.getOwner().getId();
+            List<JobApplicationEntity> matchingCandidates = new ArrayList<>(applications.findAllByOwner_Id(userId));
 
             List<GmailApiClient.GmailMessage> messages = loadMessagesForProcessing(
                 connection,
@@ -137,7 +145,7 @@ class GmailSyncService {
             );
 
             for (GmailApiClient.GmailMessage message : messages) {
-                MessageOutcome outcome = processMessage(connection, userId, message);
+                MessageOutcome outcome = processMessage(connection, userId, message, matchingCandidates);
                 scanned++;
                 matched += outcome.matched() ? 1 : 0;
                 applied += outcome.applied() ? 1 : 0;
@@ -166,11 +174,17 @@ class GmailSyncService {
     ) {
         List<GmailApiClient.GmailMessage> messages = new ArrayList<>();
         boolean deletedPrevious = false;
+        Map<String, GmailProcessedMessageEntity> previousByMessageId = new HashMap<>();
+
+        if (!messageIds.isEmpty()) {
+            for (GmailProcessedMessageEntity previous : processedMessages
+                .findAllByConnection_IdAndMessageIdIn(connection.getId(), messageIds)) {
+                previousByMessageId.put(previous.getMessageId(), previous);
+            }
+        }
 
         for (String messageId : messageIds) {
-            GmailProcessedMessageEntity previous = processedMessages
-                .findByConnection_IdAndMessageId(connection.getId(), messageId)
-                .orElse(null);
+            GmailProcessedMessageEntity previous = previousByMessageId.get(messageId);
             if (previous != null) {
                 if (!rescanRecent || previous.isAutoApplied()) continue;
                 processedMessages.delete(previous);
@@ -196,7 +210,8 @@ class GmailSyncService {
     private MessageOutcome processMessage(
         GmailConnectionEntity connection,
         UUID userId,
-        GmailApiClient.GmailMessage message
+        GmailApiClient.GmailMessage message,
+        List<JobApplicationEntity> matchingCandidates
     ) {
         String subject = valueOr(message.subject(), "(Sans objet)");
         String sender = message.from() == null ? "" : message.from();
@@ -205,8 +220,8 @@ class GmailSyncService {
         String shortSubject = subject.substring(0, Math.min(300, subject.length()));
 
         EmailAnalysisResponse analysis = emailTracking.analyze(
-            userId,
-            new EmailAnalysisRequest(shortSubject, sender, body)
+            new EmailAnalysisRequest(shortSubject, sender, body),
+            matchingCandidates
         );
 
         Optional<UUID> threadApplicationId = findThreadApplication(connection, message.threadId());
@@ -245,6 +260,9 @@ class GmailSyncService {
                     discovered.created() ? 100 : 95,
                     true
                 );
+                if (discovered.created()) {
+                    applications.findByIdAndOwner_Id(application.id(), userId).ifPresent(matchingCandidates::add);
+                }
                 log.info("gmail_application_resolved userId={} applicationId={} created={} company={} position={} signal={}",
                     userId, application.id(), discovered.created(), application.company(), application.position(), analysis.signalType());
                 return new MessageOutcome(true, true, false, discovered.created());
