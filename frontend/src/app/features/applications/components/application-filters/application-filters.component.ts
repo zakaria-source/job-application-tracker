@@ -1,12 +1,10 @@
-import {Component, DestroyRef, ElementRef, EventEmitter, Output, ViewChild, inject} from '@angular/core';
-import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
+import {Component, ElementRef, EventEmitter, OnDestroy, Output, ViewChild} from '@angular/core';
 import {FormsModule} from '@angular/forms';
 import {MatButtonModule} from '@angular/material/button';
 import {MatFormFieldModule} from '@angular/material/form-field';
 import {MatIconModule} from '@angular/material/icon';
 import {MatInputModule} from '@angular/material/input';
 import {MatSelectModule} from '@angular/material/select';
-import {Subject, debounceTime, distinctUntilChanged} from 'rxjs';
 import {
     ApplicationPriority,
     ApplicationStatus,
@@ -27,9 +25,9 @@ export interface ApplicationFilterCriteria {
     templateUrl: './application-filters.component.html',
     styleUrl: './application-filters.component.css'
 })
-export class ApplicationFiltersComponent {
-    private readonly destroyRef = inject(DestroyRef);
-    private readonly searchChanges = new Subject<string>();
+export class ApplicationFiltersComponent implements OnDestroy {
+    private searchTimer?: ReturnType<typeof setTimeout>;
+    private lastEmittedSearch = '';
     @Output() filtersChange = new EventEmitter<ApplicationFilterCriteria>();
     @ViewChild('searchInput') private searchInput?: ElementRef<HTMLInputElement>;
 
@@ -37,14 +35,6 @@ export class ApplicationFiltersComponent {
     status: ApplicationStatus | '' = '';
     contractType: ContractType | '' = '';
     priority: ApplicationPriority | '' = '';
-
-    constructor() {
-        this.searchChanges.pipe(
-            debounceTime(180),
-            distinctUntilChanged(),
-            takeUntilDestroyed(this.destroyRef)
-        ).subscribe(() => this.emitFilters());
-    }
 
     get advancedFilterCount(): number {
         return [this.status, this.contractType, this.priority].filter(Boolean).length;
@@ -63,14 +53,23 @@ export class ApplicationFiltersComponent {
     }
 
     onSearchInput(): void {
-        this.searchChanges.next(this.searchTerm);
+        if (this.searchTimer) clearTimeout(this.searchTimer);
+        this.searchTimer = setTimeout(() => {
+            this.searchTimer = undefined;
+            if (this.searchTerm === this.lastEmittedSearch) return;
+            this.lastEmittedSearch = this.searchTerm;
+            this.emitFilters();
+        }, 180);
     }
 
     emitFilters(): void {
+        this.lastEmittedSearch = this.searchTerm;
         this.filtersChange.emit(this.currentCriteria());
     }
 
     clearSearch(): void {
+        if (this.searchTimer) clearTimeout(this.searchTimer);
+        this.searchTimer = undefined;
         this.searchTerm = '';
         this.emitFilters();
         this.focusSearch();
@@ -81,11 +80,17 @@ export class ApplicationFiltersComponent {
     clearPriority(): void { this.priority = ''; this.emitFilters(); }
 
     resetFilters(): void {
+        if (this.searchTimer) clearTimeout(this.searchTimer);
+        this.searchTimer = undefined;
         this.searchTerm = '';
         this.status = '';
         this.contractType = '';
         this.priority = '';
         this.emitFilters();
+    }
+
+    ngOnDestroy(): void {
+        if (this.searchTimer) clearTimeout(this.searchTimer);
     }
 
     private currentCriteria(): ApplicationFilterCriteria {
