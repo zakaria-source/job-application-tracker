@@ -44,6 +44,7 @@ const EMPTY_FILTERS: ApplicationFilterCriteria = {searchTerm: '', status: '', co
 export class ApplicationsPageComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private feedbackTimer?: ReturnType<typeof setTimeout>;
+  private readonly searchIndex = new Map<string, string>();
   @ViewChild(ApplicationFiltersComponent) private filtersComponent?: ApplicationFiltersComponent;
   applications: JobApplication[] = [];
   filteredApplications: JobApplication[] = [];
@@ -77,6 +78,7 @@ export class ApplicationsPageComponent implements OnInit {
   ngOnInit(): void {
     this.applicationStore.getApplications().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(applications => {
       this.applications = applications;
+      this.rebuildSearchIndex(applications);
       this.applyFilters(this.activeFilters);
       if (this.selectedApplication && !this.showForm) {
         this.selectedApplication = applications.find(item => item.id === this.selectedApplication?.id) ?? this.selectedApplication;
@@ -128,8 +130,30 @@ export class ApplicationsPageComponent implements OnInit {
   }
 
   showAddForm(): void { this.editMode = false; this.selectedApplication = null; this.showForm = true; this.showDetails = false; }
-  editApplication(application: JobApplication): void { this.editMode = true; this.selectedApplication = {...application}; this.showForm = true; this.showDetails = false; }
-  viewApplicationDetails(application: JobApplication): void { this.selectedApplication = {...application}; this.showDetails = true; this.showForm = false; }
+
+  editApplication(application: JobApplication): void {
+    this.applicationStore.loadApplication(application.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: fullApplication => {
+        this.editMode = true;
+        this.selectedApplication = {...fullApplication};
+        this.showForm = true;
+        this.showDetails = false;
+      },
+      error: () => this.showFeedback('Impossible de charger tous les détails de cette candidature')
+    });
+  }
+
+  viewApplicationDetails(application: JobApplication): void {
+    this.applicationStore.loadApplication(application.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: fullApplication => {
+        this.selectedApplication = {...fullApplication};
+        this.showDetails = true;
+        this.showForm = false;
+      },
+      error: () => this.showFeedback('Impossible de charger le détail de cette candidature')
+    });
+  }
+
   closeDetails(): void { this.showDetails = false; this.selectedApplication = null; }
   deleteApplication(application: JobApplication): void { this.pendingDelete = application; }
 
@@ -139,7 +163,7 @@ export class ApplicationsPageComponent implements OnInit {
   }
 
   onEmailApplied(response: EmailApplyResponse): void {
-    this.applicationStore.refresh().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+    this.applicationStore.loadApplication(response.applicationId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.showEmailImport = false;
         this.showFeedback(`${response.message} · ${response.stage}`);
@@ -192,15 +216,20 @@ export class ApplicationsPageComponent implements OnInit {
   cancelForm(): void { this.showForm = false; this.editMode = false; this.selectedApplication = null; }
 
   exportApplications(): void {
-    const serialized = this.exportService.serialize(this.applications);
-    const blob = new Blob([serialized], {type: 'application/json'});
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `jobtrackr-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-    this.showFeedback('Backup exporté');
+    this.applicationStore.exportSnapshot().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: applications => {
+        const serialized = this.exportService.serialize(applications);
+        const blob = new Blob([serialized], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `jobtrackr-backup-${new Date().toISOString().slice(0, 10)}.json`;
+        anchor.click();
+        URL.revokeObjectURL(url);
+        this.showFeedback('Backup exporté');
+      },
+      error: () => this.showFeedback('Export impossible pour le moment')
+    });
   }
 
   importApplications(event: Event): void {
@@ -243,10 +272,22 @@ export class ApplicationsPageComponent implements OnInit {
     this.feedbackTimer = setTimeout(() => this.feedbackMessage = '', 3200);
   }
 
+  private rebuildSearchIndex(applications: readonly JobApplication[]): void {
+    this.searchIndex.clear();
+    for (const application of applications) {
+      this.searchIndex.set(application.id, [
+        application.company,
+        application.position,
+        application.stage,
+        application.recruiterName ?? ''
+      ].join(' ').toLowerCase());
+    }
+  }
+
   private applyFilters(criteria: ApplicationFilterCriteria): void {
     const search = criteria.searchTerm.trim().toLowerCase();
     this.filteredApplications = this.applications.filter(application => {
-      const matchesSearch = !search || application.company.toLowerCase().includes(search) || application.position.toLowerCase().includes(search) || application.notes.toLowerCase().includes(search) || application.stage.toLowerCase().includes(search) || (application.recruiterName ?? '').toLowerCase().includes(search);
+      const matchesSearch = !search || (this.searchIndex.get(application.id) ?? '').includes(search);
       return matchesSearch && (!criteria.status || application.status === criteria.status) && (!criteria.contractType || application.contractType === criteria.contractType) && (!criteria.priority || application.priority === criteria.priority);
     });
   }
