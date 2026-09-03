@@ -42,6 +42,10 @@ interface ApplicationSummaryDto {
   priority: JobApplication['priority'];
   interviews?: InterviewSummaryDto[];
 }
+interface WorkspaceBootstrapDto {
+  profile: UserProfile;
+  applications: ApplicationSummaryDto[];
+}
 interface ApplicationEventDto extends Omit<ApplicationEvent, 'createdAt'> { createdAt: string; }
 interface FollowUpDto extends Omit<FollowUp, 'scheduledFor' | 'completedAt' | 'createdAt' | 'updatedAt'> {
   scheduledFor: string;
@@ -66,14 +70,26 @@ export interface ApplicationTrackingOverview {
   health: ApplicationHealth;
   debriefs: InterviewDebrief[];
 }
+export interface WorkspaceBootstrap {
+  profile: UserProfile;
+  applications: JobApplication[];
+}
 
 @Injectable({providedIn: 'root'})
 export class JobTrackrApiService {
   private readonly applicationsUrl = '/api/v1/applications';
   private readonly profileUrl = '/api/v1/profile';
   private readonly gmailUrl = '/api/v1/gmail';
+  private readonly workspaceUrl = '/api/v1/workspace';
 
   constructor(private readonly http: HttpClient) {}
+
+  getWorkspaceBootstrap(): Observable<WorkspaceBootstrap> {
+    return this.http.get<WorkspaceBootstrapDto>(this.workspaceUrl).pipe(map(raw => ({
+      profile: raw.profile,
+      applications: raw.applications.map(item => this.hydrateApplicationSummary(item))
+    })));
+  }
 
   listApplications(): Observable<JobApplication[]> {
     return this.http.get<ApplicationSummaryDto[]>(this.applicationsUrl)
