@@ -2,6 +2,7 @@ package dev.jobtrackr.application;
 
 import dev.jobtrackr.application.dto.ApplicationRequest;
 import dev.jobtrackr.application.dto.ApplicationResponse;
+import dev.jobtrackr.application.dto.ApplicationSummaryResponse;
 import dev.jobtrackr.application.dto.ImportSummary;
 import dev.jobtrackr.application.dto.StageRequest;
 import dev.jobtrackr.security.CurrentUser;
@@ -40,8 +41,24 @@ public class ApplicationController {
     }
 
     @GetMapping
-    public List<ApplicationResponse> list(@AuthenticationPrincipal Jwt jwt) {
+    public List<ApplicationSummaryResponse> list(@AuthenticationPrincipal Jwt jwt) {
         return applicationService.list(CurrentUser.id(jwt));
+    }
+
+    @GetMapping("/export")
+    public List<ApplicationResponse> export(@AuthenticationPrincipal Jwt jwt) {
+        return applicationService.listFull(CurrentUser.id(jwt));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ApplicationResponse> get(
+        @AuthenticationPrincipal Jwt jwt,
+        @PathVariable UUID id
+    ) {
+        ApplicationResponse response = applicationService.get(CurrentUser.id(jwt), id);
+        return ResponseEntity.ok()
+            .header(HttpHeaders.ETAG, etag(response.version()))
+            .body(response);
     }
 
     @PostMapping
